@@ -432,7 +432,7 @@ function DashboardContent() {
 
 export default function DashboardPageView() {
   return (
-    <ProtectedRoute allowedRoles={["ADMIN", "STUDENT"]}>
+    <ProtectedRoute allowedRoles={["ADMIN", "LECTURER", "STUDENT"]}>
       <DashboardContent />
     </ProtectedRoute>
   );

@@ -152,14 +152,20 @@ function UsersManagementContent() {
                 <div className="flex items-center justify-between">
                   <span
                     className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border ${
-                      u.role === "ADMIN"
+                        u.role === "ADMIN"
                         ? "bg-amber-50 text-amber-800 border-amber-200"
-                        : "bg-blue-50 text-blue-700 border-blue-200"
+                        : u.role === "LECTURER"
+                          ? "bg-indigo-50 text-indigo-800 border-indigo-200"
+                          : "bg-blue-50 text-blue-700 border-blue-200"
                     }`}
                   >
                     {u.role === "ADMIN" ? (
                       <>
-                        <Shield className="h-3 w-3" /> Giảng viên / Quản lý
+                        <Shield className="h-3 w-3" /> Quản trị viên
+                      </>
+                    ) : u.role === "LECTURER" ? (
+                      <>
+                        <Shield className="h-3 w-3" /> Giảng viên
                       </>
                     ) : (
                       <>
@@ -195,7 +201,7 @@ function UsersManagementContent() {
               </div>
 
               {/* ACTION: IN TEM BARCODE THẺ SV */}
-              <div className="pt-3 border-t border-gray-100">
+              {u.role === "STUDENT" && <div className="pt-3 border-t border-gray-100">
                 <button
                   onClick={() => setSelectedBarcodeUser(u)}
                   className="w-full py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition"
@@ -203,7 +209,7 @@ function UsersManagementContent() {
                   <BarcodeIcon className="h-4 w-4 text-red-600" />
                   Xem / In Tem Barcode Thẻ ({u.studentCode})
                 </button>
-              </div>
+              </div>}
             </div>
           ))}
         </div>
@@ -277,10 +283,11 @@ function UsersManagementContent() {
                     className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-red-500 focus:bg-white"
                   >
                     <option value="STUDENT">Sinh viên trực Lab</option>
-                    <option value="ADMIN">Giảng viên / Quản lý</option>
+                    <option value="LECTURER">Giảng viên</option>
                   </select>
                 </div>
               </div>
+              <p className="text-[11px] leading-relaxed text-gray-600">Mật khẩu ban đầu: 123456. Người dùng nên đổi mật khẩu sau khi đăng nhập.</p>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
                 <button

@@ -257,7 +257,7 @@ function IncidentsContent() {
               </div>
 
               {/* ACTION BUTTONS (CHỈ QUẢN TRỊ VIÊN) */}
-              {role === "ADMIN" ? (
+              {role === "ADMIN" || role === "LECTURER" ? (
                 <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-1.5">
                     {inc.incidentStatus !== "RESOLVED" && (
@@ -309,7 +309,7 @@ function IncidentsContent() {
 
 export default function IncidentsPageView() {
   return (
-    <ProtectedRoute allowedRoles={["ADMIN", "STUDENT"]}>
+    <ProtectedRoute allowedRoles={["ADMIN", "LECTURER", "STUDENT"]}>
       <IncidentsContent />
     </ProtectedRoute>
   );

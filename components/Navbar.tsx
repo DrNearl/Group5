@@ -6,24 +6,21 @@ import { useAuth } from "@/lib/auth-context";
 import {
   LogOut,
   LogIn,
-  User,
-  School,
-  ChevronDown,
 } from "lucide-react";
 
 export default function Navbar() {
   const { user, role, logout } = useAuth();
 
   return (
-    <nav className="bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-40 px-4 sm:px-6 py-2.5 shadow-2xs font-sans">
+    <nav className="sticky top-0 z-40 border-b border-gray-200 bg-white px-4 py-2.5 font-sans sm:px-6">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         {/* LOGO & TIÊU ĐỀ */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-red-600 via-rose-600 to-orange-500 text-white flex items-center justify-center font-extrabold text-xs shadow-xs group-hover:scale-105 transition-transform">
+        <Link href="/" className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-red-700 text-xs font-bold text-white">
             VLU
           </div>
           <div>
-            <div className="text-xs font-black tracking-tight text-slate-900 group-hover:text-red-600 transition-colors uppercase">
+            <div className="text-xs font-bold uppercase tracking-tight text-slate-900">
               Lab Duty &amp; Barcode
             </div>
             <div className="text-[10px] text-gray-500 font-medium hidden sm:block">
@@ -51,7 +48,8 @@ export default function Navbar() {
               {/* Nút Đăng xuất */}
               <button
                 onClick={() => logout()}
-                className="p-2 rounded-xl text-gray-500 hover:text-red-600 hover:bg-red-50 transition border border-transparent hover:border-red-100"
+                aria-label="Đăng xuất khỏi hệ thống"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-transparent text-gray-600 transition-colors duration-150 hover:border-red-200 hover:bg-red-50 hover:text-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700"
                 title="Đăng xuất khỏi hệ thống"
               >
                 <LogOut className="h-4 w-4" />
@@ -60,7 +58,7 @@ export default function Navbar() {
           ) : (
             <Link
               href="/login"
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-red-600/20 transition-all"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-red-700 px-4 py-2 text-sm font-semibold text-white transition-colors duration-150 hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2"
             >
               <LogIn className="h-3.5 w-3.5" />
               <span>Đăng nhập</span>

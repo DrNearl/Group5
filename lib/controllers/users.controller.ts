@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { hashPassword } from "@/lib/password";
 
 export async function handleUsersGet(req: NextRequest) {
   try {
     const users = await prisma.user.findMany({
       orderBy: { createdAt: "desc" },
-      include: {
+      select: {
+        id: true,
+        studentCode: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        role: true,
+        isActive: true,
         dutySchedules: {
           include: { shift: true, labRoom: true },
         },
@@ -30,16 +38,28 @@ export async function handleUsersPost(req: NextRequest) {
       );
     }
 
-    const defaultPasswordHash = "$2a$12$K8y4P9Q8y9qGg4.x0G2m4.bL2yB8x6fQ7cT2s7G5k3sP1u6t2A8Qy";
+    const safeRole = role === "LECTURER" ? "LECTURER" : role === "STUDENT" ? "STUDENT" : null;
+    if (!safeRole) {
+      return NextResponse.json({ success: false, message: "Vai trò tài khoản không hợp lệ." }, { status: 400 });
+    }
 
     const user = await prisma.user.create({
       data: {
         studentCode: studentCode.trim(),
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
-        passwordHash: defaultPasswordHash,
+        passwordHash: await hashPassword("123456"),
         phone,
-        role: role === "ADMIN" ? "ADMIN" : "STUDENT",
+        role: safeRole,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        studentCode: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        role: true,
         isActive: true,
       },
     });

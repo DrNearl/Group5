@@ -279,7 +279,7 @@ export async function GET(req: NextRequest) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [recentLogs, labRooms, activeShifts] = await Promise.all([
+    const [recentLogs, labRooms, activeShifts, activeAttendanceLogs] = await Promise.all([
       prisma.attendanceLog.findMany({
         where: {
           createdAt: { gte: today },
@@ -302,6 +302,21 @@ export async function GET(req: NextRequest) {
       }),
       prisma.shift.findMany({
         orderBy: { startTime: "asc" },
+      }),
+      prisma.attendanceLog.findMany({
+        where: {
+          checkInTime: { gte: today },
+          checkOutTime: null,
+        },
+        include: {
+          dutySchedule: {
+            include: {
+              user: { select: { id: true, fullName: true, studentCode: true } },
+              labRoom: { select: { labCode: true } },
+            },
+          },
+        },
+        orderBy: { checkInTime: "asc" },
       }),
     ]);
 
@@ -347,6 +362,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       logs: formattedLogs,
+      activeStudents: activeAttendanceLogs.map((log) => ({
+        id: log.id,
+        studentId: log.dutySchedule.user.id,
+        studentName: log.dutySchedule.user.fullName,
+        studentCode: log.dutySchedule.user.studentCode,
+        labCode: log.dutySchedule.labRoom.labCode,
+        checkInTime: log.checkInTime,
+        attendanceStatus: log.attendanceStatus,
+      })),
       labs: labRooms,
       shifts: activeShifts,
     });

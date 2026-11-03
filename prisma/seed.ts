@@ -4,6 +4,7 @@
 // GVHD: ThS. Lý Thị Huyền Châu
 
 import { PrismaClient, Role, LabStatus, ScheduleStatus, EquipmentCategory, EquipmentStatus } from "@prisma/client";
+import { hashPassword } from "../lib/password";
 
 const prisma = new PrismaClient();
 
@@ -22,8 +23,7 @@ async function main() {
   console.log("🧹 Đã làm sạch cơ sở dữ liệu.");
 
   // 2. TẠO TÀI KHOẢN THẬT: GVHD & 3 SINH VIÊN THỰC TẬP
-  // Mật khẩu mặc định: "Vlu@2024" (mã băm BCrypt chuẩn)
-  const defaultPasswordHash = "$2a$12$K8y4P9Q8y9qGg4.x0G2m4.bL2yB8x6fQ7cT2s7G5k3sP1u6t2A8Qy";
+  // Mật khẩu demo: "123456". Tài khoản thật nên đổi mật khẩu sau lần đăng nhập đầu.
 
   // GVHD: ThS. Lý Thị Huyền Châu (Giảng viên Khoa CNTT - VLU)
   const gvhd = await prisma.user.create({
@@ -31,9 +31,21 @@ async function main() {
       studentCode: "GV001",
       fullName: "ThS. Lý Thị Huyền Châu",
       email: "chau.lth@vlu.edu.vn",
-      passwordHash: defaultPasswordHash,
+      passwordHash: await hashPassword("123456"),
       phone: "0908123456",
       role: Role.ADMIN,
+      isActive: true,
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      studentCode: "GV002",
+      fullName: "Nguyễn Minh Anh",
+      email: "minhanh.gv002@vanlanguni.vn",
+      passwordHash: await hashPassword("123456"),
+      phone: "0908000002",
+      role: Role.LECTURER,
       isActive: true,
     },
   });
@@ -44,7 +56,7 @@ async function main() {
       studentCode: "2373401010100", // Chuỗi barcode thực tế in trên thẻ SV VLU
       fullName: "Nguyễn Thiện Đức",
       email: "duc.2373401010100@vanlanguni.vn",
-      passwordHash: defaultPasswordHash,
+      passwordHash: await hashPassword("123456"),
       phone: "0912345678",
       role: Role.STUDENT,
       isActive: true,
@@ -57,7 +69,7 @@ async function main() {
       studentCode: "2174802010708", // Chuỗi barcode thực tế in trên thẻ SV VLU
       fullName: "Nguyễn Bảo Thiên",
       email: "thien.2174802010708@vanlanguni.vn",
-      passwordHash: defaultPasswordHash,
+      passwordHash: await hashPassword("123456"),
       phone: "0923456789",
       role: Role.STUDENT,
       isActive: true,
@@ -70,7 +82,7 @@ async function main() {
       studentCode: "2374802010490", // Chuỗi barcode thực tế in trên thẻ SV VLU
       fullName: "Trần Thái Thuận",
       email: "thuan.2374802010490@vanlanguni.vn",
-      passwordHash: defaultPasswordHash,
+      passwordHash: await hashPassword("123456"),
       phone: "0934567890",
       role: Role.STUDENT,
       isActive: true,

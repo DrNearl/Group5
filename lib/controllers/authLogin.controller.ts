@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { hashPassword, verifyPassword } from "@/lib/password";
+
+const LEGACY_SEED_HASH = "$2a$12$K8y4P9Q8y9qGg4.x0G2m4.bL2yB8x6fQ7cT2s7G5k3sP1u6t2A8Qy";
 
 export async function handleAuthLogin(req: NextRequest) {
   try {
     const body = await req.json();
     const { identifier, password } = body;
 
-    if (!identifier || !password) {
+    if (typeof identifier !== "string" || !identifier.trim() || typeof password !== "string" || !password) {
       return NextResponse.json(
         { success: false, message: "Vui lòng nhập Email / MSSV và Mật khẩu!" },
         { status: 400 }
       );
+    }
+    if (identifier.length > 190 || password.length > 128) {
+      return NextResponse.json({ success: false, message: "Thông tin đăng nhập vượt quá độ dài cho phép." }, { status: 400 });
     }
 
     const cleanId = identifier.trim();
@@ -19,7 +25,7 @@ export async function handleAuthLogin(req: NextRequest) {
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: cleanId },
+          { email: cleanId.toLowerCase() },
           { studentCode: cleanId },
         ],
       },
@@ -39,13 +45,18 @@ export async function handleAuthLogin(req: NextRequest) {
       );
     }
 
-    // Kiểm tra mật khẩu (chấp nhận 123456 làm mật khẩu mặc định hoặc khớp hash)
-    const isValidPass = password === "123456" || password === "admin123" || user.passwordHash.length > 0;
+    // Upgrade the fixed legacy seed credential after its documented demo password is used.
+    const isLegacySeedLogin = user.passwordHash === LEGACY_SEED_HASH && password === "123456";
+    const isValidPass = isLegacySeedLogin || await verifyPassword(password, user.passwordHash);
     if (!isValidPass) {
       return NextResponse.json(
         { success: false, message: "Mật khẩu không chính xác!" },
         { status: 401 }
       );
+    }
+
+    if (isLegacySeedLogin) {
+      await prisma.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(password) } });
     }
 
     const userData = {

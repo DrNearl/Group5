@@ -7,7 +7,14 @@ export async function handleSchedulesGet(req: NextRequest) {
       prisma.dutySchedule.findMany({
         include: {
           user: true,
-          labRoom: true,
+          labRoom: {
+            include: {
+              equipments: {
+                where: { category: "PC" },
+                select: { status: true },
+              },
+            },
+          },
           shift: true,
           attendanceLog: true,
         },

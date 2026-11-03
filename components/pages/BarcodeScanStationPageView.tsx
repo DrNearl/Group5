@@ -52,6 +52,52 @@ interface EquipmentData {
   activeIncidents: any[];
 }
 
+function stopScannerInstance(scanner: any) {
+  if (!scanner) return;
+
+  try {
+    const stopResult = scanner.stop?.();
+    if (stopResult && typeof stopResult.catch === "function") {
+      stopResult.catch(() => {}).finally(() => {
+        try {
+          scanner.clear?.();
+        } catch {}
+      });
+    } else {
+      scanner.clear?.();
+    }
+  } catch {
+    try {
+      scanner.clear?.();
+    } catch {}
+  }
+}
+
+function stopVideoStreams(container: HTMLElement | null, storedStream: MediaStream | null) {
+  const streams = new Set<MediaStream>();
+  if (storedStream) streams.add(storedStream);
+
+  const videos = container?.querySelectorAll("video") || [];
+  videos.forEach((video) => {
+    if (typeof MediaStream !== "undefined" && video.srcObject instanceof MediaStream) {
+      streams.add(video.srcObject);
+    }
+  });
+
+  streams.forEach((stream) => {
+    stream.getTracks().forEach((track) => {
+      if (track.readyState !== "ended") track.stop();
+    });
+  });
+
+  videos.forEach((video) => {
+    try {
+      video.pause();
+      video.srcObject = null;
+    } catch {}
+  });
+}
+
 function ScanStationContent() {
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
@@ -78,6 +124,7 @@ function ScanStationContent() {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const html5QrCodeRef = useRef<any>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const lastScannedTimeRef = useRef<{ [code: string]: number }>({});
 
   // Tính định dạng thời gian rõ ràng (không dùng số thập phân giờ như 0.01 giờ)
@@ -274,6 +321,16 @@ function ScanStationContent() {
   useEffect(() => {
     let isCancelled = false;
 
+    const releaseCamera = (scanner = html5QrCodeRef.current) => {
+      stopScannerInstance(scanner);
+      stopVideoStreams(
+        document.getElementById("interactive-webcam-reader"),
+        mediaStreamRef.current
+      );
+      mediaStreamRef.current = null;
+      if (html5QrCodeRef.current === scanner) html5QrCodeRef.current = null;
+    };
+
     async function startCameraScanner() {
       try {
         const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
@@ -281,12 +338,7 @@ function ScanStationContent() {
 
         // Dừng và giải phóng scanner cũ nếu có
         if (html5QrCodeRef.current) {
-          try {
-            if (html5QrCodeRef.current.isScanning) {
-              await html5QrCodeRef.current.stop();
-            }
-          } catch (e) {}
-          html5QrCodeRef.current = null;
+          releaseCamera(html5QrCodeRef.current);
         }
 
         const container = document.getElementById("interactive-webcam-reader");
@@ -321,14 +373,20 @@ function ScanStationContent() {
           () => {} // Bỏ qua frame trống để tiết kiệm tài nguyên
         );
 
-        if (!isCancelled) {
-          setCameraActive(true);
+        const video = container.querySelector("video");
+        if (video?.srcObject instanceof MediaStream) {
+          mediaStreamRef.current = video.srcObject;
         }
+
+        if (isCancelled) {
+          releaseCamera(html5QrCode);
+          return;
+        }
+        setCameraActive(true);
       } catch (err) {
-        console.warn("Lỗi khởi động camera:", err);
-        if (!isCancelled) {
-          setCameraActive(false);
-        }
+        if (!isCancelled) console.warn("Lỗi khởi động camera:", err);
+        releaseCamera();
+        if (!isCancelled) setCameraActive(false);
       }
     }
 
@@ -336,13 +394,7 @@ function ScanStationContent() {
 
     return () => {
       isCancelled = true;
-      if (html5QrCodeRef.current) {
-        try {
-          if (html5QrCodeRef.current.isScanning) {
-            html5QrCodeRef.current.stop().catch(() => {});
-          }
-        } catch (e) {}
-      }
+      releaseCamera();
     };
   }, []);
 
@@ -894,7 +946,7 @@ function ScanStationContent() {
 
 export default function BarcodeScanStationPageView() {
   return (
-    <ProtectedRoute allowedRoles={["ADMIN", "STATION", "STUDENT"]}>
+    <ProtectedRoute allowedRoles={["ADMIN", "LECTURER", "STATION", "STUDENT"]}>
       <ScanStationContent />
     </ProtectedRoute>
   );

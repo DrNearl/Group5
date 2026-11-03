@@ -59,7 +59,7 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
               <br />
               Tài khoản hiện tại của bạn là{" "}
               <strong className="text-red-600">
-                {user.fullName} ({user.role === "STUDENT" ? "Sinh viên" : user.role === "STATION" ? "Máy trạm" : "Quản trị viên"})
+                {user.fullName} ({user.role === "STUDENT" ? "Sinh viên" : user.role === "LECTURER" ? "Giảng viên" : user.role === "STATION" ? "Máy trạm" : "Quản trị viên"})
               </strong>.
             </p>
           </div>

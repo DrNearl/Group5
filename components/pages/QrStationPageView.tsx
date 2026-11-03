@@ -503,7 +503,7 @@ function QrStationContent() {
 
 export default function QrStationPageView() {
   return (
-    <ProtectedRoute allowedRoles={["ADMIN", "STATION"]}>
+    <ProtectedRoute allowedRoles={["ADMIN", "LECTURER", "STATION"]}>
       <QrStationContent />
     </ProtectedRoute>
   );

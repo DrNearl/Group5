@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
-export type UserRole = "ADMIN" | "STUDENT" | "STATION";
+export type UserRole = "ADMIN" | "LECTURER" | "STUDENT" | "STATION";
 
 export interface AuthUser {
   id: string;
@@ -18,7 +18,7 @@ interface AuthContextType {
   user: AuthUser | null;
   role: UserRole | null;
   isLoading: boolean;
-  login: (identifier: string, password?: string) => Promise<{ success: boolean; message?: string }>;
+  login: (identifier: string, password: string) => Promise<{ success: boolean; message?: string }>;
   quickLogin: (role: UserRole) => Promise<void>;
   logout: () => Promise<void>;
   hasRole: (allowedRoles: UserRole[]) => boolean;
@@ -27,7 +27,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Các tài khoản demo tạo sẵn để người dùng test nhanh chuyển đổi quyền
-export const DEMO_ACCOUNTS = {
+type DemoAccount = { identifier: string; label: string; subLabel: string; role: UserRole };
+
+export const DEMO_ACCOUNTS: Partial<Record<UserRole, DemoAccount>> = {
   ADMIN: {
     identifier: "GV001",
     label: "Quản trị viên (Admin)",
@@ -39,6 +41,12 @@ export const DEMO_ACCOUNTS = {
     label: "Sinh viên trực Lab",
     subLabel: "Nguyễn Thiện Đức (2373401010100)",
     role: "STUDENT" as UserRole,
+  },
+  LECTURER: {
+    identifier: "GV002",
+    label: "Giảng viên",
+    subLabel: "Nguyễn Minh Anh (GV002)",
+    role: "LECTURER",
   },
   STATION: {
     identifier: "STATION-A518",
@@ -67,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const login = async (identifier: string, password: string = "123456") => {
+  const login = async (identifier: string, password: string) => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/auth/login", {
