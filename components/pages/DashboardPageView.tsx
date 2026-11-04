@@ -447,25 +447,43 @@ function DashboardContent() {
 
           {/* 6. Nghi vấn quên check-out */}
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">Nghi vấn quá 5h</div>
+            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">Nghi vấn quá 4h</div>
             <div className="text-xl font-bold text-amber-600 font-mono mt-1">
               {data?.stats?.staleCount || 0} <span className="text-xs text-gray-400 font-normal">ca</span>
             </div>
           </div>
         </div>
 
-        {/* KHỐI 3: 3 BIỂU ĐỒ PHÂN TÍCH SỐ LIỆU CHUYÊN SÂU */}
-        <div className="print:hidden grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* THÔNG TIN KHUNG GIỜ LÀM VIỆC CHUẨN VĂN LANG */}
+        <div className="print:hidden bg-gradient-to-r from-red-50/70 via-white to-amber-50/60 rounded-2xl border border-red-100 p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <span className="px-2 py-0.5 bg-red-600 text-white rounded-md font-bold text-[11px] tracking-wide">VLU</span>
+            <span className="font-bold text-gray-800">Quy định thời gian làm việc & trực phòng Lab:</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-4 text-gray-600">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+              <span>Thứ 2 - Thứ 6: <strong>Sáng 08h00 – 11h30</strong> | <strong>Chiều 13h00 – 17h00</strong></span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+              <span>Thứ Bảy: <strong>Sáng 08h00 – 11h00</strong> <span className="text-gray-400">(Chiều T7 & CN nghỉ)</span></span>
+            </div>
+          </div>
+        </div>
+
+        {/* KHỐI 3: 2 BIỂU ĐỒ PHÂN TÍCH SỐ LIỆU CHUYÊN SÂU */}
+        <div className="print:hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Biểu đồ 1: Giờ trực theo Sinh viên */}
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
             <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-4 flex items-center gap-2">
               <Users className="h-4 w-4 text-rose-500" />
               Tổng Giờ Trực Từng Sinh Viên (hrs)
             </h3>
-            <div className="h-56 w-full">
+            <div className="h-60 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data?.studentStats || []}>
-                  <XAxis dataKey="fullName" stroke="#94a3b8" fontSize={10} />
+                  <XAxis dataKey="fullName" stroke="#94a3b8" fontSize={11} />
                   <YAxis stroke="#94a3b8" fontSize={11} />
                   <Tooltip
                     contentStyle={{
@@ -480,40 +498,16 @@ function DashboardContent() {
             </div>
           </div>
 
-          {/* Biểu đồ 2: Khung Giờ Cao Điểm Trong Ngày */}
-          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
-            <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Clock className="h-4 w-4 text-emerald-600" />
-              Khung Giờ Cao Điểm (Lượt đến)
-            </h3>
-            <div className="h-56 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data?.peakHoursData || []}>
-                  <XAxis dataKey="timeSlot" stroke="#94a3b8" fontSize={9} />
-                  <YAxis stroke="#94a3b8" fontSize={11} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#ffffff",
-                      borderColor: "#e2e8f0",
-                      borderRadius: "10px",
-                    }}
-                  />
-                  <Bar dataKey="count" fill="#10b981" radius={[6, 6, 0, 0]} name="Lượt sinh viên" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Biểu đồ 3: Phân Bổ Theo Ngày Trong Tuần (Thứ 2 -> Chủ Nhật) */}
+          {/* Biểu đồ 2: Phân Bổ Theo Ngày Làm Việc Trong Tuần (Thứ 2 -> Thứ 7) */}
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
             <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-4 flex items-center gap-2">
               <Calendar className="h-4 w-4 text-blue-600" />
-              Xu Hướng Các Ngày Trong Tuần (hrs)
+              Xu Hướng Các Ngày Làm Việc Trong Tuần (hrs)
             </h3>
-            <div className="h-56 w-full">
+            <div className="h-60 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data?.weekdayData || []}>
-                  <XAxis dataKey="day" stroke="#94a3b8" fontSize={10} />
+                  <XAxis dataKey="day" stroke="#94a3b8" fontSize={11} />
                   <YAxis stroke="#94a3b8" fontSize={11} />
                   <Tooltip
                     contentStyle={{
@@ -786,6 +780,34 @@ function DashboardContent() {
                   onChange={(e) => setManualDate(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-rose-400 font-mono"
                 />
+              </div>
+
+              {/* GỢI Ý CHỌN NHANH CA LÀM VIỆC CHUẨN VLU */}
+              <div className="bg-gray-50 border border-gray-100 rounded-lg p-2.5 space-y-1.5">
+                <span className="text-[11px] font-semibold text-gray-500 block">Chọn nhanh khung ca chuẩn VLU:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => { setManualInTime("08:00"); setManualOutTime("11:30"); }}
+                    className="px-2.5 py-1 rounded bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 border border-gray-200 text-[11px] font-medium text-gray-700 transition"
+                  >
+                    Ca Sáng (08:00 - 11:30)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setManualInTime("13:00"); setManualOutTime("17:00"); }}
+                    className="px-2.5 py-1 rounded bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 border border-gray-200 text-[11px] font-medium text-gray-700 transition"
+                  >
+                    Ca Chiều (13:00 - 17:00)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setManualInTime("08:00"); setManualOutTime("11:00"); }}
+                    className="px-2.5 py-1 rounded bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 border border-gray-200 text-[11px] font-medium text-gray-700 transition"
+                  >
+                    Thứ 7 (08:00 - 11:00)
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

@@ -83,34 +83,7 @@ export async function handleDashboardGet(req: NextRequest) {
       };
     });
 
-    // Phân bố khung giờ cao điểm (Peak Hours Distribution)
-    const peakHoursMap: { [key: string]: number } = {
-      "07:00 - 09:00": 0,
-      "09:00 - 11:30": 0,
-      "11:30 - 13:30": 0,
-      "13:30 - 15:30": 0,
-      "15:30 - 17:30": 0,
-      "17:30 - 21:00": 0,
-    };
-
-    attendanceLogs.forEach((l) => {
-      if (!l.checkInTime) return;
-      const d = new Date(l.checkInTime);
-      const h = d.getHours() + d.getMinutes() / 60;
-      if (h >= 7 && h < 9) peakHoursMap["07:00 - 09:00"]++;
-      else if (h >= 9 && h < 11.5) peakHoursMap["09:00 - 11:30"]++;
-      else if (h >= 11.5 && h < 13.5) peakHoursMap["11:30 - 13:30"]++;
-      else if (h >= 13.5 && h < 15.5) peakHoursMap["13:30 - 15:30"]++;
-      else if (h >= 15.5 && h < 17.5) peakHoursMap["15:30 - 17:30"]++;
-      else if (h >= 17.5 && h <= 21) peakHoursMap["17:30 - 21:00"]++;
-    });
-
-    const peakHoursData = Object.entries(peakHoursMap).map(([timeSlot, count]) => ({
-      timeSlot,
-      count,
-    }));
-
-    // Phân bổ số giờ theo ngày trong tuần (Thứ 2 -> Chủ Nhật)
+    // Phân bổ số giờ theo ngày làm việc trong tuần của VLU (Thứ Hai -> Thứ Bảy; Chủ Nhật nghỉ)
     const weekdayNames = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
     const weekdayMap: { [key: string]: number } = {
       "Thứ Hai": 0,
@@ -119,15 +92,28 @@ export async function handleDashboardGet(req: NextRequest) {
       "Thứ Năm": 0,
       "Thứ Sáu": 0,
       "Thứ Bảy": 0,
-      "Chủ Nhật": 0,
     };
+
+    // Phân bổ giờ theo ca làm việc chuẩn VLU (Ca Sáng: 08:00 - 11:30, Ca Chiều: 13:00 - 17:00)
+    let morningHours = 0;
+    let afternoonHours = 0;
 
     attendanceLogs.forEach((l) => {
       if (!l.checkInTime) return;
-      const dayIndex = new Date(l.checkInTime).getDay();
+      const d = new Date(l.checkInTime);
+      const dayIndex = d.getDay();
       const dayName = weekdayNames[dayIndex];
+      const hrs = l.totalHours > 0 ? l.totalHours : 0;
+
       if (weekdayMap[dayName] !== undefined) {
-        weekdayMap[dayName] += l.totalHours > 0 ? l.totalHours : 1;
+        weekdayMap[dayName] += hrs;
+      }
+
+      const checkInHour = d.getHours() + d.getMinutes() / 60;
+      if (checkInHour < 12) {
+        morningHours += hrs;
+      } else {
+        afternoonHours += hrs;
       }
     });
 
@@ -135,6 +121,11 @@ export async function handleDashboardGet(req: NextRequest) {
       day,
       hours: Math.round(hours * 10) / 10,
     }));
+
+    const shiftDistribution = [
+      { shift: "Ca Sáng (08:00 - 11:30)", hours: Math.round(morningHours * 10) / 10 },
+      { shift: "Ca Chiều (13:00 - 17:00)", hours: Math.round(afternoonHours * 10) / 10 },
+    ];
 
     // Danh sách sinh viên đang có mặt trong phòng Lab (Live)
     const activeInLab = attendanceLogs
@@ -145,7 +136,7 @@ export async function handleDashboardGet(req: NextRequest) {
         const h = Math.floor(elapsedSec / 3600);
         const m = Math.floor((elapsedSec % 3600) / 60);
         const duration = h > 0 ? `${h} giờ ${m} phút` : `${m} phút`;
-        const isStale = h >= 5; // Cảnh báo nếu ở quá 5 tiếng (nghi vấn quên quẹt về)
+        const isStale = h >= 4; // Cảnh báo nếu ở quá 4 tiếng (vượt khung ca làm việc VLU)
 
         return {
           id: l.id,
@@ -184,7 +175,7 @@ export async function handleDashboardGet(req: NextRequest) {
         openIncidents: incidents.filter((i) => i.incidentStatus !== "RESOLVED").length,
         activeInLabCount: activeInLab.length,
       },
-      peakHoursData,
+      shiftDistribution,
       weekdayData,
       activeInLab,
       studentStats,
