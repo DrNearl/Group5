@@ -106,7 +106,6 @@ function ScanStationContent() {
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
   const [showBigOverlay, setShowBigOverlay] = useState<boolean>(false);
-  const [manualInput, setManualInput] = useState<string>("");
   const [currentTime, setCurrentTime] = useState<string>("");
   const [currentDate, setCurrentDate] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -317,14 +316,6 @@ function ScanStationContent() {
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualInput.trim() || isProcessing) return;
-    const code = manualInput.trim();
-    setManualInput("");
-    handleBarcodeProcess(code, "USB_SCANNER");
   };
 
   // 5. Súng quét USB HID (Tự động bắt chuỗi súng quét barcode toàn màn hình)
@@ -625,24 +616,6 @@ function ScanStationContent() {
                 </div>
               </div>
             </div>
-
-            {/* Ô NHẬP NHANH MSSV BẰNG BÀN PHÍM KHI THẺ BỊ MỜ / HỎNG */}
-            <form onSubmit={handleManualSubmit} className="flex items-center gap-2 pt-1">
-              <input
-                type="text"
-                placeholder="Nhập MSSV nếu thẻ mờ / quét lỗi..."
-                value={manualInput}
-                onChange={(e) => setManualInput(e.target.value)}
-                className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-rose-400 transition"
-              />
-              <button
-                type="submit"
-                disabled={!manualInput.trim() || isProcessing}
-                className="px-3.5 py-1.5 bg-rose-500 hover:bg-rose-600 disabled:opacity-40 text-white rounded-lg text-xs font-semibold shadow-xs transition"
-              >
-                Xác nhận
-              </button>
-            </form>
           </div>
         </section>
 
