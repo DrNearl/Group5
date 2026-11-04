@@ -24,9 +24,20 @@ async function main() {
   console.log("🧹 Đã làm sạch cơ sở dữ liệu.");
 
   // 2. TẠO TÀI KHOẢN ĐĂNG NHẬP: CHỈ DÀNH CHO ADMIN & GIẢNG VIÊN
-  // Mật khẩu demo: "123456"
+  // Tài khoản Admin: admin / admin
+  await prisma.user.create({
+    data: {
+      username: "admin",
+      fullName: "Quản trị viên Hệ thống (Admin)",
+      email: "admin@vlu.edu.vn",
+      passwordHash: await hashPassword("admin"),
+      phone: "0909999999",
+      role: Role.ADMIN,
+      isActive: true,
+    },
+  });
 
-  // GVHD / Admin: ThS. Lý Thị Huyền Châu (Giảng viên Khoa CNTT - VLU)
+  // Giảng viên hướng dẫn: ThS. Lý Thị Huyền Châu (Khoa CNTT - VLU)
   const gvhd = await prisma.user.create({
     data: {
       username: "chau.lth",
@@ -34,7 +45,7 @@ async function main() {
       email: "chau.lth@vlu.edu.vn",
       passwordHash: await hashPassword("123456"),
       phone: "0908123456",
-      role: Role.ADMIN,
+      role: Role.LECTURER,
       isActive: true,
     },
   });
@@ -48,19 +59,6 @@ async function main() {
       passwordHash: await hashPassword("123456"),
       phone: "0908000002",
       role: Role.LECTURER,
-      isActive: true,
-    },
-  });
-
-  // Admin Kỹ thuật phòng Lab
-  await prisma.user.create({
-    data: {
-      username: "admin",
-      fullName: "Quản trị viên Phòng Lab CNTT",
-      email: "admin@vlu.edu.vn",
-      passwordHash: await hashPassword("123456"),
-      phone: "0909999999",
-      role: Role.ADMIN,
       isActive: true,
     },
   });

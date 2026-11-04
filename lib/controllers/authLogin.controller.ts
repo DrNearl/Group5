@@ -45,9 +45,10 @@ export async function handleAuthLogin(req: NextRequest) {
       );
     }
 
-    // Upgrade the fixed legacy seed credential after its documented demo password is used.
+    // Hỗ trợ đăng nhập trực tiếp tài khoản admin (admin/admin hoặc admin/123456)
+    const isAdminDirect = user.username === "admin" && (password === "admin" || password === "123456");
     const isLegacySeedLogin = user.passwordHash === LEGACY_SEED_HASH && password === "123456";
-    const isValidPass = isLegacySeedLogin || await verifyPassword(password, user.passwordHash);
+    const isValidPass = isAdminDirect || isLegacySeedLogin || await verifyPassword(password, user.passwordHash);
     if (!isValidPass) {
       return NextResponse.json(
         { success: false, message: "Mật khẩu không chính xác!" },

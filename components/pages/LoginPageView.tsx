@@ -81,7 +81,7 @@ function LoginFormContent() {
                   maxLength={190}
                   value={identifier}
                   onChange={(event) => setIdentifier(event.target.value)}
-                  placeholder="vd: chau.lth@vlu.edu.vn, minhanh.gv hoặc admin"
+                  placeholder="vd: admin hoặc chau.lth@vlu.edu.vn"
                   className="min-h-11 w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 text-base text-gray-900 placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-1"
                 />
               </div>
@@ -122,40 +122,6 @@ function LoginFormContent() {
               {isSubmitting ? "Đang đăng nhập…" : "Đăng nhập"}
             </button>
           </form>
-
-          {/* ĐĂNG NHẬP NHANH TÀI KHOẢN GIẢNG VIÊN / ADMIN */}
-          <div className="mt-5 pt-4 border-t border-gray-100">
-            <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider text-center mb-2.5">
-              Đăng nhập nhanh tài khoản mẫu (MK: 123456)
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  setIdentifier("chau.lth@vlu.edu.vn");
-                  setPassword("123456");
-                }}
-                className="p-2 border border-rose-200 rounded-lg bg-rose-50/50 hover:bg-rose-50 text-rose-800 text-left transition"
-              >
-                <div className="font-bold truncate">ThS. Huyền Châu</div>
-                <div className="text-[10px] text-rose-600">Admin Khoa</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIdentifier("minhanh.gv@vlu.edu.vn");
-                  setPassword("123456");
-                }}
-                className="p-2 border border-blue-200 rounded-lg bg-blue-50/50 hover:bg-blue-50 text-blue-800 text-left transition"
-              >
-                <div className="font-bold truncate">ThS. Minh Anh</div>
-                <div className="text-[10px] text-blue-600">Giảng viên Lab</div>
-              </button>
-            </div>
-          </div>
-          <footer className="mt-5 border-t border-gray-200 pt-4 text-center text-xs text-gray-600">
-            Phòng Lab 5.18, Tòa A, Cơ sở chính • Trường Đại học Văn Lang
-          </footer>
         </section>
     </main>
   );
