@@ -282,7 +282,7 @@ function ScanStationContent() {
       }
       setErrorMessage(null);
 
-      const actionTitle = data.action === "CHECK_IN" ? "CHECK-IN THÀNH CÔNG" : "CHECK-OUT THÀNH CÔNG";
+      const actionTitle = data.action === "CHECK_IN" ? "ĐIỂM DANH VÀO THÀNH CÔNG" : "ĐIỂM DANH RA THÀNH CÔNG";
       const actionSubtitle = data.action === "CHECK_IN"
         ? `Sinh viên: ${data.data.studentName} (${data.data.studentCode}) • Giờ vào: ${new Date(data.data.checkInTime).toLocaleTimeString("vi-VN")}`
         : `Sinh viên: ${data.data.studentName} (${data.data.studentCode}) • Thời gian có mặt: ${data.data.durationText}`;
@@ -677,24 +677,24 @@ function ScanStationContent() {
 
                   <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
                     <div className="bg-gray-50/70 p-2 rounded-lg border border-gray-100">
-                      <span className="text-gray-400 block text-[10px]">Check-in</span>
+                      <span className="text-gray-400 block text-[10px]">Giờ vào</span>
                       <span className="text-emerald-700 font-mono font-bold text-xs">
                         {new Date(lastResult.checkInTime).toLocaleTimeString("vi-VN")}
                       </span>
                     </div>
                     <div className="bg-gray-50/70 p-2 rounded-lg border border-gray-100">
-                      <span className="text-gray-400 block text-[10px]">Check-out</span>
+                      <span className="text-gray-400 block text-[10px]">Giờ ra</span>
                       <span className="text-rose-600 font-mono font-bold text-xs">
                         {lastResult.checkOutTime
                           ? new Date(lastResult.checkOutTime).toLocaleTimeString("vi-VN")
-                          : "Đang ở phòng Lab"}
+                          : "--:--"}
                       </span>
                     </div>
                   </div>
 
                   {lastResult.durationText && (
                     <div className="text-[11px] font-mono bg-rose-50/50 p-2 rounded-lg border border-rose-100 flex items-center justify-between text-rose-800">
-                      <span className="text-gray-500">Thời gian có mặt:</span>
+                      <span className="text-gray-500">Thời gian:</span>
                       <span className="font-bold">{lastResult.durationText}</span>
                     </div>
                   )}
@@ -731,8 +731,8 @@ function ScanStationContent() {
                 <thead className="bg-gray-50/80 text-gray-400 uppercase text-[10px] font-semibold tracking-wider sticky top-0 border-b border-gray-100 z-10">
                   <tr>
                     <th className="py-3 px-4">Sinh viên</th>
-                    <th className="py-3 px-4">Check-in</th>
-                    <th className="py-3 px-4">Check-out</th>
+                    <th className="py-3 px-4">Giờ vào</th>
+                    <th className="py-3 px-4">Giờ ra</th>
                     <th className="py-3 px-4">Thời gian</th>
                     <th className="py-3 px-4 text-right">Trạng thái</th>
                   </tr>
@@ -753,7 +753,7 @@ function ScanStationContent() {
                         <td className="py-4 px-4 text-rose-600 font-bold text-xs">
                           {log.checkOutTime
                             ? new Date(log.checkOutTime).toLocaleTimeString("vi-VN")
-                            : <span className="text-gray-400 font-normal">Đang trong Lab</span>}
+                            : <span className="text-gray-400 font-normal">--:--</span>}
                         </td>
                         <td className="py-4 px-4 text-gray-800 font-medium text-xs">
                           {formatFriendlyDuration(log.checkInTime, log.checkOutTime)}
@@ -761,7 +761,7 @@ function ScanStationContent() {
                         <td className="py-4 px-4 text-right font-sans">
                           {log.checkOutTime ? (
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600 inline-flex items-center gap-1">
-                              Đã Check-out
+                              Đã về
                             </span>
                           ) : (
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1.5">
@@ -953,7 +953,7 @@ function ScanStationContent() {
                   ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                   : "bg-rose-50 text-rose-700 border border-rose-200"
               }`}>
-                {lastResult.action === "CHECK_IN" ? "CHECK-IN THÀNH CÔNG" : "CHECK-OUT THÀNH CÔNG"}
+                {lastResult.action === "CHECK_IN" ? "ĐIỂM DANH VÀO" : "ĐIỂM DANH RA"}
               </span>
               <h2 className="text-xl font-extrabold text-gray-900 mt-2.5">{lastResult.studentName}</h2>
               <div className="text-xs font-mono text-gray-400 mt-0.5">MSSV: {lastResult.studentCode}</div>

@@ -143,36 +143,32 @@ function DashboardContent() {
       STT: idx + 1,
       "Họ và Tên SV": log.studentName,
       MSSV: log.studentCode,
-      "Ngày trực": new Date(log.dutyDate).toLocaleDateString("vi-VN"),
-      "Ca trực": log.shiftName,
-      "Phòng Lab": log.labName,
-      "Giờ Check-in": log.checkInTime
+      Ngày: new Date(log.dutyDate).toLocaleDateString("vi-VN"),
+      "Giờ vào": log.checkInTime
         ? new Date(log.checkInTime).toLocaleTimeString("vi-VN")
         : "--:--",
-      "Giờ Check-out": log.checkOutTime
+      "Giờ ra": log.checkOutTime
         ? new Date(log.checkOutTime).toLocaleTimeString("vi-VN")
-        : "Đang trong phòng",
-      "Thời gian có mặt": log.durationText || "--",
-      "Số giờ quy đổi": log.totalHours || 0,
-      "Phương thức": log.scanMethod === "WEBCAM" ? "Webcam AI" : "Súng quét USB",
+        : "--:--",
+      "Thời gian": log.durationText || "--",
+      "Số giờ": log.totalHours || 0,
+      "Trạng thái": log.checkOutTime ? "Đã về" : "Đang có mặt",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(worksheetData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "ChamCongLabVLU");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "DiemDanhVLU");
 
     worksheet["!cols"] = [
       { wch: 6 },
       { wch: 24 },
       { wch: 16 },
       { wch: 14 },
-      { wch: 16 },
-      { wch: 28 },
       { wch: 14 },
-      { wch: 14 },
-      { wch: 20 },
       { wch: 14 },
       { wch: 16 },
+      { wch: 10 },
+      { wch: 14 },
     ];
 
     XLSX.writeFile(
@@ -243,10 +239,10 @@ function DashboardContent() {
             <div>
               <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <FileSpreadsheet className="h-6 w-6 text-rose-500" />
-                BẢNG QUẢN LÝ &amp; GIÁM SÁT PHÒNG KHOA
+                BẢNG QUẢN LÝ ĐIỂM DANH
               </h1>
               <p className="text-xs text-gray-500">
-                Khoa Công nghệ Thông tin • Trường ĐH Văn Lang • Giám sát người ra vào &amp; Tổng hợp số giờ trực chính xác
+                Khoa Công nghệ Thông tin • Giám sát ra vào &amp; Bảng chấm công
               </p>
             </div>
           </div>
@@ -311,7 +307,7 @@ function DashboardContent() {
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
               </span>
               <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                Đang có mặt trong phòng Khoa (Live)
+                Sinh viên đang có mặt (Live)
                 <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono text-xs font-bold">
                   {data?.activeInLab?.length || 0} người
                 </span>
@@ -322,63 +318,53 @@ function DashboardContent() {
 
           {(!data?.activeInLab || data.activeInLab.length === 0) ? (
             <div className="py-6 text-center text-xs text-gray-400">
-              Hiện tại không có ai trong phòng khoa. Sinh viên quẹt thẻ tại Laptop Trạm để vào ca!
+              Hiện tại không có sinh viên nào trong phòng. Sinh viên quẹt thẻ tại Laptop Trạm để vào ca!
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
               {data.activeInLab.map((sv: any) => (
                 <div
                   key={sv.id}
-                  className={`rounded-xl border p-3.5 flex items-start justify-between gap-3 shadow-2xs transition ${
+                  className={`rounded-xl border p-3.5 flex items-center gap-3 shadow-2xs transition ${
                     sv.isStale
                       ? "border-amber-300 bg-amber-50/50"
                       : "border-emerald-200 bg-emerald-50/30"
                   }`}
                 >
-                  <div className="flex items-start gap-3 min-w-0">
-                    {sv.snapshot ? (
-                      <button
-                        onClick={() => setPreviewImage(sv.snapshot)}
-                        className="relative group shrink-0"
-                        title="Xem ảnh camera"
-                      >
-                        <img
-                          src={sv.snapshot}
-                          alt="Ảnh check-in"
-                          className="h-11 w-11 rounded-lg object-cover border border-emerald-300 group-hover:opacity-80 transition"
-                        />
-                        <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 rounded-lg text-white text-[9px]">
-                          Xem
-                        </span>
-                      </button>
-                    ) : (
-                      <div className="h-11 w-11 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">
-                        {sv.studentName.slice(0, 2).toUpperCase()}
+                  {sv.snapshot ? (
+                    <button
+                      onClick={() => setPreviewImage(sv.snapshot)}
+                      className="relative group shrink-0"
+                      title="Xem ảnh camera"
+                    >
+                      <img
+                        src={sv.snapshot}
+                        alt="Ảnh vào"
+                        className="h-11 w-11 rounded-lg object-cover border border-emerald-300 group-hover:opacity-80 transition"
+                      />
+                      <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 rounded-lg text-white text-[9px]">
+                        Xem
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="h-11 w-11 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">
+                      {sv.studentName.slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold text-gray-900 text-xs truncate">{sv.studentName}</div>
+                    <div className="text-[11px] text-gray-500 font-mono">{sv.studentCode}</div>
+                    <div className="mt-1 text-[11px] text-emerald-800 font-semibold flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      Vào: {new Date(sv.checkInTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} • {sv.duration}
+                    </div>
+                    {sv.isStale && (
+                      <div className="mt-1 text-[10px] text-amber-700 font-bold flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
+                        <span>Quá 5h (Có thể quên quẹt về)</span>
                       </div>
                     )}
-                    <div className="min-w-0">
-                      <div className="font-bold text-gray-900 text-xs truncate">{sv.studentName}</div>
-                      <div className="text-[11px] text-gray-500 font-mono">{sv.studentCode}</div>
-                      <div className="mt-1 text-[11px] text-emerald-800 font-semibold flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        Vào: {new Date(sv.checkInTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} • {sv.duration}
-                      </div>
-                      {sv.isStale && (
-                        <div className="mt-1 text-[10px] text-amber-700 font-bold flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
-                          <span>Quá 5h (Có thể quên quẹt về)</span>
-                        </div>
-                      )}
-                    </div>
                   </div>
-
-                  <button
-                    onClick={() => handleForceCheckout(sv.id, sv.studentName)}
-                    className="px-2.5 py-1 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-[11px] font-bold shrink-0 transition shadow-2xs"
-                    title="Check-out giúp nếu người trực quên quẹt thẻ lúc ra về"
-                  >
-                    Check-out
-                  </button>
                 </div>
               ))}
             </div>
@@ -547,11 +533,8 @@ function DashboardContent() {
             <div>
               <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
                 <Clock className="h-4 w-4 text-rose-500" />
-                Nhật Ký Chi Tiết Các Lượt Ra - Vào Phòng Khoa
+                Nhật Ký Điểm Danh
               </h3>
-              <p className="text-[11px] text-gray-400">
-                Hiển thị chính xác giờ vào, giờ ra và ảnh xác thực khuôn mặt từ webcam
-              </p>
             </div>
 
             {/* BỘ LỌC THỜI GIAN PRESET & TÌM KIẾM */}
@@ -593,8 +576,8 @@ function DashboardContent() {
                   className="bg-transparent text-gray-700 text-xs focus:outline-none cursor-pointer"
                 >
                   <option value="ALL">Mọi trạng thái</option>
-                  <option value="IN_LAB">Đang trong phòng</option>
-                  <option value="CHECKED_OUT">Đã Check-out</option>
+                  <option value="IN_LAB">Đang có mặt</option>
+                  <option value="CHECKED_OUT">Đã về</option>
                 </select>
               </div>
 
@@ -618,12 +601,11 @@ function DashboardContent() {
                 <tr>
                   <th className="py-3 px-4">STT</th>
                   <th className="py-3 px-4">Sinh viên</th>
-                  <th className="py-3 px-4">Ảnh xác thực</th>
+                  <th className="py-3 px-4">Ảnh</th>
                   <th className="py-3 px-4">Ngày</th>
                   <th className="py-3 px-4">Giờ vào</th>
                   <th className="py-3 px-4">Giờ ra</th>
-                  <th className="py-3 px-4">Thời gian có mặt</th>
-                  <th className="py-3 px-4">Phương thức</th>
+                  <th className="py-3 px-4">Thời gian</th>
                   <th className="py-3 px-4 text-right">Trạng thái</th>
                 </tr>
               </thead>
@@ -664,18 +646,15 @@ function DashboardContent() {
                       <td className="py-3 px-4 text-rose-600 font-bold">
                         {log.checkOutTime
                           ? new Date(log.checkOutTime).toLocaleTimeString("vi-VN")
-                          : <span className="text-gray-400 font-normal">Đang ở phòng</span>}
+                          : <span className="text-gray-400 font-normal">--:--</span>}
                       </td>
                       <td className="py-3 px-4 text-gray-800 font-semibold">
                         {log.durationText || "--"}
                       </td>
-                      <td className="py-3 px-4 text-gray-500 font-sans text-[11px]">
-                        {log.scanMethod === "WEBCAM" ? "Webcam AI" : "Súng quét USB"}
-                      </td>
                       <td className="py-3 px-4 text-right font-sans">
                         {log.checkOutTime ? (
                           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">
-                            Đã Check-out
+                            Đã về
                           </span>
                         ) : (
                           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
@@ -688,7 +667,7 @@ function DashboardContent() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={9} className="py-10 text-center text-gray-400 font-sans">
+                    <td colSpan={8} className="py-10 text-center text-gray-400 font-sans">
                       Không tìm thấy lượt trực nào phù hợp với bộ lọc
                     </td>
                   </tr>
