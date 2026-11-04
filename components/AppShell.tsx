@@ -25,7 +25,7 @@ type SidebarItem = {
   icon: LucideIcon;
 };
 
-const navigationByRole: Record<UserRole, SidebarItem[]> = {
+const navigationByRole: Record<string, SidebarItem[]> = {
   ADMIN: [
     { href: "/", label: "Trạm Quét Laptop", icon: Barcode },
     { href: "/dashboard", label: "Thống kê & Giám sát Live", icon: BarChart3 },
@@ -41,18 +41,25 @@ const navigationByRole: Record<UserRole, SidebarItem[]> = {
     { href: "/incidents", label: "Sự cố thiết bị", icon: AlertTriangle },
     { href: "/users", label: "Danh bạ sinh viên", icon: Users },
   ],
+  STUDENT: [
+    { href: "/", label: "Trạm Quét Laptop", icon: Barcode },
+    { href: "/dashboard", label: "Thống kê & Giám sát Live", icon: BarChart3 },
+  ],
+  STATION: [
+    { href: "/", label: "Trạm Quét Laptop", icon: Barcode },
+  ],
 };
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { role } = useAuth();
-  const items = role ? navigationByRole[role] : [];
+  const items = (role && navigationByRole[role]) ? navigationByRole[role] : (navigationByRole["ADMIN"] || []);
 
   return (
     <nav aria-label="Chức năng hệ thống" className="h-full overflow-y-auto bg-white p-3">
       <p className="px-3 pb-2 pt-1 text-xs font-semibold uppercase tracking-wide text-gray-500">MENU</p>
       <ul className="space-y-1">
-        {items.map(({ href, label, icon: Icon }) => {
+        {(items || []).map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (
             <li key={href}>
@@ -60,11 +67,10 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 href={href}
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-1 ${
-                  active
-                    ? "bg-red-50 text-red-800"
-                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-950"
-                }`}
+                className={`flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-1 ${active
+                  ? "bg-red-50 text-red-800"
+                  : "text-gray-700 hover:bg-gray-100 hover:text-gray-950"
+                  }`}
               >
                 <Icon aria-hidden="true" className={`h-4 w-4 shrink-0 ${active ? "text-red-700" : "text-gray-500"}`} />
                 <span>{label}</span>

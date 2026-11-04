@@ -55,7 +55,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const stored = localStorage.getItem("vlu_auth_user");
       if (stored) {
-        setUser(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        if (parsed && (parsed.role === "ADMIN" || parsed.role === "LECTURER")) {
+          setUser(parsed);
+        } else {
+          // Xóa session sinh viên cũ để tránh lỗi tương thích
+          localStorage.removeItem("vlu_auth_user");
+          setUser(null);
+        }
       }
     } catch (e) {
       console.error("Lỗi đọc session lưu trữ:", e);
