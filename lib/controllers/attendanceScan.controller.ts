@@ -382,3 +382,49 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+// Giảng viên / Quản lý Check-out thủ công nếu sinh viên quên quẹt thẻ lúc ra về
+export async function handleManualCheckout(req: NextRequest) {
+  try {
+    const { logId } = await req.json();
+    if (!logId) {
+      return NextResponse.json({ success: false, message: "Thiếu logId!" }, { status: 400 });
+    }
+
+    const log = await prisma.attendanceLog.findUnique({
+      where: { id: logId },
+      include: { dutySchedule: { include: { user: true } } },
+    });
+
+    if (!log || log.checkOutTime) {
+      return NextResponse.json({ success: false, message: "Không tìm thấy lượt trực hoặc đã check-out rồi!" }, { status: 404 });
+    }
+
+    const now = new Date();
+    const checkIn = new Date(log.checkInTime || now);
+    const diffMs = Math.max(1000, now.getTime() - checkIn.getTime());
+    const totalHours = Math.round((diffMs / 3600000) * 100) / 100;
+
+    await prisma.attendanceLog.update({
+      where: { id: logId },
+      data: {
+        checkOutTime: now,
+        totalHours,
+        attendanceStatus: AttendanceStatus.ON_TIME,
+      },
+    });
+
+    await prisma.dutySchedule.update({
+      where: { id: log.scheduleId },
+      data: { scheduleStatus: ScheduleStatus.COMPLETED },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Đã kết thúc lượt trực cho sinh viên ${log.dutySchedule.user.fullName}!`,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}
+

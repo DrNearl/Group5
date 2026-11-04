@@ -101,12 +101,10 @@ function UsersManagementContent() {
             <div>
               <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <Users className="h-6 w-6 text-red-600" />
-                {userRole === "STUDENT" ? "HỒ SƠ CÁ NHÂN & THẺ BARCODE CỦA TÔI" : "DANH SÁCH GIẢNG VIÊN & SINH VIÊN TRỰC PHÒNG LAB"}
+                DANH BẠ SINH VIÊN &amp; GIẢNG VIÊN PHÒNG LAB
               </h1>
               <p className="text-xs text-gray-500">
-                {userRole === "STUDENT"
-                  ? `Thông tin sinh viên trực phòng Lab và thẻ mã vạch Code 128 cá nhân của bạn`
-                  : "Khoa Công nghệ Thông tin - Trường Đại học Văn Lang • Quản lý hồ sơ thật và in thẻ Barcode"}
+                Khoa Công nghệ Thông tin - Trường Đại học Văn Lang • Sinh viên sử dụng trực tiếp mã vạch trên thẻ SV để quẹt tại Laptop Trạm
               </p>
             </div>
           </div>
@@ -200,16 +198,15 @@ function UsersManagementContent() {
                 </div>
               </div>
 
-              {/* ACTION: IN TEM BARCODE THẺ SV */}
-              {u.role === "STUDENT" && <div className="pt-3 border-t border-gray-100">
-                <button
-                  onClick={() => setSelectedBarcodeUser(u)}
-                  className="w-full py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition"
-                >
-                  <BarcodeIcon className="h-4 w-4 text-red-600" />
-                  Xem / In Tem Barcode Thẻ ({u.studentCode})
-                </button>
-              </div>}
+              {/* THÔNG TIN MÃ THẺ ĐIỂM DANH */}
+              {u.role === "STUDENT" && (
+                <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
+                  <span>Mã vạch trên thẻ:</span>
+                  <span className="font-mono font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
+                    {u.studentCode}
+                  </span>
+                </div>
+              )}
             </div>
           ))}
         </div>

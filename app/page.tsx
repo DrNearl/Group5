@@ -1,5 +1,5 @@
-import HomePageView from "@/components/pages/HomePageView";
+import BarcodeScanStationPageView from "@/components/pages/BarcodeScanStationPageView";
 
 export default function HomePage() {
-  return <HomePageView />;
+  return <BarcodeScanStationPageView />;
 }

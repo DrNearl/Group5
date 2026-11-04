@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { soundFX } from "@/lib/audio";
+import { useAuth } from "@/lib/auth-context";
 import {
   Camera,
   ShieldAlert,
@@ -22,8 +24,8 @@ import {
   Volume2,
   VolumeX,
   ArrowLeft,
+  LayoutDashboard,
 } from "lucide-react";
-import ProtectedRoute from "@/components/ProtectedRoute";
 
 interface ScanResult {
   logId?: string;
@@ -99,6 +101,8 @@ function stopVideoStreams(container: HTMLElement | null, storedStream: MediaStre
 }
 
 function ScanStationContent() {
+  const pathname = usePathname();
+  const { user, role, logout } = useAuth();
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
   const [currentTime, setCurrentTime] = useState<string>("");
@@ -436,67 +440,66 @@ function ScanStationContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-slate-900 font-sans flex flex-col">
+    <div suppressHydrationWarning className="min-h-screen bg-[#F8F9FA] text-slate-900 font-sans flex flex-col">
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* TOP HEADER (LIGHT MODE - MODERN & SCIENTIFIC) */}
-      <header className="border-b border-gray-200 bg-white/95 backdrop-blur-md px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 shadow-sm sticky top-0 z-30">
+      {/* TOP HEADER (MINIMALIST - CORAL RED PASTEL) */}
+      <header className="border-b border-gray-100 bg-white px-6 py-3.5 flex items-center justify-between gap-4 sticky top-0 z-30">
         <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
-            title="Quay lại Trang Chủ"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <div className="h-8 w-8 rounded-lg bg-red-600 flex items-center justify-center shadow-sm text-white flex-shrink-0" title="Trạm quét Barcode">
+          {pathname !== "/" && (
+            <Link
+              href="/"
+              className="p-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-600 transition"
+              title="Quay lại Trang Chủ"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          )}
+          <div className="h-8 w-8 rounded-lg bg-rose-500 flex items-center justify-center text-white shrink-0 shadow-sm shadow-rose-200">
             <Zap className="h-4 w-4" />
           </div>
-          <div>
-            <h1 className="text-lg font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
-              TRẠM ĐIỂM DANH BARCODE PHÒNG LAB
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 tracking-normal">
-                TỰ ĐỘNG
-              </span>
-            </h1>
-            <p className="text-xs text-gray-500 font-medium">
-              Quét thẻ sinh viên trước camera để Check-in / Check-out tự động
-            </p>
-          </div>
+          <h1 className="text-base font-bold tracking-tight text-gray-900">
+            QUẢN LÝ PHÒNG LAB
+          </h1>
         </div>
 
-        {/* PHÒNG TRỰC + NÚT ÂM THANH + ĐỒNG HỒ NAVY ĐẬM */}
-        <div className="flex items-center gap-3">
-          <div className="bg-gray-100 px-3.5 py-2 rounded-xl border border-gray-200 text-xs flex items-center gap-2.5">
-            <Laptop className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-            <div>
-              <div className="text-[10px] text-gray-500 uppercase font-semibold">Phòng máy:</div>
-              <div className="font-bold text-gray-900">Phòng 5.18 - Lầu 5, Tòa A (Cơ sở chính)</div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setIsSoundEnabled(!isSoundEnabled)}
-            className="px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs flex items-center gap-2 transition shadow-sm"
-            title={isSoundEnabled ? "Nhấn để tắt âm thanh hiệu ứng" : "Nhấn để bật âm thanh hiệu ứng"}
-          >
-            {isSoundEnabled ? (
-              <Volume2 className="h-4 w-4 text-red-500" />
-            ) : (
-              <VolumeX className="h-4 w-4 text-gray-400" />
-            )}
-            <span className="font-semibold text-gray-700 hidden sm:inline">
-              {isSoundEnabled ? "Âm thanh: BẬT" : "Âm thanh: TẮT"}
-            </span>
-          </button>
-
-          {/* ĐỒNG HỒ XANH NAVY ĐẬM / XÁM ĐEN TƯƠNG PHẢN CAO */}
-          <div className="text-right pl-3 border-l border-gray-200">
-            <div className="text-2xl font-mono font-extrabold tracking-wider text-[#111827] flex items-center gap-2 justify-end">
-              <Clock className="h-5 w-5 text-[#1E3A8A]" />
+        {/* BÊN PHẢI: ĐỒNG HỒ + NÚT QUẢN LÝ (TỐI GIẢN) */}
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="text-right">
+            <div className="text-xl font-mono font-bold tracking-wide text-gray-800 flex items-center gap-1.5 justify-end">
+              <Clock className="h-4 w-4 text-gray-400" />
               {currentTime || "00:00:00"}
             </div>
-            <div className="text-xs font-medium text-slate-500 capitalize">{currentDate}</div>
+            <div className="text-[11px] text-gray-400 capitalize">{currentDate}</div>
+          </div>
+
+          <div className="pl-3 border-l border-gray-100 flex items-center gap-2">
+            {user ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-sm shadow-rose-200 transition"
+                >
+                  <LayoutDashboard className="h-3.5 w-3.5" />
+                  <span>Bảng Quản Lý</span>
+                </Link>
+                <button
+                  onClick={() => logout()}
+                  title="Đăng xuất"
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-sm shadow-rose-200 transition"
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                <span>Đăng nhập Quản lý</span>
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -542,102 +545,98 @@ function ScanStationContent() {
         </div>
       )}
 
-      {/* MAIN TWO-COLUMN BODY */}
-      <main className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl mx-auto w-full">
-        {/* CỘT TRÁI (6 CỘT): CAMERA SCANNER & ĐIỀU KHIỂN TRONG THẺ TRẮNG RIÊNG BIỆT */}
+      {/* MAIN TWO-COLUMN BODY (MINIMALIST) */}
+      <main className="flex-1 p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 max-w-7xl mx-auto w-full">
+        {/* CỘT TRÁI (6 CỘT): KHUNG CAMERA SẠCH SẼ & TỐI GIẢN */}
         <section className="lg:col-span-6 flex flex-col">
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-4">
-            {/* CAMERA FEED & LASER SCAN BOX */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
+            {/* CAMERA FEED & SCAN BOX */}
             <div
-              className={`relative rounded-2xl overflow-hidden border-2 bg-black shadow-md aspect-[4/3] flex flex-col items-center justify-center transition-all duration-300 ${
+              className={`relative rounded-xl overflow-hidden border bg-black shadow-inner aspect-[4/3] flex flex-col items-center justify-center transition-all duration-300 ${
                 scanSuccessFlash
-                  ? "border-emerald-500 shadow-[0_0_35px_rgba(16,185,129,0.6)]"
-                  : "border-gray-200"
+                  ? "border-emerald-400 shadow-[0_0_30px_rgba(52,211,153,0.5)]"
+                  : "border-gray-100"
               }`}
             >
               {/* CONTAINER DÀNH CHO HTML5-QRCODE ENGINE (ZXING) */}
               <div id="interactive-webcam-reader" className="w-full h-full overflow-hidden" />
 
-              {/* TIA LASER ĐỎ CHUYỂN ĐỘNG & 4 GÓC NGẮM QUANG HỌC */}
+              {/* GÓC NGẮM ĐỎ CAM PASTEL & TIA LASER NHẸ DỊU MẮT */}
               <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-6">
                 <div className="flex justify-between">
                   <div
-                    className={`w-12 h-12 border-t-4 border-l-4 rounded-tl-xl transition-colors ${
-                      scanSuccessFlash ? "border-emerald-400" : "border-red-500"
+                    className={`w-10 h-10 border-t-2 border-l-2 rounded-tl-lg transition-colors ${
+                      scanSuccessFlash ? "border-emerald-400" : "border-rose-400"
                     }`}
                   />
                   <div
-                    className={`w-12 h-12 border-t-4 border-r-4 rounded-tr-xl transition-colors ${
-                      scanSuccessFlash ? "border-emerald-400" : "border-red-500"
+                    className={`w-10 h-10 border-t-2 border-r-2 rounded-tr-lg transition-colors ${
+                      scanSuccessFlash ? "border-emerald-400" : "border-rose-400"
                     }`}
                   />
                 </div>
 
-                <div className="relative w-full h-24 flex items-center justify-center">
+                <div className="relative w-full h-20 flex items-center justify-center">
                   <div
-                    className={`w-full h-1 shadow-[0_0_20px_4px_rgba(239,68,68,0.9)] animate-laser-sweep transition-colors ${
-                      scanSuccessFlash ? "bg-emerald-400 shadow-[0_0_25px_5px_rgba(16,185,129,0.9)]" : "bg-red-500"
+                    className={`w-full h-0.5 shadow-[0_0_15px_2px_rgba(251,113,133,0.7)] animate-laser-sweep transition-colors ${
+                      scanSuccessFlash ? "bg-emerald-400 shadow-[0_0_20px_4px_rgba(52,211,153,0.8)]" : "bg-rose-400"
                     }`}
                   />
                 </div>
 
                 <div className="flex justify-between">
                   <div
-                    className={`w-12 h-12 border-b-4 border-l-4 rounded-bl-xl transition-colors ${
-                      scanSuccessFlash ? "border-emerald-400" : "border-red-500"
+                    className={`w-10 h-10 border-b-2 border-l-2 rounded-bl-lg transition-colors ${
+                      scanSuccessFlash ? "border-emerald-400" : "border-rose-400"
                     }`}
                   />
                   <div
-                    className={`w-12 h-12 border-b-4 border-r-4 rounded-br-xl transition-colors ${
-                      scanSuccessFlash ? "border-emerald-400" : "border-red-500"
+                    className={`w-10 h-10 border-b-2 border-r-2 rounded-br-lg transition-colors ${
+                      scanSuccessFlash ? "border-emerald-400" : "border-rose-400"
                     }`}
                   />
                 </div>
               </div>
 
-              {/* TRẠNG THÁI CAMERA */}
-              <div className="absolute top-4 left-4 bg-black/75 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-emerald-500/40 flex items-center gap-2 text-xs font-semibold shadow-lg z-10">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                <span className="text-emerald-400">CAMERA QUÉT BARCODE ĐANG SẴN SÀNG</span>
+              {/* NHÃN TRẠNG THÁI GÓC TRÊN: RÚT GỌN THÀNH "SẴN SÀNG" */}
+              <div className="absolute top-3.5 left-3.5 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 flex items-center gap-2 text-xs font-medium shadow-md z-10">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-emerald-400">Sẵn sàng</span>
               </div>
 
-              {/* HƯỚNG DẪN ĐIỂM DANH: BANNER ĐEN XÁM MỜ (CHARCOAL) VỚI CHỮ VÀNG NHẸ */}
-              <div className="absolute bottom-4 inset-x-4 bg-zinc-900/90 backdrop-blur-md p-2.5 rounded-xl border border-zinc-700/60 text-center z-10 shadow-lg">
-                <div className="text-xs font-semibold text-amber-200 flex items-center justify-center gap-2">
-                  <Sparkles className="h-4 w-4 text-amber-300" />
-                  Đưa mã vạch thẻ SV cách camera 15-25cm để nhận diện tự động
+              {/* HƯỚNG DẪN RÚT GỌN TỐI ĐA */}
+              <div className="absolute bottom-3.5 inset-x-4 bg-black/60 backdrop-blur-md py-2 px-3 rounded-xl border border-white/10 text-center z-10 shadow-md">
+                <div className="text-xs text-white/90 font-medium">
+                  Đưa thẻ SV cách camera 15-25cm
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* CỘT PHẢI (6 CỘT): KẾT QUẢ QUÉT GẦN NHẤT + BẢNG LỊCH SỬ HÔM NAY */}
-        <section className="lg:col-span-6 flex flex-col gap-5">
-          {/* KẾT QUẢ QUÉT GẦN NHẤT */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm relative overflow-hidden">
-            <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-3">
-              <div className="flex items-center gap-2">
-                <UserCheck className="h-5 w-5 text-emerald-600" />
-                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                  Kết quả quét vừa thực hiện
-                </h2>
-              </div>
+        {/* CỘT PHẢI (6 CỘT): KẾT QUẢ & NHẬT KÝ */}
+        <section className="lg:col-span-6 flex flex-col gap-4">
+          {/* KHUNG TRÊN: KẾT QUẢ QUÉT */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm relative overflow-hidden">
+            <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2.5">
+              <h2 className="text-xs font-bold text-gray-800 tracking-wider uppercase">
+                KẾT QUẢ QUÉT
+              </h2>
               {lastResult && (
                 <span
-                  className={`text-xs font-bold px-3 py-1 rounded-full uppercase flex items-center gap-1.5 ${
+                  className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full uppercase flex items-center gap-1.5 ${
                     lastResult.action === "CHECK_IN"
                       ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                      : "bg-blue-50 text-blue-700 border border-blue-200"
+                      : "bg-rose-50 text-rose-700 border border-rose-200"
                   }`}
                 >
                   {lastResult.action === "CHECK_IN" ? (
                     <>
-                      <LogIn className="h-3.5 w-3.5" /> ĐÃ CHECK-IN
+                      <LogIn className="h-3 w-3" /> ĐÃ CHECK-IN
                     </>
                   ) : (
                     <>
-                      <LogOut className="h-3.5 w-3.5" /> ĐÃ CHECK-OUT
+                      <LogOut className="h-3 w-3" /> ĐÃ CHECK-OUT
                     </>
                   )}
                 </span>
@@ -645,9 +644,9 @@ function ScanStationContent() {
             </div>
 
             {lastResult ? (
-              <div className="flex flex-col sm:flex-row gap-5 items-center">
+              <div className="flex flex-col sm:flex-row gap-4 items-center">
                 {/* Snapshot Image Preview */}
-                <div className="w-36 h-36 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0 relative group">
+                <div className="w-28 h-28 rounded-xl bg-gray-50 border border-gray-200 overflow-hidden shrink-0 relative">
                   {lastResult.snapshot ? (
                     <img
                       src={lastResult.snapshot}
@@ -656,34 +655,31 @@ function ScanStationContent() {
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                      <Camera className="h-8 w-8 mb-1" />
+                      <Camera className="h-6 w-6 mb-1 text-gray-300" />
                       <span className="text-[10px]">No Snapshot</span>
                     </div>
                   )}
-                  <span className="absolute bottom-1 right-1 text-[9px] bg-black/70 text-white px-1.5 py-0.5 rounded">
-                    Snapshot
-                  </span>
                 </div>
 
                 {/* Chi tiết sinh viên */}
-                <div className="flex-1 w-full space-y-2.5 text-sm">
+                <div className="flex-1 w-full space-y-2 text-xs">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900">{lastResult.studentName}</h3>
-                    <div className="text-slate-500 font-mono text-xs">
-                      MSSV: <span className="text-slate-800 font-bold">{lastResult.studentCode}</span>
+                    <h3 className="text-base font-bold text-gray-900">{lastResult.studentName}</h3>
+                    <div className="text-gray-500 font-mono mt-0.5">
+                      MSSV: <span className="text-rose-500 font-bold">{lastResult.studentCode}</span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs pt-1">
-                    <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-200">
-                      <span className="text-gray-500 block">Giờ Check-in:</span>
-                      <span className="text-emerald-700 font-mono font-bold text-sm">
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                    <div className="bg-gray-50/70 p-2 rounded-lg border border-gray-100">
+                      <span className="text-gray-400 block text-[10px]">Check-in</span>
+                      <span className="text-emerald-700 font-mono font-bold text-xs">
                         {new Date(lastResult.checkInTime).toLocaleTimeString("vi-VN")}
                       </span>
                     </div>
-                    <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-200">
-                      <span className="text-gray-500 block">Giờ Check-out:</span>
-                      <span className="text-blue-700 font-mono font-bold text-sm">
+                    <div className="bg-gray-50/70 p-2 rounded-lg border border-gray-100">
+                      <span className="text-gray-400 block text-[10px]">Check-out</span>
+                      <span className="text-rose-600 font-mono font-bold text-xs">
                         {lastResult.checkOutTime
                           ? new Date(lastResult.checkOutTime).toLocaleTimeString("vi-VN")
                           : "Đang ở phòng Lab"}
@@ -692,87 +688,78 @@ function ScanStationContent() {
                   </div>
 
                   {lastResult.durationText && (
-                    <div className="text-xs text-blue-900 font-mono bg-blue-50 p-2.5 rounded-lg border border-blue-200 flex items-center justify-between">
-                      <span className="font-semibold text-blue-700">⏱ Thời gian có mặt:</span>
-                      <span className="font-bold text-blue-900 text-sm">{lastResult.durationText}</span>
+                    <div className="text-[11px] font-mono bg-rose-50/50 p-2 rounded-lg border border-rose-100 flex items-center justify-between text-rose-800">
+                      <span className="text-gray-500">Thời gian có mặt:</span>
+                      <span className="font-bold">{lastResult.durationText}</span>
                     </div>
                   )}
-
-                  {/* BANNER THÔNG BÁO THÀNH CÔNG NỀN XANH LÁ CỰC NHẠT VỚI ICON CHECK */}
-                  <div className="text-xs font-medium text-emerald-900 bg-emerald-50 p-2.5 rounded-lg border border-emerald-200 flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                    <span>{lastResult.message}</span>
-                  </div>
                 </div>
               </div>
             ) : (
-              <div className="py-12 flex flex-col items-center justify-center text-center text-gray-400">
-                <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-                  <UserCheck className="h-7 w-7 text-gray-400" />
+              <div className="py-10 flex flex-col items-center justify-center text-center text-gray-400">
+                <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-2.5">
+                  <UserCheck className="h-6 w-6 text-gray-300" />
                 </div>
-                <div className="text-sm font-semibold text-gray-700">Chưa có lượt quét nào</div>
-                <p className="text-xs text-gray-400 mt-1 max-w-xs">
-                  Đưa thẻ sinh viên vào trước camera để Check-in / Check-out tự động.
-                </p>
+                <div className="text-xs font-medium text-gray-500">Đang chờ quét thẻ...</div>
               </div>
             )}
           </div>
 
-          {/* BẢNG NHẬT KÝ ĐIỂM DANH VÀO - RA HÔM NAY */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 flex-1 flex flex-col min-h-[300px] shadow-sm">
+          {/* KHUNG DƯỚI: BẢNG NHẬT KÝ HÔM NAY (THOÁNG MẮT) */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 flex-1 flex flex-col min-h-[300px] shadow-sm">
             <div className="flex items-center justify-between mb-3.5">
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
-                <History className="h-4 w-4 text-emerald-600" />
-                Nhật ký điểm danh vào - ra hôm nay
+              <h3 className="text-xs font-bold text-gray-800 tracking-wider uppercase">
+                NHẬT KÝ HÔM NAY
               </h3>
               <button
                 onClick={fetchStationData}
-                className="text-xs text-gray-500 hover:text-gray-900 flex items-center gap-1.5 transition font-medium"
+                className="text-xs text-gray-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-gray-50 transition flex items-center gap-1.5"
+                title="Làm mới nhật ký"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
-                Làm mới
+                <span className="text-[11px]">Làm mới</span>
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto max-h-[340px] rounded-xl border border-gray-200 bg-white shadow-2xs">
+            <div className="flex-1 overflow-y-auto max-h-[340px] rounded-xl border border-gray-100 bg-white">
               <table className="w-full text-left text-xs text-gray-700">
-                <thead className="bg-gray-50/90 text-gray-600 uppercase text-[10px] font-bold tracking-wider sticky top-0 border-b border-gray-200 z-10">
+                <thead className="bg-gray-50/80 text-gray-400 uppercase text-[10px] font-semibold tracking-wider sticky top-0 border-b border-gray-100 z-10">
                   <tr>
                     <th className="py-3 px-4">Sinh viên</th>
-                    <th className="py-3 px-4">Giờ Check-in</th>
-                    <th className="py-3 px-4">Giờ Check-out</th>
+                    <th className="py-3 px-4">Check-in</th>
+                    <th className="py-3 px-4">Check-out</th>
                     <th className="py-3 px-4">Thời gian</th>
                     <th className="py-3 px-4 text-right">Trạng thái</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 font-mono">
+                <tbody className="divide-y divide-gray-50 font-mono">
                   {recentLogs.length > 0 ? (
                     recentLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-gray-50/80 transition">
-                        <td className="py-3.5 px-4 font-sans">
-                          <div className="font-bold text-slate-900 text-xs">{log.studentName}</div>
-                          <div className="text-[11px] text-slate-500 font-mono font-medium">{log.studentCode}</div>
+                      <tr key={log.id} className="hover:bg-rose-50/20 transition">
+                        <td className="py-4 px-4 font-sans">
+                          <div className="font-bold text-gray-900 text-xs">{log.studentName}</div>
+                          <div className="text-[11px] text-gray-400 font-mono">{log.studentCode}</div>
                         </td>
-                        <td className="py-3.5 px-4 text-emerald-700 font-bold text-xs">
+                        <td className="py-4 px-4 text-emerald-700 font-bold text-xs">
                           {log.checkInTime
                             ? new Date(log.checkInTime).toLocaleTimeString("vi-VN")
                             : "--:--"}
                         </td>
-                        <td className="py-3.5 px-4 text-blue-700 font-bold text-xs">
+                        <td className="py-4 px-4 text-rose-600 font-bold text-xs">
                           {log.checkOutTime
                             ? new Date(log.checkOutTime).toLocaleTimeString("vi-VN")
-                            : <span className="text-slate-500 font-normal">Đang trong Lab</span>}
+                            : <span className="text-gray-400 font-normal">Đang trong Lab</span>}
                         </td>
-                        <td className="py-3.5 px-4 text-slate-900 font-bold text-xs">
+                        <td className="py-4 px-4 text-gray-800 font-medium text-xs">
                           {formatFriendlyDuration(log.checkInTime, log.checkOutTime)}
                         </td>
-                        <td className="py-3.5 px-4 text-right font-sans">
+                        <td className="py-4 px-4 text-right font-sans">
                           {log.checkOutTime ? (
-                            <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 inline-flex items-center gap-1.5 shadow-2xs">
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600 inline-flex items-center gap-1">
                               Đã Check-out
                             </span>
                           ) : (
-                            <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1.5 shadow-2xs">
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                               Đang có mặt
                             </span>
@@ -782,7 +769,7 @@ function ScanStationContent() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className="py-10 text-center text-gray-400 font-sans">
+                      <td colSpan={5} className="py-12 text-center text-gray-400 font-sans text-xs">
                         Chưa có sinh viên nào check-in hôm nay
                       </td>
                     </tr>
@@ -945,9 +932,5 @@ function ScanStationContent() {
 }
 
 export default function BarcodeScanStationPageView() {
-  return (
-    <ProtectedRoute allowedRoles={["ADMIN", "LECTURER", "STATION", "STUDENT"]}>
-      <ScanStationContent />
-    </ProtectedRoute>
-  );
+  return <ScanStationContent />;
 }

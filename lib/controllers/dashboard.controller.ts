@@ -63,6 +63,28 @@ export async function handleDashboardGet(req: NextRequest) {
       };
     });
 
+    // Danh sách sinh viên đang có mặt trong phòng Lab (Live)
+    const activeInLab = attendanceLogs
+      .filter((l) => l.checkInTime && !l.checkOutTime)
+      .map((l) => {
+        const checkIn = new Date(l.checkInTime!);
+        const elapsedSec = Math.max(1, Math.floor((Date.now() - checkIn.getTime()) / 1000));
+        const h = Math.floor(elapsedSec / 3600);
+        const m = Math.floor((elapsedSec % 3600) / 60);
+        const duration = h > 0 ? `${h} giờ ${m} phút` : `${m} phút`;
+
+        return {
+          id: l.id,
+          studentName: l.dutySchedule.user.fullName,
+          studentCode: l.dutySchedule.user.studentCode,
+          labName: l.dutySchedule.labRoom.labName,
+          checkInTime: l.checkInTime,
+          snapshot: l.checkInSnapshot,
+          scanMethod: l.scanMethod,
+          duration,
+        };
+      });
+
     return NextResponse.json({
       success: true,
       stats: {
@@ -72,7 +94,9 @@ export async function handleDashboardGet(req: NextRequest) {
         lateCount,
         totalHours: Math.round(totalHoursAll * 10) / 10,
         openIncidents: incidents.filter((i) => i.incidentStatus !== "RESOLVED").length,
+        activeInLabCount: activeInLab.length,
       },
+      activeInLab,
       studentStats,
       allLogs: attendanceLogs.map((l) => {
         let durationText = "--";

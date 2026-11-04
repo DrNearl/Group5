@@ -27,37 +27,26 @@ type SidebarItem = {
 
 const navigationByRole: Record<UserRole, SidebarItem[]> = {
   ADMIN: [
-    { href: "/", label: "Tổng quan", icon: LayoutDashboard },
-    { href: "/scan-station", label: "Trạm quét Barcode", icon: Barcode },
-    { href: "/qr-station", label: "Trạm điểm danh QR", icon: QrCode },
-    { href: "/equipments", label: "Thiết bị & nhãn mã vạch", icon: ClipboardCheck },
-    { href: "/schedules", label: "Lịch trực", icon: CalendarDays },
+    { href: "/", label: "Trạm Quét Laptop", icon: Barcode },
+    { href: "/dashboard", label: "Thống kê & Giám sát Live", icon: BarChart3 },
+    { href: "/schedules", label: "Lịch trực phòng Lab", icon: CalendarDays },
+    { href: "/equipments", label: "Thiết bị phòng Lab", icon: ClipboardCheck },
     { href: "/incidents", label: "Sự cố thiết bị", icon: AlertTriangle },
-    { href: "/dashboard", label: "Thống kê & báo cáo", icon: BarChart3 },
-    { href: "/users", label: "Quản lý sinh viên", icon: Users },
+    { href: "/users", label: "Danh bạ sinh viên", icon: Users },
   ],
   LECTURER: [
-    { href: "/", label: "Tổng quan", icon: LayoutDashboard },
-    { href: "/scan-station", label: "Trạm quét Barcode", icon: Barcode },
-    { href: "/qr-station", label: "Trạm điểm danh QR", icon: QrCode },
-    { href: "/schedules", label: "Lịch trực & phân công", icon: CalendarDays },
+    { href: "/", label: "Trạm Quét Laptop", icon: Barcode },
+    { href: "/dashboard", label: "Thống kê & Giám sát Live", icon: BarChart3 },
+    { href: "/schedules", label: "Lịch trực phòng Lab", icon: CalendarDays },
     { href: "/incidents", label: "Sự cố thiết bị", icon: AlertTriangle },
-    { href: "/dashboard", label: "Thống kê & báo cáo", icon: BarChart3 },
+    { href: "/users", label: "Danh bạ sinh viên", icon: Users },
   ],
   STUDENT: [
-    { href: "/", label: "Tổng quan", icon: LayoutDashboard },
-    { href: "/scan-station", label: "Trạm quét Barcode", icon: Barcode },
-    { href: "/mobile-checkin", label: "Điểm danh QR", icon: QrCode },
-    { href: "/schedules", label: "Lịch trực của tôi", icon: CalendarDays },
-    { href: "/incidents", label: "Báo cáo sự cố", icon: AlertTriangle },
-    { href: "/dashboard", label: "Thống kê giờ trực", icon: BarChart3 },
-    { href: "/users", label: "Thẻ Barcode của tôi", icon: Users },
+    { href: "/", label: "Trạm Quét Laptop", icon: Barcode },
+    { href: "/dashboard", label: "Thống kê chấm công", icon: BarChart3 },
   ],
   STATION: [
-    { href: "/", label: "Tổng quan", icon: LayoutDashboard },
-    { href: "/scan-station", label: "Trạm quét Barcode", icon: Barcode },
-    { href: "/qr-station", label: "Trạm điểm danh QR", icon: QrCode },
-    { href: "/schedules", label: "Lịch trực phòng Lab", icon: CalendarDays },
+    { href: "/", label: "Trạm Quét Laptop", icon: Barcode },
   ],
 };
 
@@ -169,6 +158,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   if (pathname === "/login" || pathname === "/register") return <>{children}</>;
+  if (pathname === "/" || pathname === "/scan-station") return <main id="main-content">{children}</main>;
 
   return (
     <>
