@@ -969,6 +969,43 @@ function ScanStationContent() {
           </div>
         </div>
       )}
+
+      {/* POP-UP OVERLAY KẾT QUẢ QUÉT TO RÕ GIỮA MÀN HÌNH (TỰ ẨN SAU 2.5 GIÂY) */}
+      {showBigOverlay && lastResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-7 max-w-sm w-full text-center space-y-4">
+            <div className={`inline-flex p-4 rounded-2xl ${
+              lastResult.action === "CHECK_IN" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-500"
+            }`}>
+              {lastResult.action === "CHECK_IN" ? (
+                <LogIn className="h-10 w-10" />
+              ) : (
+                <LogOut className="h-10 w-10" />
+              )}
+            </div>
+
+            <div>
+              <span className={`text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${
+                lastResult.action === "CHECK_IN"
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-rose-50 text-rose-700 border border-rose-200"
+              }`}>
+                {lastResult.action === "CHECK_IN" ? "ĐIỂM DANH VÀO" : "ĐIỂM DANH RA"}
+              </span>
+              <h2 className="text-xl font-extrabold text-gray-900 mt-2.5">{lastResult.studentName}</h2>
+              <div className="text-xs font-mono text-gray-400 mt-0.5">MSSV: {lastResult.studentCode}</div>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-3.5 text-xs text-gray-700 font-medium">
+              {lastResult.action === "CHECK_IN" ? (
+                <div>Giờ vào: <strong className="text-emerald-700 font-bold">{new Date(lastResult.checkInTime).toLocaleTimeString("vi-VN")}</strong></div>
+              ) : (
+                <div>Thời gian có mặt: <strong className="text-rose-600 font-bold">{lastResult.durationText || "--"}</strong></div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
