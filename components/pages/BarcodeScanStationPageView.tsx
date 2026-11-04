@@ -105,6 +105,8 @@ function ScanStationContent() {
   const { user, role, logout } = useAuth();
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
+  const [showBigOverlay, setShowBigOverlay] = useState<boolean>(false);
+  const [manualInput, setManualInput] = useState<string>("");
   const [currentTime, setCurrentTime] = useState<string>("");
   const [currentDate, setCurrentDate] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -303,6 +305,10 @@ function ScanStationContent() {
         message: data.message,
       });
 
+      // Hiển thị Card xác nhận lớn giữa màn hình trong 2.5 giây
+      setShowBigOverlay(true);
+      setTimeout(() => setShowBigOverlay(false), 2500);
+
       fetchStationData();
     } catch (err: any) {
       if (isSoundEnabled) soundFX.playWarning();
@@ -311,6 +317,14 @@ function ScanStationContent() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualInput.trim() || isProcessing) return;
+    const code = manualInput.trim();
+    setManualInput("");
+    handleBarcodeProcess(code, "USB_SCANNER");
   };
 
   // 5. Súng quét USB HID (Tự động bắt chuỗi súng quét barcode toàn màn hình)
@@ -611,6 +625,24 @@ function ScanStationContent() {
                 </div>
               </div>
             </div>
+
+            {/* Ô NHẬP NHANH MSSV BẰNG BÀN PHÍM KHI THẺ BỊ MỜ / HỎNG */}
+            <form onSubmit={handleManualSubmit} className="flex items-center gap-2 pt-1">
+              <input
+                type="text"
+                placeholder="Nhập MSSV nếu thẻ mờ / quét lỗi..."
+                value={manualInput}
+                onChange={(e) => setManualInput(e.target.value)}
+                className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-rose-400 transition"
+              />
+              <button
+                type="submit"
+                disabled={!manualInput.trim() || isProcessing}
+                className="px-3.5 py-1.5 bg-rose-500 hover:bg-rose-600 disabled:opacity-40 text-white rounded-lg text-xs font-semibold shadow-xs transition"
+              >
+                Xác nhận
+              </button>
+            </form>
           </div>
         </section>
 
@@ -924,6 +956,43 @@ function ScanStationContent() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* POP-UP OVERLAY KẾT QUẢ QUÉT TO RÕ GIỮA MÀN HÌNH (TỰ ẨN SAU 2.5 GIÂY) */}
+      {showBigOverlay && lastResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-7 max-w-sm w-full text-center space-y-4">
+            <div className={`inline-flex p-4 rounded-2xl ${
+              lastResult.action === "CHECK_IN" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-500"
+            }`}>
+              {lastResult.action === "CHECK_IN" ? (
+                <LogIn className="h-10 w-10" />
+              ) : (
+                <LogOut className="h-10 w-10" />
+              )}
+            </div>
+
+            <div>
+              <span className={`text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${
+                lastResult.action === "CHECK_IN"
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-rose-50 text-rose-700 border border-rose-200"
+              }`}>
+                {lastResult.action === "CHECK_IN" ? "CHECK-IN THÀNH CÔNG" : "CHECK-OUT THÀNH CÔNG"}
+              </span>
+              <h2 className="text-xl font-extrabold text-gray-900 mt-2.5">{lastResult.studentName}</h2>
+              <div className="text-xs font-mono text-gray-400 mt-0.5">MSSV: {lastResult.studentCode}</div>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-3.5 text-xs text-gray-700 font-medium">
+              {lastResult.action === "CHECK_IN" ? (
+                <div>Giờ vào: <strong className="text-emerald-700 font-bold">{new Date(lastResult.checkInTime).toLocaleTimeString("vi-VN")}</strong></div>
+              ) : (
+                <div>Thời gian có mặt: <strong className="text-rose-600 font-bold">{lastResult.durationText || "--"}</strong></div>
+              )}
+            </div>
           </div>
         </div>
       )}
