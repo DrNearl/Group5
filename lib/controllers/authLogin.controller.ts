@@ -21,19 +21,19 @@ export async function handleAuthLogin(req: NextRequest) {
 
     const cleanId = identifier.trim();
 
-    // Tìm kiếm sinh viên / quản trị viên / máy trạm theo email hoặc mã
+    // Tìm kiếm giảng viên / quản trị viên theo email hoặc username
     const user = await prisma.user.findFirst({
       where: {
         OR: [
           { email: cleanId.toLowerCase() },
-          { studentCode: cleanId },
+          { username: cleanId.toLowerCase() },
         ],
       },
     });
 
     if (!user) {
       return NextResponse.json(
-        { success: false, message: "Tài khoản hoặc MSSV không tồn tại trên hệ thống!" },
+        { success: false, message: "Tài khoản Giảng viên / Quản trị viên không tồn tại trên hệ thống!" },
         { status: 404 }
       );
     }
@@ -61,7 +61,7 @@ export async function handleAuthLogin(req: NextRequest) {
 
     const userData = {
       id: user.id,
-      studentCode: user.studentCode,
+      username: user.username,
       fullName: user.fullName,
       email: user.email,
       role: user.role,

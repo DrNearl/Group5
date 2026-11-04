@@ -68,23 +68,22 @@ export async function handleAttendanceScan(req: NextRequest) {
 
     // =========================================================================
     // 2. ĐIỂM DANH SINH VIÊN (CHECK-IN / CHECK-OUT PHÒNG LAB)
-    // Không ép buộc phải đăng ký ca trực trước!
+    // Sinh viên quét thẻ Barcode, không cần tài khoản đăng nhập!
     // =========================================================================
     
-    // Tìm hoặc tự động tạo tài khoản Sinh viên nếu chưa có
-    let user = await prisma.user.findUnique({
+    // Tìm hoặc tự động tạo hồ sơ Sinh viên nếu chưa có
+    let student = await prisma.student.findUnique({
       where: { studentCode: cleanBarcode },
     });
 
-    if (!user) {
+    if (!student) {
       // Tự động tạo hồ sơ cho sinh viên quét lần đầu
-      user = await prisma.user.create({
+      student = await prisma.student.create({
         data: {
           studentCode: cleanBarcode,
           fullName: `Sinh viên VLU (${cleanBarcode})`,
           email: `${cleanBarcode}@vanlanguni.vn`,
-          passwordHash: "$2a$12$K8y4P9Q8y9qGg4.x0G2m4.bL2yB8x6fQ7cT2s7G5k3sP1u6t2A8Qy",
-          role: "STUDENT",
+          className: "DTH-CNTT",
           isActive: true,
         },
       });
@@ -133,7 +132,7 @@ export async function handleAttendanceScan(req: NextRequest) {
       },
       include: {
         dutySchedule: {
-          include: { labRoom: true, user: true, shift: true },
+          include: { labRoom: true, student: true, shift: true },
         },
       },
       orderBy: { checkInTime: "desc" },
@@ -157,8 +156,8 @@ export async function handleAttendanceScan(req: NextRequest) {
           success: false,
           type: "COOLDOWN_WAIT",
           student: {
-            fullName: user.fullName,
-            studentCode: user.studentCode,
+            fullName: student.fullName,
+            studentCode: student.studentCode,
           },
           message: `Bạn vừa Check-in lúc ${checkInDate.toLocaleTimeString("vi-VN")}! Vui lòng đợi thêm ${timeWaitText} trước khi Check-out.`,
         });
@@ -205,8 +204,8 @@ export async function handleAttendanceScan(req: NextRequest) {
         message: `Check-out thành công lúc ${now.toLocaleTimeString("vi-VN")}! Tổng thời gian có mặt: ${durationText}.`,
         data: {
           logId: updatedLog.id,
-          studentName: user.fullName,
-          studentCode: user.studentCode,
+          studentName: student.fullName,
+          studentCode: student.studentCode,
           labName: openLog.dutySchedule.labRoom.labName,
           shiftName: "Check-out phòng Lab",
           checkInTime: checkInDate.toISOString(),
@@ -227,7 +226,7 @@ export async function handleAttendanceScan(req: NextRequest) {
     // Tạo bản ghi Schedule gắn với lượt điểm danh
     const newSchedule = await prisma.dutySchedule.create({
       data: {
-        userId: user.id,
+        studentId: student.id,
         labId: targetLab.id,
         shiftId: defaultShift.id,
         dutyDate: today,
@@ -256,8 +255,8 @@ export async function handleAttendanceScan(req: NextRequest) {
       message: `Check-in thành công vào phòng Lab lúc ${now.toLocaleTimeString("vi-VN")}!`,
       data: {
         logId: newLog.id,
-        studentName: user.fullName,
-        studentCode: user.studentCode,
+        studentName: student.fullName,
+        studentCode: student.studentCode,
         labName: targetLab.labName,
         shiftName: "Check-in phòng Lab",
         checkInTime: now.toISOString(),
@@ -291,7 +290,7 @@ export async function GET(req: NextRequest) {
         include: {
           dutySchedule: {
             include: {
-              user: true,
+              student: true,
               labRoom: true,
               shift: true,
             },
@@ -315,7 +314,7 @@ export async function GET(req: NextRequest) {
         include: {
           dutySchedule: {
             include: {
-              user: { select: { id: true, fullName: true, studentCode: true } },
+              student: { select: { id: true, fullName: true, studentCode: true } },
               labRoom: { select: { labCode: true } },
             },
           },
@@ -348,8 +347,8 @@ export async function GET(req: NextRequest) {
 
       return {
         id: log.id,
-        studentName: log.dutySchedule.user.fullName,
-        studentCode: log.dutySchedule.user.studentCode,
+        studentName: log.dutySchedule.student.fullName,
+        studentCode: log.dutySchedule.student.studentCode,
         labCode: log.dutySchedule.labRoom.labCode,
         labName: log.dutySchedule.labRoom.labName,
         shiftName: log.dutySchedule.shift.shiftName,
@@ -368,9 +367,9 @@ export async function GET(req: NextRequest) {
       logs: formattedLogs,
       activeStudents: activeAttendanceLogs.map((log) => ({
         id: log.id,
-        studentId: log.dutySchedule.user.id,
-        studentName: log.dutySchedule.user.fullName,
-        studentCode: log.dutySchedule.user.studentCode,
+        studentId: log.dutySchedule.student.id,
+        studentName: log.dutySchedule.student.fullName,
+        studentCode: log.dutySchedule.student.studentCode,
         labCode: log.dutySchedule.labRoom.labCode,
         checkInTime: log.checkInTime,
         attendanceStatus: log.attendanceStatus,
@@ -397,7 +396,7 @@ export async function handleManualCheckout(req: NextRequest) {
 
     const log = await prisma.attendanceLog.findUnique({
       where: { id: logId },
-      include: { dutySchedule: { include: { user: true } } },
+      include: { dutySchedule: { include: { student: true } } },
     });
 
     if (!log || log.checkOutTime) {
@@ -425,7 +424,7 @@ export async function handleManualCheckout(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Đã kết thúc lượt trực cho sinh viên ${log.dutySchedule.user.fullName}!`,
+      message: `Đã kết thúc lượt trực cho sinh viên ${log.dutySchedule.student.fullName}!`,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

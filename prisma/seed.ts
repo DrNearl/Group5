@@ -18,17 +18,18 @@ async function main() {
   await prisma.dutySchedule.deleteMany();
   await prisma.shift.deleteMany();
   await prisma.labRoom.deleteMany();
+  await prisma.student.deleteMany();
   await prisma.user.deleteMany();
 
   console.log("🧹 Đã làm sạch cơ sở dữ liệu.");
 
-  // 2. TẠO TÀI KHOẢN THẬT: GVHD & 3 SINH VIÊN THỰC TẬP
-  // Mật khẩu demo: "123456". Tài khoản thật nên đổi mật khẩu sau lần đăng nhập đầu.
+  // 2. TẠO TÀI KHOẢN ĐĂNG NHẬP: CHỈ DÀNH CHO ADMIN & GIẢNG VIÊN
+  // Mật khẩu demo: "123456"
 
-  // GVHD: ThS. Lý Thị Huyền Châu (Giảng viên Khoa CNTT - VLU)
+  // GVHD / Admin: ThS. Lý Thị Huyền Châu (Giảng viên Khoa CNTT - VLU)
   const gvhd = await prisma.user.create({
     data: {
-      studentCode: "GV001",
+      username: "chau.lth",
       fullName: "ThS. Lý Thị Huyền Châu",
       email: "chau.lth@vlu.edu.vn",
       passwordHash: await hashPassword("123456"),
@@ -38,11 +39,12 @@ async function main() {
     },
   });
 
-  await prisma.user.create({
+  // Giảng viên phụ trách Lab: ThS. Nguyễn Minh Anh
+  const gvMinhAnh = await prisma.user.create({
     data: {
-      studentCode: "GV002",
-      fullName: "Nguyễn Minh Anh",
-      email: "minhanh.gv002@vanlanguni.vn",
+      username: "minhanh.gv",
+      fullName: "ThS. Nguyễn Minh Anh",
+      email: "minhanh.gv@vlu.edu.vn",
       passwordHash: await hashPassword("123456"),
       phone: "0908000002",
       role: Role.LECTURER,
@@ -50,46 +52,61 @@ async function main() {
     },
   });
 
-  // Sinh viên 1: Nguyễn Thiện Đức (Core Barcode & Anti-Cheat)
-  const svDuc = await prisma.user.create({
+  // Admin Kỹ thuật phòng Lab
+  await prisma.user.create({
+    data: {
+      username: "admin",
+      fullName: "Quản trị viên Phòng Lab CNTT",
+      email: "admin@vlu.edu.vn",
+      passwordHash: await hashPassword("123456"),
+      phone: "0909999999",
+      role: Role.ADMIN,
+      isActive: true,
+    },
+  });
+
+  console.log(`✅ Đã tạo tài khoản quản lý đăng nhập: ThS. Lý Thị Huyền Châu, ThS. Nguyễn Minh Anh, Admin.`);
+
+  // 3. TẠO DANH SÁCH SINH VIÊN TRỰC LAB (BẢNG STUDENT - KHÔNG CẦN TÀI KHOẢN ĐĂNG NHẬP)
+  // Sinh viên quét thẻ Barcode (mã vạch Code 128 trên thẻ SV) để điểm danh vào - ra
+
+  // Sinh viên 1: Nguyễn Thiện Đức
+  const svDuc = await prisma.student.create({
     data: {
       studentCode: "2373401010100", // Chuỗi barcode thực tế in trên thẻ SV VLU
       fullName: "Nguyễn Thiện Đức",
       email: "duc.2373401010100@vanlanguni.vn",
-      passwordHash: await hashPassword("123456"),
+      className: "23DTH01",
       phone: "0912345678",
-      role: Role.STUDENT,
       isActive: true,
     },
   });
 
-  // Sinh viên 2: Nguyễn Bảo Thiên (Backend API & Database)
-  const svThien = await prisma.user.create({
+  // Sinh viên 2: Nguyễn Bảo Thiên
+  const svThien = await prisma.student.create({
     data: {
       studentCode: "2174802010708", // Chuỗi barcode thực tế in trên thẻ SV VLU
       fullName: "Nguyễn Bảo Thiên",
       email: "thien.2174802010708@vanlanguni.vn",
-      passwordHash: await hashPassword("123456"),
+      className: "21CNTT02",
       phone: "0923456789",
-      role: Role.STUDENT,
       isActive: true,
     },
   });
 
-  // Sinh viên 3: Trần Thái Thuận (Frontend UI/UX & Thiết bị)
-  const svThuan = await prisma.user.create({
+  // Sinh viên 3: Trần Thái Thuận
+  const svThuan = await prisma.student.create({
     data: {
       studentCode: "2374802010490", // Chuỗi barcode thực tế in trên thẻ SV VLU
       fullName: "Trần Thái Thuận",
       email: "thuan.2374802010490@vanlanguni.vn",
-      passwordHash: await hashPassword("123456"),
+      className: "23DTH02",
       phone: "0934567890",
-      role: Role.STUDENT,
       isActive: true,
     },
   });
 
-  console.log(`✅ Đã tạo tài khoản thật: GVHD ThS. Lý Thị Huyền Châu và 3 Sinh viên nhóm.`);
+  console.log(`✅ Đã tạo hồ sơ 3 sinh viên trực Lab (dùng mã vạch thẻ SV, không tài khoản đăng nhập).`);
 
   // 3. TẠO DANH SÁCH PHÒNG LAB THỰC TẾ TẠI CƠ SỞ 3 VLU (69/68 ĐẶNG THÙY TRÂM, P.13, Q.BÌNH THẠNH)
   const lab801 = await prisma.labRoom.create({
@@ -198,7 +215,7 @@ async function main() {
   // Sinh viên Nguyễn Thiện Đức trực Ca 1 Sáng hôm nay
   await prisma.dutySchedule.create({
     data: {
-      userId: svDuc.id,
+      studentId: svDuc.id,
       labId: lab801.id,
       shiftId: shiftMorning.id,
       dutyDate: today,
@@ -210,7 +227,7 @@ async function main() {
   // Sinh viên Nguyễn Bảo Thiên trực Ca 2 Chiều hôm nay
   await prisma.dutySchedule.create({
     data: {
-      userId: svThien.id,
+      studentId: svThien.id,
       labId: lab801.id,
       shiftId: shiftAfternoon.id,
       dutyDate: today,
@@ -222,7 +239,7 @@ async function main() {
   // Sinh viên Trần Thái Thuận trực Ca 3 Tối hôm nay
   await prisma.dutySchedule.create({
     data: {
-      userId: svThuan.id,
+      studentId: svThuan.id,
       labId: lab802.id,
       shiftId: shiftEvening.id,
       dutyDate: today,

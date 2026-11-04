@@ -9,7 +9,7 @@ export async function handleDashboardGet(req: NextRequest) {
         include: {
           dutySchedule: {
             include: {
-              user: true,
+              student: true,
               labRoom: true,
               shift: true,
             },
@@ -17,8 +17,7 @@ export async function handleDashboardGet(req: NextRequest) {
         },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.user.findMany({
-        where: { role: "STUDENT" },
+      prisma.student.findMany({
         include: {
           dutySchedules: {
             include: {
@@ -124,8 +123,8 @@ export async function handleDashboardGet(req: NextRequest) {
 
         return {
           id: l.id,
-          studentName: l.dutySchedule.user.fullName,
-          studentCode: l.dutySchedule.user.studentCode,
+          studentName: l.dutySchedule.student.fullName,
+          studentCode: l.dutySchedule.student.studentCode,
           labName: l.dutySchedule.labRoom.labName,
           checkInTime: l.checkInTime,
           snapshot: l.checkInSnapshot,
@@ -178,8 +177,8 @@ export async function handleDashboardGet(req: NextRequest) {
         }
         return {
           id: l.id,
-          studentName: l.dutySchedule.user.fullName,
-          studentCode: l.dutySchedule.user.studentCode,
+          studentName: l.dutySchedule.student.fullName,
+          studentCode: l.dutySchedule.student.studentCode,
           dutyDate: l.dutySchedule.dutyDate,
           shiftName: l.dutySchedule.shift.shiftName,
           labName: l.dutySchedule.labRoom.labName,
@@ -211,11 +210,11 @@ export async function handleManualAttendanceCreate(req: NextRequest) {
       );
     }
 
-    const user = await prisma.user.findUnique({
+    const student = await prisma.student.findUnique({
       where: { studentCode: studentCode.trim() },
     });
 
-    if (!user) {
+    if (!student) {
       return NextResponse.json(
         { success: false, message: `Không tìm thấy sinh viên có MSSV: ${studentCode}` },
         { status: 404 }
@@ -244,7 +243,7 @@ export async function handleManualAttendanceCreate(req: NextRequest) {
 
     const schedule = await prisma.dutySchedule.create({
       data: {
-        userId: user.id,
+        studentId: student.id,
         labId: defaultLab.id,
         shiftId: defaultShift.id,
         dutyDate: new Date(dutyDate),
@@ -256,7 +255,7 @@ export async function handleManualAttendanceCreate(req: NextRequest) {
     const newLog = await prisma.attendanceLog.create({
       data: {
         scheduleId: schedule.id,
-        scannedBarcode: user.studentCode,
+        scannedBarcode: student.studentCode,
         checkInTime: checkIn,
         checkOutTime: checkOut,
         totalHours,
@@ -267,7 +266,7 @@ export async function handleManualAttendanceCreate(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Đã ghi nhận điểm danh bổ sung cho sinh viên ${user.fullName}!`,
+      message: `Đã ghi nhận điểm danh bổ sung cho sinh viên ${student.fullName}!`,
       logId: newLog.id,
     });
   } catch (error: any) {

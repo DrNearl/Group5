@@ -13,10 +13,8 @@ datasource db {
 
 // ---------------------- ENUMS ----------------------
 enum Role {
-  ADMIN
-  LECTURER
-  STUDENT
-  STATION
+  ADMIN       // Quản trị viên hệ thống / Trưởng bộ môn
+  LECTURER    // Giảng viên phụ trách phòng Lab
 }
 
 enum LabStatus {
@@ -75,18 +73,31 @@ enum IncidentStatus {
 
 // ---------------------- MODELS ----------------------
 
-// 1. User: GVHD Quản lý phòng Lab & Sinh viên trực Lab
+// 1. User: Tài khoản Đăng nhập Quản lý (Chỉ dành cho Giảng viên & Quản trị viên)
 model User {
   id           String   @id @default(uuid())
-  studentCode  String   @unique // Mã số sinh viên VLU hoặc Mã Giảng viên (Chuỗi Barcode Code 128 trên thẻ)
-  fullName     String
-  email        String   @unique
+  username     String   @unique // Mã GV hoặc tên tài khoản quản trị (vd: "GV001", "admin")
+  fullName     String   // Họ tên Giảng viên / Quản trị viên
+  email        String   @unique // Email liên hệ VLU (chau.lth@vlu.edu.vn)
   passwordHash String
   phone        String?
-  role         Role     @default(STUDENT)
+  role         Role     @default(LECTURER)
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+// 2. Student: Danh mục Sinh viên trực Lab (Dùng mã Barcode trên thẻ SV để quẹt, KHÔNG cần tài khoản đăng nhập)
+model Student {
+  id          String   @id @default(uuid())
+  studentCode String   @unique // MSSV - Mã vạch Code 128 trên thẻ sinh viên (vd: "2373401010100")
+  fullName    String
+  email       String?  // Email sinh viên Văn Lang (để gửi thông báo ca trực)
+  phone       String?
+  className   String?  // Lớp chuyên ngành (vd: "23DTH01", "21CNTT02")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   dutySchedules     DutySchedule[]
   reportedIncidents EquipmentIncident[]
@@ -94,7 +105,7 @@ model User {
   @@index([studentCode])
 }
 
-// 2. LabRoom: Phòng máy thực hành thực tế tại VLU
+// 3. LabRoom: Phòng máy thực hành thực tế tại VLU
 model LabRoom {
   id        String    @id @default(uuid())
   labCode   String    @unique // VD: "LAB-CS3-G801"
@@ -110,7 +121,7 @@ model LabRoom {
   equipments    LabEquipment[]
 }
 
-// 3. Shift: Khung ca trực chính thức theo quy định VLU
+// 4. Shift: Khung ca trực chính thức theo quy định VLU
 model Shift {
   id                 String   @id @default(uuid())
   shiftName          String   // "Ca 1 (Sáng: Tiết 1 - 6)", "Ca 2 (Chiều: Tiết 7 - 12)", "Ca 3 (Tối: Tiết 13 - 16)"
@@ -123,10 +134,10 @@ model Shift {
   dutySchedules DutySchedule[]
 }
 
-// 4. DutySchedule: Lịch phân công & Đăng ký trực
+// 5. DutySchedule: Lịch phân công ca trực của sinh viên
 model DutySchedule {
   id             String         @id @default(uuid())
-  userId         String
+  studentId      String
   labId          String
   shiftId        String
   dutyDate       DateTime       @db.Date // Ngày trực
@@ -135,17 +146,17 @@ model DutySchedule {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  student       Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
   labRoom       LabRoom             @relation(fields: [labId], references: [id], onDelete: Cascade)
   shift         Shift               @relation(fields: [shiftId], references: [id], onDelete: Cascade)
   attendanceLog AttendanceLog?
   incidents     EquipmentIncident[]
 
-  @@index([userId])
+  @@index([studentId])
   @@index([dutyDate])
 }
 
-// 5. AttendanceLog: Nhật ký quét Barcode Điểm danh Check-in / Check-out
+// 6. AttendanceLog: Nhật ký quét Barcode Điểm danh Check-in / Check-out
 model AttendanceLog {
   id               String           @id @default(uuid())
   scheduleId       String           @unique
@@ -164,7 +175,7 @@ model AttendanceLog {
   dutySchedule DutySchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
 }
 
-// 6. LabEquipment & EquipmentIncident: Quản lý thiết bị máy trạm & Báo hỏng Barcode
+// 7. LabEquipment & EquipmentIncident: Quản lý thiết bị máy trạm & Báo hỏng Barcode
 model LabEquipment {
   id               String            @id @default(uuid())
   equipmentBarcode String            @unique // Mã Barcode in trên tem máy: "EQ-LAB801-PC01"
@@ -183,18 +194,18 @@ model LabEquipment {
 }
 
 model EquipmentIncident {
-  id               String           @id @default(uuid())
-  equipmentId      String
-  reportedByUserId String
-  scheduleId       String?
-  title            String
-  description      String           @db.Text
-  severity         IncidentSeverity @default(MEDIUM)
-  incidentStatus   IncidentStatus   @default(OPEN)
-  createdAt        DateTime         @default(now())
-  resolvedAt       DateTime?
+  id                  String           @id @default(uuid())
+  equipmentId         String
+  reportedByStudentId String?
+  scheduleId          String?
+  title               String
+  description         String           @db.Text
+  severity            IncidentSeverity @default(MEDIUM)
+  incidentStatus      IncidentStatus   @default(OPEN)
+  createdAt           DateTime         @default(now())
+  resolvedAt          DateTime?
 
   equipment  LabEquipment  @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
-  reportedBy User          @relation(fields: [reportedByUserId], references: [id], onDelete: Cascade)
+  reportedBy Student?      @relation(fields: [reportedByStudentId], references: [id], onDelete: SetNull)
   schedule   DutySchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
 }

@@ -3,11 +3,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
-export type UserRole = "ADMIN" | "LECTURER" | "STUDENT" | "STATION";
+export type UserRole = "ADMIN" | "LECTURER";
 
 export interface AuthUser {
   id: string;
-  studentCode: string;
+  username?: string;
+  studentCode?: string;
   fullName: string;
   email: string;
   role: UserRole;
@@ -31,28 +32,16 @@ type DemoAccount = { identifier: string; label: string; subLabel: string; role: 
 
 export const DEMO_ACCOUNTS: Partial<Record<UserRole, DemoAccount>> = {
   ADMIN: {
-    identifier: "GV001",
+    identifier: "chau.lth@vlu.edu.vn",
     label: "Quản trị viên (Admin)",
-    subLabel: "ThS. Lý Thị Huyền Châu (GV001)",
+    subLabel: "ThS. Lý Thị Huyền Châu (chau.lth)",
     role: "ADMIN" as UserRole,
   },
-  STUDENT: {
-    identifier: "2373401010100",
-    label: "Sinh viên trực Lab",
-    subLabel: "Nguyễn Thiện Đức (2373401010100)",
-    role: "STUDENT" as UserRole,
-  },
   LECTURER: {
-    identifier: "GV002",
+    identifier: "minhanh.gv@vlu.edu.vn",
     label: "Giảng viên",
-    subLabel: "Nguyễn Minh Anh (GV002)",
+    subLabel: "ThS. Nguyễn Minh Anh (minhanh.gv)",
     role: "LECTURER",
-  },
-  STATION: {
-    identifier: "STATION-A518",
-    label: "Máy trạm Phòng 5.18",
-    subLabel: "Máy trạm Kiosk Cửa Lab (Tòa A)",
-    role: "STATION" as UserRole,
   },
 };
 

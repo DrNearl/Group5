@@ -41,13 +41,6 @@ const navigationByRole: Record<UserRole, SidebarItem[]> = {
     { href: "/incidents", label: "Sự cố thiết bị", icon: AlertTriangle },
     { href: "/users", label: "Danh bạ sinh viên", icon: Users },
   ],
-  STUDENT: [
-    { href: "/", label: "Trạm Quét Laptop", icon: Barcode },
-    { href: "/dashboard", label: "Thống kê chấm công", icon: BarChart3 },
-  ],
-  STATION: [
-    { href: "/", label: "Trạm Quét Laptop", icon: Barcode },
-  ],
 };
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
