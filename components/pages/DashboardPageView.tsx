@@ -136,44 +136,80 @@ function DashboardContent() {
   };
 
   // XUẤT EXCEL BẢNG CHẤM CÔNG VLU
+  // XUẤT FILE EXCEL (.xlsx) CHUẨN 2 SHEET: TỔNG HỢP GIỜ & NHẬT KÝ CHI TIẾT
   const handleExportExcel = () => {
     if (!data || !data.allLogs) return;
 
-    const worksheetData = data.allLogs.map((log: any, idx: number) => ({
+    // Sheet 1: Tổng hợp giờ trực theo từng sinh viên
+    const studentSummaryData = (data.studentStats || []).map((sv: any, idx: number) => ({
       STT: idx + 1,
-      "Họ và Tên SV": log.studentName,
+      "Họ và tên": sv.fullName,
+      MSSV: sv.studentCode,
+      "Số ca trực": sv.totalShifts || 0,
+      "Ca hoàn thành": sv.completedShifts || 0,
+      "Tổng số giờ trực (hrs)": sv.totalHours || 0,
+    }));
+
+    // Thêm dòng tổng cộng
+    const totalHoursAllStudents = (data.studentStats || []).reduce((acc: number, s: any) => acc + (s.totalHours || 0), 0);
+    studentSummaryData.push({
+      STT: "" as any,
+      "Họ và tên": "TỔNG CỘNG TOÀN BỘ SINH VIÊN",
+      MSSV: "",
+      "Số ca trực": (data.studentStats || []).reduce((acc: number, s: any) => acc + (s.totalShifts || 0), 0),
+      "Ca hoàn thành": (data.studentStats || []).reduce((acc: number, s: any) => acc + (s.completedShifts || 0), 0),
+      "Tổng số giờ trực (hrs)": Math.round(totalHoursAllStudents * 10) / 10,
+    });
+
+    // Sheet 2: Nhật ký chi tiết các lượt vào - ra
+    const detailedLogsData = data.allLogs.map((log: any, idx: number) => ({
+      STT: idx + 1,
+      "Họ và tên": log.studentName,
       MSSV: log.studentCode,
-      Ngày: new Date(log.dutyDate).toLocaleDateString("vi-VN"),
+      "Ngày trực": new Date(log.dutyDate).toLocaleDateString("vi-VN"),
       "Giờ vào": log.checkInTime
         ? new Date(log.checkInTime).toLocaleTimeString("vi-VN")
         : "--:--",
       "Giờ ra": log.checkOutTime
         ? new Date(log.checkOutTime).toLocaleTimeString("vi-VN")
         : "--:--",
-      "Thời gian": log.durationText || "--",
-      "Số giờ": log.totalHours || 0,
+      "Thời gian có mặt": log.durationText || "--",
+      "Số giờ (hrs)": log.totalHours || 0,
       "Trạng thái": log.checkOutTime ? "Đã về" : "Đang có mặt",
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "DiemDanhVLU");
 
-    worksheet["!cols"] = [
+    // Thêm Sheet 1
+    const wsSummary = XLSX.utils.json_to_sheet(studentSummaryData);
+    wsSummary["!cols"] = [
       { wch: 6 },
-      { wch: 24 },
-      { wch: 16 },
-      { wch: 14 },
-      { wch: 14 },
+      { wch: 26 },
+      { wch: 18 },
       { wch: 14 },
       { wch: 16 },
-      { wch: 10 },
+      { wch: 22 },
+    ];
+    XLSX.utils.book_append_sheet(workbook, wsSummary, "TongHopGio_SinhVien");
+
+    // Thêm Sheet 2
+    const wsDetails = XLSX.utils.json_to_sheet(detailedLogsData);
+    wsDetails["!cols"] = [
+      { wch: 6 },
+      { wch: 26 },
+      { wch: 18 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 20 },
+      { wch: 14 },
       { wch: 14 },
     ];
+    XLSX.utils.book_append_sheet(workbook, wsDetails, "NhatKy_ChiTiet");
 
     XLSX.writeFile(
       workbook,
-      `VLU_BangChamCong_Lab_${new Date().toISOString().slice(0, 10)}.xlsx`
+      `VLU_BangTongHopGioTruc_${new Date().toISOString().slice(0, 10)}.xlsx`
     );
   };
 
@@ -191,10 +227,7 @@ function DashboardContent() {
     const currentMonth = todayStr.slice(0, 7);
 
     return data.allLogs.filter((log: any) => {
-      // 1. Phân quyền sinh viên (nếu có)
-      if (role === "STUDENT" && user && log.studentCode !== user.studentCode) {
-        return false;
-      }
+
 
       // 2. Preset thời gian
       const logDate = new Date(log.dutyDate);
@@ -325,11 +358,10 @@ function DashboardContent() {
               {data.activeInLab.map((sv: any) => (
                 <div
                   key={sv.id}
-                  className={`rounded-xl border p-3.5 flex items-center gap-3 shadow-2xs transition ${
-                    sv.isStale
-                      ? "border-amber-300 bg-amber-50/50"
-                      : "border-emerald-200 bg-emerald-50/30"
-                  }`}
+                  className={`rounded-xl border p-3.5 flex items-center gap-3 shadow-2xs transition ${sv.isStale
+                    ? "border-amber-300 bg-amber-50/50"
+                    : "border-emerald-200 bg-emerald-50/30"
+                    }`}
                 >
                   {sv.snapshot ? (
                     <button
@@ -422,18 +454,18 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* KHỐI 3: BIỂU ĐỒ PHÂN TÍCH (2 CỘT) */}
-        <div className="print:hidden grid grid-cols-1 lg:grid-cols-12 gap-5">
-          {/* Cột 1: Giờ trực theo Sinh viên */}
-          <div className="lg:col-span-7 bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
+        {/* KHỐI 3: 3 BIỂU ĐỒ PHÂN TÍCH SỐ LIỆU CHUYÊN SÂU */}
+        <div className="print:hidden grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Biểu đồ 1: Giờ trực theo Sinh viên */}
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
             <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-4 flex items-center gap-2">
               <Users className="h-4 w-4 text-rose-500" />
-              Tổng Số Giờ Trực Tích Lũy Theo Từng Sinh Viên (Giờ)
+              Tổng Giờ Trực Từng Sinh Viên (hrs)
             </h3>
             <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data?.studentStats || []}>
-                  <XAxis dataKey="fullName" stroke="#94a3b8" fontSize={11} />
+                  <XAxis dataKey="fullName" stroke="#94a3b8" fontSize={10} />
                   <YAxis stroke="#94a3b8" fontSize={11} />
                   <Tooltip
                     contentStyle={{
@@ -448,16 +480,16 @@ function DashboardContent() {
             </div>
           </div>
 
-          {/* Cột 2: Khung Giờ Cao Điểm Tại Phòng Khoa */}
-          <div className="lg:col-span-5 bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
+          {/* Biểu đồ 2: Khung Giờ Cao Điểm Trong Ngày */}
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
             <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-4 flex items-center gap-2">
               <Clock className="h-4 w-4 text-emerald-600" />
-              Khung Giờ Cao Điểm Tại Phòng Khoa (Lượt Đến)
+              Khung Giờ Cao Điểm (Lượt đến)
             </h3>
             <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data?.peakHoursData || []}>
-                  <XAxis dataKey="timeSlot" stroke="#94a3b8" fontSize={10} />
+                  <XAxis dataKey="timeSlot" stroke="#94a3b8" fontSize={9} />
                   <YAxis stroke="#94a3b8" fontSize={11} allowDecimals={false} />
                   <Tooltip
                     contentStyle={{
@@ -471,16 +503,40 @@ function DashboardContent() {
               </ResponsiveContainer>
             </div>
           </div>
+
+          {/* Biểu đồ 3: Phân Bổ Theo Ngày Trong Tuần (Thứ 2 -> Chủ Nhật) */}
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
+            <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-blue-600" />
+              Xu Hướng Các Ngày Trong Tuần (hrs)
+            </h3>
+            <div className="h-56 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data?.weekdayData || []}>
+                  <XAxis dataKey="day" stroke="#94a3b8" fontSize={10} />
+                  <YAxis stroke="#94a3b8" fontSize={11} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#ffffff",
+                      borderColor: "#e2e8f0",
+                      borderRadius: "10px",
+                    }}
+                  />
+                  <Bar dataKey="hours" fill="#3b82f6" radius={[6, 6, 0, 0]} name="Số giờ trực" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
 
-        {/* KHỐI 4: BẢNG TỔNG HỢP SINH VIÊN & ĐÁNH GIÁ CHUYÊN CẦN */}
+        {/* KHỐI 4: BẢNG TỔNG HỢP GIỜ TRỰC SINH VIÊN */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs space-y-3">
           <div className="flex items-center justify-between border-b border-gray-100 pb-3">
             <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
               <Award className="h-4 w-4 text-rose-500" />
-              Bảng Tổng Hợp Công Trực &amp; Đánh Giá Sinh Viên
+              Bảng Tổng Hợp Giờ Trực Sinh Viên
             </h3>
-            <span className="text-[11px] text-gray-400">Dữ liệu tính dồn theo tháng</span>
+            <span className="text-[11px] text-gray-400">Tính dồn theo số giờ thực tế</span>
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-gray-100">
@@ -509,13 +565,12 @@ function DashboardContent() {
                     </td>
                     <td className="py-3 px-4 text-right font-sans">
                       <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          sv.diligenceTag === "HIGH"
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : sv.diligenceTag === "MEDIUM"
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${sv.diligenceTag === "HIGH"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : sv.diligenceTag === "MEDIUM"
                             ? "bg-blue-50 text-blue-700 border border-blue-200"
                             : "bg-amber-50 text-amber-700 border border-amber-200"
-                        }`}
+                          }`}
                       >
                         {sv.diligence}
                       </span>
@@ -677,19 +732,12 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* CHỮ KÝ XÁC NHẬN KHI IN ẤN CHUẨN VLU (Chỉ hiện khi in A4) */}
-        <div className="hidden print:grid grid-cols-3 gap-6 pt-10 text-center text-xs">
-          <div>
-            <div className="font-bold">Người lập bảng</div>
-            <div className="mt-16 font-semibold">(Ký và ghi rõ họ tên)</div>
-          </div>
-          <div>
-            <div className="font-bold">Giảng viên phụ trách</div>
-            <div className="mt-16 font-semibold">ThS. Lý Thị Huyền Châu</div>
-          </div>
-          <div>
-            <div className="font-bold">Trưởng Khoa / Trưởng Phòng Lab</div>
-            <div className="mt-16 font-semibold">(Ký và đóng dấu)</div>
+        {/* XÁC NHẬN KHI IN ẤN A4 (TINH GỌN) */}
+        <div className="hidden print:flex justify-end pt-8 pr-12 text-xs">
+          <div className="text-center">
+            <div className="text-gray-500">Ngày in: {new Date().toLocaleDateString("vi-VN")}</div>
+            <div className="font-bold mt-2">Người lập bảng</div>
+            <div className="mt-14 font-semibold">(Ký và ghi rõ họ tên)</div>
           </div>
         </div>
 
@@ -820,7 +868,7 @@ function DashboardContent() {
 
 export default function DashboardPageView() {
   return (
-    <ProtectedRoute allowedRoles={["ADMIN", "LECTURER", "STUDENT"]}>
+    <ProtectedRoute allowedRoles={["ADMIN", "LECTURER",]}>
       <DashboardContent />
     </ProtectedRoute>
   );

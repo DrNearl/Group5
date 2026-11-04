@@ -265,20 +265,15 @@ function SchedulesContent() {
             </div>
           </div>
 
-          {role !== "STATION" && (
             <button
               onClick={() => {
-                if (role === "STUDENT" && user) {
-                  setNewUserId(user.id);
-                }
                 setShowAddModal(true);
               }}
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition"
             >
               <Plus className="h-4 w-4" />
-              {role === "STUDENT" ? "Đăng ký ca trực của tôi" : "Đăng ký / Phân công Ca trực"}
+              Đăng ký / Phân công Ca trực
             </button>
-          )}
         </header>
 
         <section aria-labelledby="schedule-list-heading" className="space-y-4">
@@ -491,7 +486,7 @@ function SchedulesContent() {
 
 export default function SchedulesPageView() {
   return (
-    <ProtectedRoute allowedRoles={["ADMIN", "LECTURER", "STUDENT", "STATION"]}>
+    <ProtectedRoute allowedRoles={["ADMIN", "LECTURER"]}>
       <SchedulesContent />
     </ProtectedRoute>
   );

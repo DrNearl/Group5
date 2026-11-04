@@ -109,3 +109,4 @@ export async function handleStudentsDelete(req: NextRequest) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
+

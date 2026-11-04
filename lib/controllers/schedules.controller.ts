@@ -6,7 +6,7 @@ export async function handleSchedulesGet(req: NextRequest) {
     const [schedules, labs, shifts, students] = await Promise.all([
       prisma.dutySchedule.findMany({
         include: {
-          user: true,
+          student: true,
           labRoom: {
             include: {
               equipments: {
@@ -22,8 +22,7 @@ export async function handleSchedulesGet(req: NextRequest) {
       }),
       prisma.labRoom.findMany(),
       prisma.shift.findMany({ orderBy: { startTime: "asc" } }),
-      prisma.user.findMany({
-        where: { role: "STUDENT" },
+      prisma.student.findMany({
         select: { id: true, fullName: true, studentCode: true },
       }),
     ]);
@@ -44,7 +43,7 @@ export async function handleSchedulesPost(req: NextRequest) {
 
     const schedule = await prisma.dutySchedule.create({
       data: {
-        userId,
+        studentId: userId,
         labId,
         shiftId,
         dutyDate: date,
@@ -52,7 +51,7 @@ export async function handleSchedulesPost(req: NextRequest) {
         note,
       },
       include: {
-        user: true,
+        student: true,
         labRoom: true,
         shift: true,
       },

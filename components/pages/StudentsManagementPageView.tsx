@@ -371,7 +371,7 @@ function StudentsManagementContent() {
                 <BarcodeLabel
                   value={selectedBarcodeStudent.studentCode}
                   title="THẺ SINH VIÊN VLU"
-                  subText={selectedBarcodeStudent.fullName}
+                  subtitle={selectedBarcodeStudent.fullName}
                   width={2}
                   height={50}
                   fontSize={14}
@@ -408,3 +408,5 @@ export default function StudentsManagementPageView() {
     </ProtectedRoute>
   );
 }
+
+

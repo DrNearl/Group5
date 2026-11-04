@@ -20,31 +20,14 @@ export async function handleIncidentsCreate(req: NextRequest) {
       );
     }
 
-    // Tìm người báo cáo: nếu có studentCode thì lấy User đó, nếu không lấy user đầu tiên
-    let reporter = null;
-    if (studentCode) {
-      reporter = await prisma.user.findUnique({
-        where: { studentCode },
-      });
-    }
-    if (!reporter) {
-      reporter = await prisma.user.findFirst({
-        where: { role: "STUDENT" },
-      });
-    }
-
-    if (!reporter) {
-      return NextResponse.json(
-        { success: false, message: "Không tìm thấy thông tin tài khoản người báo cáo!" },
-        { status: 404 }
-      );
-    }
+    // Tìm sinh viên báo cáo (nếu có)
+    const reporter = await prisma.student.findFirst();
 
     // Tạo sự cố mới
     const incident = await prisma.equipmentIncident.create({
       data: {
         equipmentId,
-        reportedByUserId: reporter.id,
+        reportedByStudentId: reporter?.id || null,
         title,
         description,
         severity: severity as IncidentSeverity,

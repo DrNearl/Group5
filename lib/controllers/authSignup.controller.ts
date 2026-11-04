@@ -14,8 +14,8 @@ export async function handleAuthSignup(req: NextRequest) {
     if (!fullName || !studentCode || !email || !password || !role) {
       return NextResponse.json({ success: false, message: "Vui lòng điền đầy đủ các trường bắt buộc." }, { status: 400 });
     }
-    if (role !== "LECTURER" && role !== "STUDENT") {
-      return NextResponse.json({ success: false, message: "Chỉ sinh viên và giảng viên có thể đăng ký." }, { status: 403 });
+    if (role !== "LECTURER" && (role as any) !== "STUDENT") {
+      return NextResponse.json({ success: false, message: "Chỉ giảng viên có thể đăng ký tài khoản quản lý." }, { status: 403 });
     }
     if (fullName.length > 120 || studentCode.length < 4 || studentCode.length > 32) {
       return NextResponse.json({ success: false, message: "Họ tên hoặc mã tài khoản không đúng định dạng." }, { status: 400 });
@@ -30,15 +30,15 @@ export async function handleAuthSignup(req: NextRequest) {
     const user = await prisma.user.create({
       data: {
         fullName,
-        studentCode,
+        username: studentCode,
         email,
         passwordHash: await hashPassword(password),
-        role,
+        role: "LECTURER",
         isActive: true,
       },
       select: {
         id: true,
-        studentCode: true,
+        username: true,
         fullName: true,
         email: true,
         role: true,

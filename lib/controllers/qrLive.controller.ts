@@ -15,7 +15,7 @@ export async function handleQrLive() {
       include: {
         dutySchedule: {
           include: {
-            user: {
+            student: {
               select: {
                 fullName: true,
                 studentCode: true,
@@ -39,8 +39,8 @@ export async function handleQrLive() {
 
     const formattedLogs = logs.map((log) => ({
       id: log.id,
-      studentName: log.dutySchedule?.user?.fullName || "Sinh viên",
-      studentCode: log.dutySchedule?.user?.studentCode || log.scannedBarcode,
+      studentName: log.dutySchedule?.student?.fullName || "Sinh viên",
+      studentCode: log.dutySchedule?.student?.studentCode || log.scannedBarcode,
       checkInTime: log.checkInTime,
       checkOutTime: log.checkOutTime,
       scanMethod: log.scanMethod,

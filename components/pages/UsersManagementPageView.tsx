@@ -138,10 +138,7 @@ function UsersManagementContent() {
 
         {/* USERS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {(userRole === "STUDENT" && user
-            ? users.filter((u) => u.studentCode === user.studentCode)
-            : filteredUsers
-          ).map((u) => (
+          {filteredUsers.map((u) => (
             <div
               key={u.id}
               className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3.5 shadow-sm hover:shadow-md hover:border-gray-300 transition flex flex-col justify-between"
@@ -150,24 +147,18 @@ function UsersManagementContent() {
                 <div className="flex items-center justify-between">
                   <span
                     className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border ${
-                        u.role === "ADMIN"
+                      u.role === "ADMIN"
                         ? "bg-amber-50 text-amber-800 border-amber-200"
-                        : u.role === "LECTURER"
-                          ? "bg-indigo-50 text-indigo-800 border-indigo-200"
-                          : "bg-blue-50 text-blue-700 border-blue-200"
+                        : "bg-indigo-50 text-indigo-800 border-indigo-200"
                     }`}
                   >
                     {u.role === "ADMIN" ? (
                       <>
                         <Shield className="h-3 w-3" /> Quản trị viên
                       </>
-                    ) : u.role === "LECTURER" ? (
-                      <>
-                        <Shield className="h-3 w-3" /> Giảng viên
-                      </>
                     ) : (
                       <>
-                        <GraduationCap className="h-3 w-3" /> Sinh viên trực Lab
+                        <Shield className="h-3 w-3" /> Giảng viên
                       </>
                     )}
                   </span>
@@ -179,9 +170,6 @@ function UsersManagementContent() {
 
                 <div>
                   <h3 className="text-base font-bold text-gray-900">{u.fullName}</h3>
-                  <div className="text-xs text-red-600 font-mono font-bold mt-0.5">
-                    Mã thẻ / MSSV: {u.studentCode}
-                  </div>
                 </div>
 
                 <div className="space-y-1.5 text-xs text-gray-500 pt-2 border-t border-gray-100">
@@ -197,16 +185,6 @@ function UsersManagementContent() {
                   )}
                 </div>
               </div>
-
-              {/* THÔNG TIN MÃ THẺ ĐIỂM DANH */}
-              {u.role === "STUDENT" && (
-                <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
-                  <span>Mã vạch trên thẻ:</span>
-                  <span className="font-mono font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
-                    {u.studentCode}
-                  </span>
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -347,7 +325,7 @@ function UsersManagementContent() {
 
 export default function UsersManagementPageView() {
   return (
-    <ProtectedRoute allowedRoles={["ADMIN", "STUDENT"]}>
+    <ProtectedRoute allowedRoles={["ADMIN"]}>
       <UsersManagementContent />
     </ProtectedRoute>
   );

@@ -51,13 +51,7 @@ function QrStationContent() {
 
   const handleExitClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (role === "STATION") {
-      setShowPinModal(true);
-      setPinCode("");
-      setPinError(null);
-    } else {
-      router.push("/");
-    }
+    router.push("/");
   };
 
   const handleVerifyPin = (e: React.FormEvent) => {
@@ -503,7 +497,7 @@ function QrStationContent() {
 
 export default function QrStationPageView() {
   return (
-    <ProtectedRoute allowedRoles={["ADMIN", "LECTURER", "STATION"]}>
+    <ProtectedRoute allowedRoles={["ADMIN", "LECTURER"]}>
       <QrStationContent />
     </ProtectedRoute>
   );

@@ -309,7 +309,7 @@ function IncidentsContent() {
 
 export default function IncidentsPageView() {
   return (
-    <ProtectedRoute allowedRoles={["ADMIN", "LECTURER", "STUDENT"]}>
+    <ProtectedRoute allowedRoles={["ADMIN", "LECTURER"]}>
       <IncidentsContent />
     </ProtectedRoute>
   );

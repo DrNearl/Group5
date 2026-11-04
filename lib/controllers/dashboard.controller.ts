@@ -110,6 +110,32 @@ export async function handleDashboardGet(req: NextRequest) {
       count,
     }));
 
+    // Phân bổ số giờ theo ngày trong tuần (Thứ 2 -> Chủ Nhật)
+    const weekdayNames = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+    const weekdayMap: { [key: string]: number } = {
+      "Thứ Hai": 0,
+      "Thứ Ba": 0,
+      "Thứ Tư": 0,
+      "Thứ Năm": 0,
+      "Thứ Sáu": 0,
+      "Thứ Bảy": 0,
+      "Chủ Nhật": 0,
+    };
+
+    attendanceLogs.forEach((l) => {
+      if (!l.checkInTime) return;
+      const dayIndex = new Date(l.checkInTime).getDay();
+      const dayName = weekdayNames[dayIndex];
+      if (weekdayMap[dayName] !== undefined) {
+        weekdayMap[dayName] += l.totalHours > 0 ? l.totalHours : 1;
+      }
+    });
+
+    const weekdayData = Object.entries(weekdayMap).map(([day, hours]) => ({
+      day,
+      hours: Math.round(hours * 10) / 10,
+    }));
+
     // Danh sách sinh viên đang có mặt trong phòng Lab (Live)
     const activeInLab = attendanceLogs
       .filter((l) => l.checkInTime && !l.checkOutTime)
@@ -159,6 +185,7 @@ export async function handleDashboardGet(req: NextRequest) {
         activeInLabCount: activeInLab.length,
       },
       peakHoursData,
+      weekdayData,
       activeInLab,
       studentStats,
       allLogs: attendanceLogs.map((l) => {

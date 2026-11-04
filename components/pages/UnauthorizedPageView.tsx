@@ -29,7 +29,7 @@ export default function UnauthorizedPageView() {
                 <br />
                 Đang đăng nhập với vai trò:{" "}
                 <span className="font-bold text-red-600">
-                  {user.role === "STUDENT" ? "Sinh viên" : user.role === "LECTURER" ? "Giảng viên" : user.role === "STATION" ? "Máy trạm Lab" : "Quản trị viên"}
+                  {user.role === "LECTURER" ? "Giảng viên" : "Quản trị viên"}
                 </span>
               </>
             )}

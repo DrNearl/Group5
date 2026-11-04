@@ -596,8 +596,5 @@ export default function HomePageView() {
   const { user, isLoading } = useAuth();
   if (isLoading) return <GuestOverview isLoading />;
   if (!user) return <GuestOverview isLoading={false} />;
-  if (user.role === "STUDENT") {
-    return <StudentOverview userName={user.fullName} userId={user.id} studentCode={user.studentCode} />;
-  }
   return <StaffOverview userName={user.fullName} isLecturer={user.role === "LECTURER"} />;
 }

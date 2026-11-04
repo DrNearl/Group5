@@ -36,13 +36,6 @@ const navigationByRole: Record<string, SidebarItem[]> = {
     { href: "/dashboard", label: "Bảng Quản Lý Số Liệu", icon: BarChart3 },
     { href: "/students", label: "Danh Sách Sinh Viên", icon: Users },
   ],
-  STUDENT: [
-    { href: "/", label: "Trạm Quét Barcode", icon: Barcode },
-    { href: "/dashboard", label: "Bảng Quản Lý Số Liệu", icon: BarChart3 },
-  ],
-  STATION: [
-    { href: "/", label: "Trạm Quét Barcode", icon: Barcode },
-  ],
 };
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {

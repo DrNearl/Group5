@@ -14,7 +14,7 @@ export async function handleAuthMe(req: NextRequest) {
       where: { id: parsed.id },
       select: {
         id: true,
-        studentCode: true,
+        username: true,
         fullName: true,
         email: true,
         role: true,

@@ -38,11 +38,11 @@ export async function handleQrVerify(req: NextRequest) {
     const cleanStudentCode = studentCode.trim();
 
     // 3. Tra cứu sinh viên theo MSSV trong cơ sở dữ liệu
-    const user = await prisma.user.findFirst({
+    const student = await prisma.student.findFirst({
       where: { studentCode: cleanStudentCode },
     });
 
-    if (!user) {
+    if (!student) {
       return NextResponse.json(
         {
           success: false,
@@ -53,7 +53,7 @@ export async function handleQrVerify(req: NextRequest) {
       );
     }
 
-    // 4. Ràng buộc 1 thiết bị chỉ điểm danh cho 1 sinh viên trong ngày (Giải pháp 2)
+    // 4. Ràng buộc 1 thiết bị chỉ điểm danh cho 1 sinh viên trong ngày
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -62,17 +62,17 @@ export async function handleQrVerify(req: NextRequest) {
         where: {
           dutyDate: { gte: today },
           note: { contains: `[Device: ${deviceId}]` },
-          userId: { not: user.id }, // Đã từng dùng cho sinh viên khác
+          studentId: { not: student.id }, // Đã từng dùng cho sinh viên khác
         },
-        include: { user: true },
+        include: { student: true },
       });
 
-      if (deviceUsedLog && deviceUsedLog.user) {
+      if (deviceUsedLog && deviceUsedLog.student) {
         return NextResponse.json(
           {
             success: false,
             code: "DEVICE_ALREADY_USED_FOR_ANOTHER_STUDENT",
-            message: `Thiết bị này đã được sử dụng để điểm danh cho sinh viên khác (${deviceUsedLog.user.fullName} - MSSV: ${deviceUsedLog.user.studentCode}) trong hôm nay. Mỗi điện thoại chỉ được dùng cho 1 sinh viên, không thể điểm danh hộ!`,
+            message: `Thiết bị này đã được sử dụng để điểm danh cho sinh viên khác (${deviceUsedLog.student.fullName} - MSSV: ${deviceUsedLog.student.studentCode}) trong hôm nay. Mỗi điện thoại chỉ được dùng cho 1 sinh viên, không thể điểm danh hộ!`,
           },
           { status: 403 }
         );
@@ -124,7 +124,7 @@ export async function handleQrVerify(req: NextRequest) {
       },
       include: {
         dutySchedule: {
-          include: { labRoom: true, user: true, shift: true },
+          include: { labRoom: true, student: true, shift: true },
         },
       },
       orderBy: { checkInTime: "desc" },
@@ -173,9 +173,9 @@ export async function handleQrVerify(req: NextRequest) {
         message: `Check-out thành công lúc ${now.toLocaleTimeString("vi-VN")}! Tổng thời gian có mặt: ${durationText}.`,
         data: {
           logId: updatedLog.id,
-          studentName: user.fullName,
-          studentCode: user.studentCode,
-          labName: "Phòng 5.18 - Lầu 5, Tòa A (Cơ sở chính)",
+          studentName: student.fullName,
+          studentCode: student.studentCode,
+          labName: targetLab.labName,
           checkInTime: checkInDate.toISOString(),
           checkOutTime: now.toISOString(),
           totalHours,
@@ -197,7 +197,7 @@ export async function handleQrVerify(req: NextRequest) {
 
     const newSchedule = await prisma.dutySchedule.create({
       data: {
-        userId: user.id,
+        studentId: student.id,
         labId: targetLab.id,
         shiftId: defaultShift.id,
         dutyDate: today,
@@ -224,9 +224,9 @@ export async function handleQrVerify(req: NextRequest) {
       message: `Check-in thành công lúc ${now.toLocaleTimeString("vi-VN")}! Chúc bạn ca trực hiệu quả.`,
       data: {
         logId: newLog.id,
-        studentName: user.fullName,
-        studentCode: user.studentCode,
-        labName: "Phòng 5.18 - Lầu 5, Tòa A (Cơ sở chính)",
+        studentName: student.fullName,
+        studentCode: student.studentCode,
+        labName: targetLab.labName,
         checkInTime: now.toISOString(),
         checkOutTime: null,
         durationText: "Vừa mới vào phòng Lab",

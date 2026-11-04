@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, Building2, KeyRound, Lock, RefreshCw, UserRound } from "lucide-react";
 import { useAuth, UserRole } from "@/lib/auth-context";
 
-type RegistrationRole = Extract<UserRole, "STUDENT" | "LECTURER">;
+type RegistrationRole = "LECTURER";
 
 export default function RegisterPageView() {
   const router = useRouter();
@@ -16,7 +16,7 @@ export default function RegisterPageView() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [role, setRole] = useState<RegistrationRole>("STUDENT");
+  const [role, setRole] = useState<RegistrationRole>("LECTURER");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -89,20 +89,7 @@ export default function RegisterPageView() {
           </div>
 
           <div>
-            <label htmlFor="register-role" className="mb-1.5 block text-sm font-medium text-gray-800">Vai trò</label>
-            <select
-              id="register-role"
-              value={role}
-              onChange={(event) => setRole(event.target.value as RegistrationRole)}
-              className="min-h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-1"
-            >
-              <option value="STUDENT">Sinh viên</option>
-              <option value="LECTURER">Giảng viên</option>
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="register-code" className="mb-1.5 block text-sm font-medium text-gray-800">Mã số sinh viên / Giảng viên</label>
+            <label htmlFor="register-code" className="mb-1.5 block text-sm font-medium text-gray-800">Mã giảng viên / Quản lý</label>
             <div className="relative">
               <UserRound aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
               <input
@@ -114,7 +101,7 @@ export default function RegisterPageView() {
                 maxLength={32}
                 value={studentCode}
                 onChange={(event) => setStudentCode(event.target.value)}
-                placeholder={role === "STUDENT" ? "Nhập MSSV" : "Nhập mã giảng viên"}
+                placeholder="Nhập mã giảng viên hoặc tên đăng nhập"
                 className="min-h-11 w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 text-base text-gray-900 placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-1"
               />
             </div>
