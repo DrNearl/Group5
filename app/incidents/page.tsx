@@ -1,5 +1,5 @@
-import IncidentsPageView from "@/components/pages/IncidentsPageView";
+import { redirect } from "next/navigation";
 
 export default function IncidentsPage() {
-  return <IncidentsPageView />;
+  redirect("/dashboard");
 }

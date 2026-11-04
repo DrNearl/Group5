@@ -27,26 +27,21 @@ type SidebarItem = {
 
 const navigationByRole: Record<string, SidebarItem[]> = {
   ADMIN: [
-    { href: "/", label: "Trạm Quét Laptop", icon: Barcode },
-    { href: "/dashboard", label: "Thống kê & Giám sát Live", icon: BarChart3 },
-    { href: "/schedules", label: "Lịch trực phòng Lab", icon: CalendarDays },
-    { href: "/equipments", label: "Thiết bị phòng Lab", icon: ClipboardCheck },
-    { href: "/incidents", label: "Sự cố thiết bị", icon: AlertTriangle },
-    { href: "/users", label: "Danh bạ sinh viên", icon: Users },
+    { href: "/", label: "Trạm Quét Barcode", icon: Barcode },
+    { href: "/dashboard", label: "Bảng Quản Lý Số Liệu", icon: BarChart3 },
+    { href: "/students", label: "Danh Sách Sinh Viên", icon: Users },
   ],
   LECTURER: [
-    { href: "/", label: "Trạm Quét Laptop", icon: Barcode },
-    { href: "/dashboard", label: "Thống kê & Giám sát Live", icon: BarChart3 },
-    { href: "/schedules", label: "Lịch trực phòng Lab", icon: CalendarDays },
-    { href: "/incidents", label: "Sự cố thiết bị", icon: AlertTriangle },
-    { href: "/users", label: "Danh bạ sinh viên", icon: Users },
+    { href: "/", label: "Trạm Quét Barcode", icon: Barcode },
+    { href: "/dashboard", label: "Bảng Quản Lý Số Liệu", icon: BarChart3 },
+    { href: "/students", label: "Danh Sách Sinh Viên", icon: Users },
   ],
   STUDENT: [
-    { href: "/", label: "Trạm Quét Laptop", icon: Barcode },
-    { href: "/dashboard", label: "Thống kê & Giám sát Live", icon: BarChart3 },
+    { href: "/", label: "Trạm Quét Barcode", icon: Barcode },
+    { href: "/dashboard", label: "Bảng Quản Lý Số Liệu", icon: BarChart3 },
   ],
   STATION: [
-    { href: "/", label: "Trạm Quét Laptop", icon: Barcode },
+    { href: "/", label: "Trạm Quét Barcode", icon: Barcode },
   ],
 };
 

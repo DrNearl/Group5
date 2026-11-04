@@ -1,5 +1,5 @@
-import EquipmentsPageView from "@/components/pages/EquipmentsPageView";
+import { redirect } from "next/navigation";
 
 export default function EquipmentsPage() {
-  return <EquipmentsPageView />;
+  redirect("/dashboard");
 }

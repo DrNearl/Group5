@@ -1,5 +1,5 @@
-import SchedulesPageView from "@/components/pages/SchedulesPageView";
+import { redirect } from "next/navigation";
 
 export default function SchedulesPage() {
-  return <SchedulesPageView />;
+  redirect("/dashboard");
 }
