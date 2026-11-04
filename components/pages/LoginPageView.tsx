@@ -69,7 +69,7 @@ function LoginFormContent() {
           <form onSubmit={handleSubmit} className="space-y-4" aria-describedby={errorMessage ? "login-error" : undefined}>
             <div>
               <label htmlFor="login-identifier" className="mb-1.5 block text-sm font-medium text-gray-800">
-                Tài khoản (Tên đăng nhập / Email)
+                Tài khoản
               </label>
               <div className="relative">
                 <UserRound aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
@@ -81,8 +81,8 @@ function LoginFormContent() {
                   maxLength={190}
                   value={identifier}
                   onChange={(event) => setIdentifier(event.target.value)}
-                  placeholder="vd: admin hoặc chau.lth@vlu.edu.vn"
-                  className="min-h-11 w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 text-base text-gray-900 placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-1"
+                  placeholder="Tên đăng nhập hoặc email"
+                  className="min-h-11 w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 text-base text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-1"
                 />
               </div>
             </div>
@@ -99,7 +99,8 @@ function LoginFormContent() {
                   maxLength={128}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="min-h-11 w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-11 text-base text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-1"
+                  placeholder="Nhập mật khẩu"
+                  className="min-h-11 w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-11 text-base text-gray-900 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-1"
                 />
                 <button
                   type="button"
