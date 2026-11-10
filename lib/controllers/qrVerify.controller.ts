@@ -1,8 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyQrSessionToken } from "@/lib/qr-security";
-import { verifyVluLocation } from "@/lib/geo-security";
-import { ScanMethod, AttendanceStatus, ScheduleStatus } from "@prisma/client";
+const AttendanceStatus = {
+  ON_TIME: "ON_TIME",
+  LATE: "LATE",
+  EARLY_LEAVE: "EARLY_LEAVE",
+  MISSING_CHECKOUT: "MISSING_CHECKOUT",
+} as const;
+
+const ScanMethod = {
+  USB_SCANNER: "USB_SCANNER",
+  WEBCAM: "WEBCAM",
+  DYNAMIC_QR: "DYNAMIC_QR",
+} as const;
+
+const ScheduleStatus = {
+  PENDING: "PENDING",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+  COMPLETED: "COMPLETED",
+  ABSENT: "ABSENT",
+} as const;
 
 export const dynamic = "force-dynamic";
 
@@ -31,11 +49,9 @@ export async function handleQrVerify(req: NextRequest) {
       );
     }
 
-    // 2. Ghi nhận vị trí GPS tại Cơ sở chính Đại học Văn Lang (Giải pháp 1)
-    const locationCheck = verifyVluLocation(latitude, longitude);
-
-    const { labCode } = verification.payload;
+    // 2. Tra cứu sinh viên theo MSSV trong cơ sở dữ liệu
     const cleanStudentCode = studentCode.trim();
+    const { labCode } = verification.payload;
 
     // 3. Tra cứu sinh viên theo MSSV trong cơ sở dữ liệu
     const student = await prisma.student.findFirst({
@@ -189,11 +205,7 @@ export async function handleQrVerify(req: NextRequest) {
     // TRƯỜNG HỢP B: CHƯA CHECK-IN -> THỰC HIỆN CHECK-IN VÀO PHÒNG LAB
     // -------------------------------------------------------------------------
     const deviceTag = deviceId ? `[Device: ${deviceId}]` : "";
-    const distanceTag =
-      locationCheck.distanceMeters >= 0
-        ? `[GPS: cách ${locationCheck.formattedDistance}${locationCheck.isValid ? " - Trong khuôn viên" : " - Ngoại vi"}]`
-        : "[GPS: Chưa xác định]";
-    const fullNote = `Điểm danh QR di động ${deviceTag} ${distanceTag} ${clientNote ? `(${clientNote})` : ""}`.trim();
+    const fullNote = `Điểm danh QR di động ${deviceTag} ${clientNote ? `(${clientNote})` : ""}`.trim();
 
     const newSchedule = await prisma.dutySchedule.create({
       data: {
@@ -231,8 +243,6 @@ export async function handleQrVerify(req: NextRequest) {
         checkOutTime: null,
         durationText: "Vừa mới vào phòng Lab",
         scanMethod: "DYNAMIC_QR",
-        distanceMeters: locationCheck.distanceMeters,
-        formattedDistance: locationCheck.formattedDistance,
       },
     });
   } catch (error: any) {

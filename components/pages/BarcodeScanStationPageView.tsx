@@ -119,14 +119,6 @@ function ScanStationContent() {
   const [scanSuccessFlash, setScanSuccessFlash] = useState<boolean>(false);
   const [cameraActive, setCameraActive] = useState<boolean>(false);
 
-  // Modal báo sự cố thiết bị khi quét mã EQ-
-  const [equipmentModal, setEquipmentModal] = useState<EquipmentData | null>(null);
-  const [incidentTitle, setIncidentTitle] = useState("");
-  const [incidentSeverity, setIncidentSeverity] = useState<"LOW" | "MEDIUM" | "HIGH" | "CRITICAL">("MEDIUM");
-  const [incidentDesc, setIncidentDesc] = useState("");
-  const [incidentSubmitting, setIncidentSubmitting] = useState(false);
-  const [incidentSuccess, setIncidentSuccess] = useState<string | null>(null);
-
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const html5QrCodeRef = useRef<any>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -260,14 +252,6 @@ function ScanStationContent() {
         if (isSoundEnabled) soundFX.playWarning();
         setErrorMessage(data.message);
         setSuccessBanner(null);
-        setIsProcessing(false);
-        return;
-      }
-
-      // THUẬT TOÁN ĐỊNH TUYẾN: MÃ THIẾT BỊ PHÒNG LAB (EQ-)
-      if (data.type === "EQUIPMENT") {
-        if (isSoundEnabled) soundFX.playEquipmentChime();
-        setEquipmentModal(data.data);
         setIsProcessing(false);
         return;
       }
@@ -406,43 +390,6 @@ function ScanStationContent() {
       releaseCamera();
     };
   }, []);
-
-  // 7. Gửi Báo cáo Sự cố Thiết bị
-  const handleSubmitIncident = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!equipmentModal || !incidentTitle.trim()) return;
-
-    setIncidentSubmitting(true);
-    try {
-      const res = await fetch("/api/incidents/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          equipmentId: equipmentModal.id,
-          studentCode: lastResult?.studentCode || "2373401010100",
-          title: incidentTitle,
-          severity: incidentSeverity,
-          description: incidentDesc,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setIncidentSuccess("Đã ghi nhận sự cố thành công! Bộ phận kỹ thuật sẽ sớm kiểm tra.");
-        setTimeout(() => {
-          setEquipmentModal(null);
-          setIncidentSuccess(null);
-          setIncidentTitle("");
-          setIncidentDesc("");
-        }, 2000);
-      } else {
-        alert("Lỗi: " + data.message);
-      }
-    } catch (err: any) {
-      alert("Lỗi kết nối: " + err.message);
-    } finally {
-      setIncidentSubmitting(false);
-    }
-  };
 
   return (
     <div suppressHydrationWarning className="min-h-screen bg-[#F8F9FA] text-slate-900 font-sans flex flex-col">
@@ -625,191 +572,7 @@ function ScanStationContent() {
         </section>
       </main>
 
-      {/* MODAL BÁO CÁO SỰ CỐ THIẾT BỊ PHÒNG LAB KHI QUÉT MÃ EQ- */}
-      {equipmentModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white border border-gray-200 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
-            <button
-              onClick={() => setEquipmentModal(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700"
-            >
-              <XCircle className="h-6 w-6" />
-            </button>
-
-            <div className="flex items-center gap-3 border-b border-gray-100 pb-3 mb-4">
-              <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 border border-amber-200">
-                <Laptop className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-gray-900">THIẾT BỊ PHÒNG LAB ĐƯỢC NHẬN DIỆN</h3>
-                <p className="text-xs text-amber-700 font-mono font-semibold">
-                  Mã vạch: {equipmentModal.equipmentBarcode}
-                </p>
-              </div>
-            </div>
-
-            {incidentSuccess && (
-              <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                {incidentSuccess}
-              </div>
-            )}
-
-            <div className="space-y-3 text-xs mb-5">
-              <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-xl border border-gray-200">
-                <div>
-                  <span className="text-gray-500 block">Tên thiết bị:</span>
-                  <span className="font-bold text-gray-900">{equipmentModal.equipmentName}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block">Vị trí:</span>
-                  <span className="font-semibold text-gray-800">
-                    {equipmentModal.labName} ({equipmentModal.building})
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block">Loại máy:</span>
-                  <span className="font-semibold text-gray-800">{equipmentModal.category}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block">Trạng thái hiện tại:</span>
-                  <span
-                    className={`font-bold ${
-                      equipmentModal.status === "GOOD"
-                        ? "text-emerald-700"
-                        : equipmentModal.status === "BROKEN"
-                        ? "text-rose-700"
-                        : "text-amber-700"
-                    }`}
-                  >
-                    ● {equipmentModal.status}
-                  </span>
-                </div>
-              </div>
-
-              {equipmentModal.specifications && (
-                <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-200 text-[11px]">
-                  <span className="text-gray-500 block font-semibold">Cấu hình phần cứng:</span>
-                  <span className="text-gray-700">{equipmentModal.specifications}</span>
-                </div>
-              )}
-            </div>
-
-            {/* FORM BÁO HỎNG NHANH */}
-            <form onSubmit={handleSubmitIncident} className="space-y-3">
-              <div className="font-bold text-xs text-gray-900 uppercase flex items-center gap-1.5">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                Báo cáo sự cố cho máy này:
-              </div>
-
-              <div>
-                <label className="text-xs text-gray-600 block mb-1">Mô tả tóm tắt sự cố *</label>
-                <input
-                  type="text"
-                  required
-                  value={incidentTitle}
-                  onChange={(e) => setIncidentTitle(e.target.value)}
-                  placeholder="VD: Không lên nguồn, màn hình sọc, kẹt phím..."
-                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs text-gray-600 block mb-1">Mức độ nghiêm trọng</label>
-                  <select
-                    value={incidentSeverity}
-                    onChange={(e: any) => setIncidentSeverity(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-2 text-xs text-gray-900 focus:outline-none focus:border-red-500"
-                  >
-                    <option value="LOW">Thấp (Chờ được)</option>
-                    <option value="MEDIUM">Trung bình</option>
-                    <option value="HIGH">Cao (Cần gấp)</option>
-                    <option value="CRITICAL">Khẩn cấp</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-600 block mb-1">Người báo cáo (MSSV)</label>
-                  <input
-                    type="text"
-                    disabled
-                    value={lastResult?.studentCode || "2373401010100"}
-                    className="w-full bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-500 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs text-gray-600 block mb-1">Chi tiết thêm (tùy chọn)</label>
-                <textarea
-                  rows={2}
-                  value={incidentDesc}
-                  onChange={(e) => setIncidentDesc(e.target.value)}
-                  placeholder="Ghi chú thêm về hiện tượng lỗi..."
-                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-500"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setEquipmentModal(null)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold"
-                >
-                  Đóng
-                </button>
-                <button
-                  type="submit"
-                  disabled={incidentSubmitting}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-md shadow-red-600/20 disabled:opacity-50"
-                >
-                  <Zap className="h-3.5 w-3.5" />
-                  {incidentSubmitting ? "Đang gửi..." : "Gửi phiếu báo sự cố"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* POP-UP OVERLAY KẾT QUẢ QUÉT TO RÕ GIỮA MÀN HÌNH (TỰ ẨN SAU 2.5 GIÂY) */}
-      {showBigOverlay && lastResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in zoom-in-95 duration-150">
-          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-7 max-w-sm w-full text-center space-y-4">
-            <div className={`inline-flex p-4 rounded-2xl ${
-              lastResult.action === "CHECK_IN" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-500"
-            }`}>
-              {lastResult.action === "CHECK_IN" ? (
-                <LogIn className="h-10 w-10" />
-              ) : (
-                <LogOut className="h-10 w-10" />
-              )}
-            </div>
-
-            <div>
-              <span className={`text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full ${
-                lastResult.action === "CHECK_IN"
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  : "bg-rose-50 text-rose-700 border border-rose-200"
-              }`}>
-                {lastResult.action === "CHECK_IN" ? "ĐIỂM DANH VÀO" : "ĐIỂM DANH RA"}
-              </span>
-              <h2 className="text-xl font-extrabold text-gray-900 mt-2.5">{lastResult.studentName}</h2>
-              <div className="text-xs font-mono text-gray-400 mt-0.5">MSSV: {lastResult.studentCode}</div>
-            </div>
-
-            <div className="bg-gray-50 rounded-xl p-3.5 text-xs text-gray-700 font-medium">
-              {lastResult.action === "CHECK_IN" ? (
-                <div>Giờ vào: <strong className="text-emerald-700 font-bold">{new Date(lastResult.checkInTime).toLocaleTimeString("vi-VN")}</strong></div>
-              ) : (
-                <div>Thời gian có mặt: <strong className="text-rose-600 font-bold">{lastResult.durationText || "--"}</strong></div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* POP-UP OVERLAY KẾT QUẢ QUÉT TO RÕ GIỮA MÀN HÌNH (TỰ ẨN SAU 2.5 GIÂY) */}
+      {/* POP-UP OVERLAY KẾT QUẢ QUÉT TO RÕ GIỮA MÀN HÌNH (TỰ ẨN SAU 3.5 GIÂY) */}
       {showBigOverlay && lastResult && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in zoom-in-95 duration-150">
           <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-7 max-w-sm w-full text-center space-y-4">

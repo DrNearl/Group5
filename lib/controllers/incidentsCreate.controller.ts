@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { IncidentSeverity, IncidentStatus, EquipmentStatus } from "@prisma/client";
+const EquipmentStatus = {
+  GOOD: "GOOD",
+  BROKEN: "BROKEN",
+  REPAIRING: "REPAIRING",
+} as const;
+
+const IncidentSeverity = {
+  LOW: "LOW",
+  MEDIUM: "MEDIUM",
+  HIGH: "HIGH",
+  CRITICAL: "CRITICAL",
+} as const;
+
+const IncidentStatus = {
+  OPEN: "OPEN",
+  IN_PROGRESS: "IN_PROGRESS",
+  RESOLVED: "RESOLVED",
+} as const;
 
 export async function handleIncidentsCreate(req: NextRequest) {
   try {
@@ -30,7 +47,7 @@ export async function handleIncidentsCreate(req: NextRequest) {
         reportedByStudentId: reporter?.id || null,
         title,
         description,
-        severity: severity as IncidentSeverity,
+        severity: severity as string,
         incidentStatus: IncidentStatus.OPEN,
       },
       include: {

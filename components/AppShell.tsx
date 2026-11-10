@@ -14,6 +14,7 @@ import {
   Menu,
   QrCode,
   Users,
+  Shield,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -30,6 +31,7 @@ const navigationByRole: Record<string, SidebarItem[]> = {
     { href: "/", label: "Trạm Quét Barcode", icon: Barcode },
     { href: "/dashboard", label: "Bảng Quản Lý Số Liệu", icon: BarChart3 },
     { href: "/students", label: "Danh Sách Sinh Viên", icon: Users },
+    { href: "/users", label: "Tài Khoản & Phân Quyền", icon: Shield },
   ],
   LECTURER: [
     { href: "/", label: "Trạm Quét Barcode", icon: Barcode },

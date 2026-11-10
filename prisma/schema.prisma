@@ -1,74 +1,14 @@
 // Prisma Schema for VLU Lab Duty & Barcode Attendance System
 // Trường Đại học Văn Lang - Khoa Công nghệ Thông tin
-// Hệ quản trị cơ sở dữ liệu: MySQL
+// Hệ quản trị cơ sở dữ liệu: Microsoft SQL Server (MSSQL)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "sqlserver"
   url      = env("DATABASE_URL")
-}
-
-// ---------------------- ENUMS ----------------------
-enum Role {
-  ADMIN       // Quản trị viên hệ thống / Trưởng bộ môn
-  LECTURER    // Giảng viên phụ trách phòng Lab
-}
-
-enum LabStatus {
-  ACTIVE
-  MAINTENANCE
-}
-
-enum ScheduleStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  COMPLETED
-  ABSENT
-}
-
-enum ScanMethod {
-  USB_SCANNER
-  WEBCAM
-  DYNAMIC_QR
-}
-
-enum AttendanceStatus {
-  ON_TIME
-  LATE
-  EARLY_LEAVE
-  MISSING_CHECKOUT
-}
-
-enum EquipmentCategory {
-  PC
-  MONITOR
-  PROJECTOR
-  AIR_CONDITIONER
-  NETWORK
-  PERIPHERAL
-}
-
-enum EquipmentStatus {
-  GOOD
-  BROKEN
-  REPAIRING
-}
-
-enum IncidentSeverity {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
-}
-
-enum IncidentStatus {
-  OPEN
-  IN_PROGRESS
-  RESOLVED
 }
 
 // ---------------------- MODELS ----------------------
@@ -81,7 +21,7 @@ model User {
   email        String   @unique // Email liên hệ VLU (chau.lth@vlu.edu.vn)
   passwordHash String
   phone        String?
-  role         Role     @default(LECTURER)
+  role         String   @default("LECTURER") // ADMIN, LECTURER
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -107,15 +47,15 @@ model Student {
 
 // 3. LabRoom: Phòng máy thực hành thực tế tại VLU
 model LabRoom {
-  id        String    @id @default(uuid())
-  labCode   String    @unique // VD: "LAB-CS3-G801"
-  labName   String    // VD: "Phòng Lab Mạng máy tính & An ninh mạng 8.01"
-  building  String    // VD: "Cơ sở 3 - Tòa nhà G, Tầng 8"
-  capacity  Int       @default(45) // Số lượng máy tính trạm thực tế
-  allowedIp String?   // Dải IP tĩnh của phòng Lab
-  status    LabStatus @default(ACTIVE)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id        String   @id @default(uuid())
+  labCode   String   @unique // VD: "LAB-CS3-G801"
+  labName   String   // VD: "Phòng Lab Mạng máy tính & An ninh mạng 8.01"
+  building  String   // VD: "Cơ sở 3 - Tòa nhà G, Tầng 8"
+  capacity  Int      @default(45) // Số lượng máy tính trạm thực tế
+  allowedIp String?  // Dải IP tĩnh của phòng Lab
+  status    String   @default("ACTIVE") // ACTIVE, MAINTENANCE
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   dutySchedules DutySchedule[]
   equipments    LabEquipment[]
@@ -124,8 +64,8 @@ model LabRoom {
 // 4. Shift: Khung ca trực chính thức theo quy định VLU
 model Shift {
   id                 String   @id @default(uuid())
-  shiftName          String   // "Ca 1 (Sáng: Tiết 1 - 6)", "Ca 2 (Chiều: Tiết 7 - 12)", "Ca 3 (Tối: Tiết 13 - 16)"
-  startTime          String   // "07:00"
+  shiftName          String   // "Ca Sáng (08:00 - 11:30)", "Ca Chiều (13:00 - 17:00)"
+  startTime          String   // "08:00"
   endTime            String   // "11:30"
   gracePeriodMinutes Int      @default(15) // Cho phép trễ tối đa 15 phút
   createdAt          DateTime @default(now())
@@ -136,19 +76,19 @@ model Shift {
 
 // 5. DutySchedule: Lịch phân công ca trực của sinh viên
 model DutySchedule {
-  id             String         @id @default(uuid())
+  id             String   @id @default(uuid())
   studentId      String
   labId          String
   shiftId        String
-  dutyDate       DateTime       @db.Date // Ngày trực
-  scheduleStatus ScheduleStatus @default(PENDING)
+  dutyDate       DateTime @db.Date // Ngày trực
+  scheduleStatus String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED, ABSENT
   note           String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  student       Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  labRoom       LabRoom             @relation(fields: [labId], references: [id], onDelete: Cascade)
-  shift         Shift               @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  student       Student             @relation(fields: [studentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  labRoom       LabRoom             @relation(fields: [labId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  shift         Shift               @relation(fields: [shiftId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   attendanceLog AttendanceLog?
   incidents     EquipmentIncident[]
 
@@ -158,54 +98,54 @@ model DutySchedule {
 
 // 6. AttendanceLog: Nhật ký quét Barcode Điểm danh Check-in / Check-out
 model AttendanceLog {
-  id               String           @id @default(uuid())
-  scheduleId       String           @unique
-  scannedBarcode   String           // Chuỗi mã vạch quét được từ thẻ SV
+  id               String    @id @default(uuid())
+  scheduleId       String    @unique
+  scannedBarcode   String    // Chuỗi mã vạch quét được từ thẻ SV
   checkInTime      DateTime?
   checkOutTime     DateTime?
-  scanMethod       ScanMethod       @default(USB_SCANNER)
-  checkInSnapshot  String?          @db.LongText // LongText chứa ảnh Base64 JPEG không bị giới hạn dung lượng trong MySQL
-  checkOutSnapshot String?          @db.LongText // LongText chứa ảnh Base64 JPEG lúc check-out
-  clientIp         String?          // IP máy trạm thực hiện quét
-  attendanceStatus AttendanceStatus @default(ON_TIME)
-  totalHours       Float            @default(0) // Số giờ trực thực tế: (checkOut - checkIn) / 3600
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  scanMethod       String    @default("USB_SCANNER") // USB_SCANNER, WEBCAM, DYNAMIC_QR
+  checkInSnapshot  String?   @db.NVarChar(Max) // Ảnh Base64 JPEG lúc check-in
+  checkOutSnapshot String?   @db.NVarChar(Max) // Ảnh Base64 JPEG lúc check-out
+  clientIp         String?   // IP máy trạm thực hiện quét
+  attendanceStatus String    @default("ON_TIME") // ON_TIME, LATE, EARLY_LEAVE, MISSING_CHECKOUT
+  totalHours       Float     @default(0) // Số giờ trực thực tế: (checkOut - checkIn) / 3600
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   dutySchedule DutySchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
 }
 
 // 7. LabEquipment & EquipmentIncident: Quản lý thiết bị máy trạm & Báo hỏng Barcode
 model LabEquipment {
-  id               String            @id @default(uuid())
-  equipmentBarcode String            @unique // Mã Barcode in trên tem máy: "EQ-LAB801-PC01"
-  equipmentName    String            // Tên máy: "Máy trạm PC 01 - Phòng Lab 8.01"
-  category         EquipmentCategory @default(PC)
+  id               String   @id @default(uuid())
+  equipmentBarcode String   @unique // Mã Barcode in trên tem máy: "EQ-LAB801-PC01"
+  equipmentName    String   // Tên máy: "Máy trạm PC 01 - Phòng Lab 8.01"
+  category         String   @default("PC") // PC, MONITOR, PROJECTOR, AIR_CONDITIONER, NETWORK, PERIPHERAL
   labId            String
-  status           EquipmentStatus   @default(GOOD)
-  specifications   String?           @db.Text // Cấu hình chi tiết máy trạm thật VLU
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  status           String   @default("GOOD") // GOOD, BROKEN, REPAIRING
+  specifications   String?  @db.NVarChar(Max) // Cấu hình chi tiết máy trạm thật VLU
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  labRoom   LabRoom             @relation(fields: [labId], references: [id], onDelete: Cascade)
+  labRoom   LabRoom             @relation(fields: [labId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   incidents EquipmentIncident[]
 
   @@index([equipmentBarcode])
 }
 
 model EquipmentIncident {
-  id                  String           @id @default(uuid())
+  id                  String    @id @default(uuid())
   equipmentId         String
   reportedByStudentId String?
   scheduleId          String?
   title               String
-  description         String           @db.Text
-  severity            IncidentSeverity @default(MEDIUM)
-  incidentStatus      IncidentStatus   @default(OPEN)
-  createdAt           DateTime         @default(now())
+  description         String    @db.NVarChar(Max)
+  severity            String    @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  incidentStatus      String    @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED
+  createdAt           DateTime  @default(now())
   resolvedAt          DateTime?
 
-  equipment  LabEquipment  @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
-  reportedBy Student?      @relation(fields: [reportedByStudentId], references: [id], onDelete: SetNull)
-  schedule   DutySchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  equipment  LabEquipment  @relation(fields: [equipmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reportedBy Student?      @relation(fields: [reportedByStudentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  schedule   DutySchedule? @relation(fields: [scheduleId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }

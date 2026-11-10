@@ -1,6 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { AttendanceStatus, ScanMethod, ScheduleStatus } from "@prisma/client";
+const AttendanceStatus = {
+  ON_TIME: "ON_TIME",
+  LATE: "LATE",
+  EARLY_LEAVE: "EARLY_LEAVE",
+  MISSING_CHECKOUT: "MISSING_CHECKOUT",
+} as const;
+
+const ScanMethod = {
+  USB_SCANNER: "USB_SCANNER",
+  WEBCAM: "WEBCAM",
+  DYNAMIC_QR: "DYNAMIC_QR",
+} as const;
+
+const ScheduleStatus = {
+  PENDING: "PENDING",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+  COMPLETED: "COMPLETED",
+  ABSENT: "ABSENT",
+} as const;
 
 // API Xử lý Điểm danh Check-in / Check-out Tự do vào - ra phòng Lab
 export async function handleAttendanceScan(req: NextRequest) {
@@ -25,44 +44,12 @@ export async function handleAttendanceScan(req: NextRequest) {
     const clientIp = forwardedFor ? forwardedFor.split(",")[0].trim() : "127.0.0.1";
 
     // =========================================================================
-    // 1. NẾU QUÉT TRÚNG MÃ THIẾT BỊ PHÒNG LAB (Bắt đầu bằng "EQ-")
+    // 1. NẾU QUÉT TRÚNG MÃ EQ- (ĐÃ BỎ DATA MÁY TRẠM)
     // =========================================================================
     if (cleanBarcode.toUpperCase().startsWith("EQ-")) {
-      const equipment = await prisma.labEquipment.findUnique({
-        where: { equipmentBarcode: cleanBarcode },
-        include: {
-          labRoom: true,
-          incidents: {
-            where: { incidentStatus: { in: ["OPEN", "IN_PROGRESS"] } },
-            orderBy: { createdAt: "desc" },
-            take: 3,
-          },
-        },
-      });
-
-      if (!equipment) {
-        return NextResponse.json({
-          success: false,
-          type: "EQUIPMENT_NOT_FOUND",
-          message: `Không tìm thấy thiết bị nào mang mã vạch: "${cleanBarcode}"!`,
-        });
-      }
-
       return NextResponse.json({
-        success: true,
-        type: "EQUIPMENT",
-        message: `Đã nhận diện: ${equipment.equipmentName} (${equipment.labRoom.labName})`,
-        data: {
-          id: equipment.id,
-          equipmentBarcode: equipment.equipmentBarcode,
-          equipmentName: equipment.equipmentName,
-          category: equipment.category,
-          status: equipment.status,
-          labName: equipment.labRoom.labName,
-          building: equipment.labRoom.building,
-          specifications: equipment.specifications,
-          activeIncidents: equipment.incidents,
-        },
+        success: false,
+        message: "Trạm quét chỉ phục vụ điểm danh thẻ sinh viên!",
       });
     }
 

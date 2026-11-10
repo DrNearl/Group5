@@ -106,10 +106,8 @@ function MobileCheckInContent() {
     );
   };
 
-  // Tự động xin GPS khi vào trang
-  useEffect(() => {
-    requestLocation();
-  }, []);
+  // Không bắt buộc GPS (vị trí làm sau)
+  useEffect(() => {}, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,45 +203,6 @@ function MobileCheckInContent() {
       {/* THẺ FORM CHÍNH */}
       <div className="w-full max-w-md my-auto">
         <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm space-y-5">
-          {/* VỊ TRÍ PHÒNG LAB & ĐỊNH VỊ GPS */}
-          <div className="bg-slate-50 p-3.5 rounded-2xl border border-gray-200 flex items-center gap-3 text-xs">
-            <div className="p-2 rounded-xl bg-white text-emerald-600 border border-gray-200 shadow-2xs">
-              <Laptop className="h-5 w-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[10px] uppercase font-bold text-slate-400">Vị trí điểm danh:</div>
-              <div className="font-extrabold text-slate-900 text-sm">
-                Phòng 5.18 - Lầu 5, Tòa A
-              </div>
-              <div className="text-[11px] text-slate-500">Cơ sở chính (CS3) Trường ĐH Văn Lang</div>
-
-              {/* Dòng trạng thái GPS tinh tế */}
-              <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-600">
-                <MapPin className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />
-                {geoStatus === "LOCATING" && (
-                  <span className="flex items-center gap-1 text-slate-500">
-                    <RefreshCw className="h-3 w-3 animate-spin" />
-                    Đang xác định vị trí...
-                  </span>
-                )}
-                {geoStatus === "SUCCESS" && distanceMeters !== null && (
-                  <span className="text-slate-700 font-medium">
-                    Cách phòng Lab: ~{distanceMeters >= 1000 ? `${(distanceMeters / 1000).toFixed(1)} km` : `${distanceMeters} m`}
-                  </span>
-                )}
-                {(geoStatus === "DENIED" || geoStatus === "ERROR") && (
-                  <button
-                    type="button"
-                    onClick={requestLocation}
-                    className="text-red-600 underline font-semibold hover:text-red-700"
-                  >
-                    Bật định vị GPS
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
           {/* HIỂN THỊ KẾT QUẢ THÀNH CÔNG */}
           {result ? (
             <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
