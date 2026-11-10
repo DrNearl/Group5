@@ -20,6 +20,19 @@ export default function RootLayout({
 }) {
   return (
     <html lang="vi" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (window.location.pathname.startsWith('/proxy/3000')) {
+                  window.location.replace(window.location.href.replace('/proxy/3000', '/absproxy/3000'));
+                }
+              } catch(e) {}
+            `,
+          }}
+        />
+      </head>
       <body className={inter.className} suppressHydrationWarning>
         <BasePathProvider />
         <AuthProvider>
