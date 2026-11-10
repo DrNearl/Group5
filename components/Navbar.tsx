@@ -14,19 +14,13 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-40 border-b border-gray-200 bg-white px-4 py-2.5 font-sans sm:px-6">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-        {/* LOGO & TIÊU ĐỀ */}
-        <Link href="/" className="flex items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-red-700 text-xs font-bold text-white">
-            VLU
-          </div>
-          <div>
-            <div className="text-xs font-bold uppercase tracking-tight text-slate-900">
-              Lab Duty &amp; Barcode
-            </div>
-            <div className="text-[10px] text-gray-500 font-medium hidden sm:block">
-              Khoa CNTT • Trường ĐH Văn Lang
-            </div>
-          </div>
+        {/* LOGO TRƯỜNG ĐẠI HỌC VĂN LANG */}
+        <Link href="/" className="flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2">
+          <img
+            src="/vlu-logo.png"
+            alt="Logo Đại học Văn Lang"
+            className="h-8 sm:h-9 w-auto object-contain"
+          />
         </Link>
 
         {/* THÔNG TIN NGƯỜI DÙNG & VAI TRÒ HOẶC NÚT ĐĂNG NHẬP */}
