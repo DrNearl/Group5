@@ -255,6 +255,22 @@ function DashboardContent() {
     });
   }, [data, role, user, datePreset, statusFilter, searchTerm]);
 
+  // Lượt quét thẻ mới nhất
+  const latestLog = useMemo(() => {
+    if (!data?.allLogs || data.allLogs.length === 0) return null;
+    return data.allLogs[0];
+  }, [data]);
+
+  // Danh sách các lượt quét trong ngày hôm nay
+  const todayLogs = useMemo(() => {
+    if (!data?.allLogs) return [];
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return data.allLogs.filter((log: any) => {
+      const logDateStr = log.dutyDate ? String(log.dutyDate).slice(0, 10) : "";
+      return logDateStr === todayStr;
+    });
+  }, [data]);
+
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans p-4 sm:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -401,6 +417,175 @@ function DashboardContent() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* KHỐI CHUYỂN TỪ TRANG CHỦ: KẾT QUẢ QUÉT GẦN NHẤT & NHẬT KÝ HÔM NAY */}
+        <div className="print:hidden grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* CỘT TRÁI (5 CỘT): KẾT QUẢ LƯỢT QUÉT GẦN NHẤT */}
+          <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-3.5">
+                <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
+                  <UserCheck className="h-4 w-4 text-rose-500" />
+                  Kết Quả Quét Gần Nhất
+                </h3>
+                {latestLog && (
+                  <span
+                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase inline-flex items-center gap-1 ${
+                      latestLog.checkOutTime
+                        ? "bg-rose-50 text-rose-700 border border-rose-200"
+                        : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    }`}
+                  >
+                    {latestLog.checkOutTime ? "ĐÃ CHECK-OUT" : "ĐÃ CHECK-IN"}
+                  </span>
+                )}
+              </div>
+
+              {latestLog ? (
+                <div className="flex flex-col sm:flex-row gap-4 items-center">
+                  {/* Snapshot Image */}
+                  <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 overflow-hidden shrink-0 relative">
+                    {latestLog.snapshot ? (
+                      <img
+                        src={latestLog.snapshot}
+                        alt="Ảnh quét"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                        <Camera className="h-6 w-6 mb-1 text-gray-300" />
+                        <span className="text-[10px]">No Photo</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Thông tin SV */}
+                  <div className="flex-1 w-full space-y-2 text-xs">
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900">{latestLog.studentName}</h4>
+                      <div className="text-gray-500 font-mono mt-0.5">
+                        MSSV: <span className="text-rose-600 font-bold">{latestLog.studentCode}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                      <div className="bg-gray-50 p-2 rounded-lg border border-gray-100">
+                        <span className="text-gray-400 block text-[10px]">Giờ vào</span>
+                        <span className="text-emerald-700 font-mono font-bold text-xs">
+                          {latestLog.checkInTime ? new Date(latestLog.checkInTime).toLocaleTimeString("vi-VN") : "--:--"}
+                        </span>
+                      </div>
+                      <div className="bg-gray-50 p-2 rounded-lg border border-gray-100">
+                        <span className="text-gray-400 block text-[10px]">Giờ ra</span>
+                        <span className="text-rose-600 font-mono font-bold text-xs">
+                          {latestLog.checkOutTime ? new Date(latestLog.checkOutTime).toLocaleTimeString("vi-VN") : "--:--"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {latestLog.durationText && latestLog.durationText !== "--" && (
+                      <div className="text-[11px] font-mono bg-rose-50/60 p-2 rounded-lg border border-rose-100 flex items-center justify-between text-rose-800">
+                        <span className="text-gray-500">Thời gian có mặt:</span>
+                        <span className="font-bold">{latestLog.durationText}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="py-8 text-center text-xs text-gray-400">
+                  Chưa có lượt quét thẻ nào được ghi nhận.
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 mt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400">
+              <span>Phương thức: {latestLog?.scanMethod || "Mã vạch"}</span>
+              <span>Cập nhật tự động</span>
+            </div>
+          </div>
+
+          {/* CỘT PHẢI (7 CỘT): BẢNG NHẬT KÝ HÔM NAY */}
+          <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-200 p-5 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-3.5">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-emerald-600" />
+                    Nhật Ký Quét Thẻ Hôm Nay
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-mono">
+                    {todayLogs.length} lượt
+                  </span>
+                </div>
+                <button
+                  onClick={() => loadDashboard()}
+                  className="text-xs text-gray-400 hover:text-rose-500 p-1 rounded-lg hover:bg-gray-50 transition flex items-center gap-1"
+                  title="Làm mới"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-rose-500" : ""}`} />
+                  <span className="text-[11px]">Làm mới</span>
+                </button>
+              </div>
+
+              <div className="overflow-x-auto max-h-[220px] overflow-y-auto rounded-xl border border-gray-100">
+                <table className="w-full text-left text-xs text-gray-700">
+                  <thead className="bg-gray-50 text-gray-400 uppercase text-[10px] font-semibold tracking-wider sticky top-0 border-b border-gray-100 z-10">
+                    <tr>
+                      <th className="py-2.5 px-3">Sinh viên</th>
+                      <th className="py-2.5 px-3">Giờ vào</th>
+                      <th className="py-2.5 px-3">Giờ ra</th>
+                      <th className="py-2.5 px-3">Thời gian</th>
+                      <th className="py-2.5 px-3 text-right">Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 font-mono">
+                    {todayLogs.length > 0 ? (
+                      todayLogs.map((log: any) => (
+                        <tr key={log.id} className="hover:bg-rose-50/20 transition">
+                          <td className="py-2.5 px-3 font-sans">
+                            <div className="font-bold text-gray-900 text-xs">{log.studentName}</div>
+                            <div className="text-[11px] text-gray-400 font-mono">{log.studentCode}</div>
+                          </td>
+                          <td className="py-2.5 px-3 text-emerald-700 font-bold text-xs">
+                            {log.checkInTime ? new Date(log.checkInTime).toLocaleTimeString("vi-VN") : "--:--"}
+                          </td>
+                          <td className="py-2.5 px-3 text-rose-600 font-bold text-xs">
+                            {log.checkOutTime ? new Date(log.checkOutTime).toLocaleTimeString("vi-VN") : <span className="text-gray-400 font-normal">--:--</span>}
+                          </td>
+                          <td className="py-2.5 px-3 text-gray-800 font-medium text-xs">
+                            {log.durationText || "--"}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-sans">
+                            {log.checkOutTime ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">
+                                Đã về
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Có mặt
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-gray-400 font-sans text-xs">
+                          Chưa có lượt quét nào trong ngày hôm nay
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="pt-2.5 mt-2 border-t border-gray-100 text-right">
+              <span className="text-[11px] text-gray-400">Xem tất cả lịch sử tại bảng chi tiết bên dưới</span>
+            </div>
+          </div>
         </div>
 
         {/* KHỐI 2: 6 THẺ KPI THỐNG KÊ CHUYÊN SÂU */}
