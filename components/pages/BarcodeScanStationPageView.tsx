@@ -408,7 +408,7 @@ function ScanStationContent() {
             </Link>
           )}
           <img
-            src="/vlu-logo.png"
+            src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/vlu-logo.png`}
             alt="Đại học Văn Lang"
             className="h-9 sm:h-10 w-auto object-contain"
           />

@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import AppShell from "@/components/AppShell";
+import BasePathProvider from "@/components/BasePathProvider";
 
 const inter = Inter({ subsets: ["latin", "vietnamese"] });
 
@@ -20,6 +21,7 @@ export default function RootLayout({
   return (
     <html lang="vi" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
+        <BasePathProvider />
         <AuthProvider>
           <AppShell>{children}</AppShell>
         </AuthProvider>
