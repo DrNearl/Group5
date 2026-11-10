@@ -1,13 +1,13 @@
-// Prisma Schema for VLU Lab Duty & Barcode Attendance System
+// Prisma Schema for VLU Lab Duty & Barcode Attendance System (Phiên bản FITLAB Cloud)
 // Trường Đại học Văn Lang - Khoa Công nghệ Thông tin
-// Hệ quản trị cơ sở dữ liệu: Microsoft SQL Server (MSSQL)
+// Hệ quản trị cơ sở dữ liệu: SQLite (Tự động lưu trữ độc lập tại server FITLAB)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -80,7 +80,7 @@ model DutySchedule {
   studentId      String
   labId          String
   shiftId        String
-  dutyDate       DateTime @db.Date // Ngày trực
+  dutyDate       DateTime // Ngày trực
   scheduleStatus String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED, ABSENT
   note           String?
   createdAt      DateTime @default(now())
@@ -104,8 +104,8 @@ model AttendanceLog {
   checkInTime      DateTime?
   checkOutTime     DateTime?
   scanMethod       String    @default("USB_SCANNER") // USB_SCANNER, WEBCAM, DYNAMIC_QR
-  checkInSnapshot  String?   @db.NVarChar(Max) // Ảnh Base64 JPEG lúc check-in
-  checkOutSnapshot String?   @db.NVarChar(Max) // Ảnh Base64 JPEG lúc check-out
+  checkInSnapshot  String?   // Ảnh Base64 JPEG lúc check-in
+  checkOutSnapshot String?   // Ảnh Base64 JPEG lúc check-out
   clientIp         String?   // IP máy trạm thực hiện quét
   attendanceStatus String    @default("ON_TIME") // ON_TIME, LATE, EARLY_LEAVE, MISSING_CHECKOUT
   totalHours       Float     @default(0) // Số giờ trực thực tế: (checkOut - checkIn) / 3600
@@ -123,7 +123,7 @@ model LabEquipment {
   category         String   @default("PC") // PC, MONITOR, PROJECTOR, AIR_CONDITIONER, NETWORK, PERIPHERAL
   labId            String
   status           String   @default("GOOD") // GOOD, BROKEN, REPAIRING
-  specifications   String?  @db.NVarChar(Max) // Cấu hình chi tiết máy trạm thật VLU
+  specifications   String?  // Cấu hình chi tiết máy trạm thật VLU
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -139,7 +139,7 @@ model EquipmentIncident {
   reportedByStudentId String?
   scheduleId          String?
   title               String
-  description         String    @db.NVarChar(Max)
+  description         String
   severity            String    @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
   incidentStatus      String    @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED
   createdAt           DateTime  @default(now())
