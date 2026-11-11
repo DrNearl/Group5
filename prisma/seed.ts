@@ -84,7 +84,7 @@ async function main() {
     },
   });
 
-  // Sinh viên 3: Nguyễn Bảo Thiên
+  // Sinh viên 3: Nguyễn Bảo Thiên (K27)
   const svThien = await prisma.student.create({
     data: {
       studentCode: "2174802010708", // Chuỗi barcode thực tế in trên thẻ SV VLU
@@ -96,7 +96,55 @@ async function main() {
     },
   });
 
-  console.log(`✅ Đã nạp 3 Sinh viên trực Lab chính thức: Nguyễn Thiện Đức, Trần Thái Thuận, Nguyễn Bảo Thiên.`);
+  // Sinh viên 4: Lê Hoàng Long (K28)
+  const svLong = await prisma.student.create({
+    data: {
+      studentCode: "2274802010432",
+      fullName: "Lê Hoàng Long",
+      email: "long.2274802010432@vanlanguni.vn",
+      className: "K28-CNTT02",
+      phone: "0912345678",
+      isActive: true,
+    },
+  });
+
+  // Sinh viên 5: Phạm Minh Quân (K30)
+  const svQuan = await prisma.student.create({
+    data: {
+      studentCode: "2474802010012",
+      fullName: "Phạm Minh Quân",
+      email: "quan.2474802010012@vanlanguni.vn",
+      className: "K30-CNTT01",
+      phone: "0938112233",
+      isActive: true,
+    },
+  });
+
+  // Sinh viên 6: Đỗ Hoàng Nam (K31)
+  const svNam = await prisma.student.create({
+    data: {
+      studentCode: "2574802010055",
+      fullName: "Đỗ Hoàng Nam",
+      email: "nam.2574802010055@vanlanguni.vn",
+      className: "K31-CNTT03",
+      phone: "0977889900",
+      isActive: true,
+    },
+  });
+
+  // Sinh viên 7: Vũ Hải Đăng (K32)
+  const svDang = await prisma.student.create({
+    data: {
+      studentCode: "2674802010088",
+      fullName: "Vũ Hải Đăng",
+      email: "dang.2674802010088@vanlanguni.vn",
+      className: "K32-CNTT01",
+      phone: "0966554433",
+      isActive: true,
+    },
+  });
+
+  console.log(`✅ Đã nạp danh sách Sinh viên trực Lab từ Khóa K27 đến K32 đầy đủ.`);
 
   // 4. TẠO PHÒNG LAB
   const lab801 = await prisma.labRoom.create({
