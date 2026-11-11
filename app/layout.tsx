@@ -25,18 +25,23 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  if (window.location.pathname.startsWith('/proxy/3000')) {
+                  if (window.location.pathname.indexOf('/proxy/3000') === 0) {
                     window.location.replace(window.location.href.replace('/proxy/3000', '/absproxy/3000'));
                     return;
                   }
                   var origFetch = window.fetch;
                   window.fetch = function(input, init) {
-                    if (typeof input === 'string' && input.indexOf('/api/') === 0) {
-                      var match = window.location.pathname.match(/^(\\\\/(?:abs)?proxy\\\\/\\\\d+)/);
-                      if (match) {
-                        input = match[1] + input;
+                    try {
+                      if (typeof input === 'string' && input.indexOf('/api/') === 0) {
+                        var pn = window.location.pathname;
+                        if (pn.indexOf('/absproxy/') === 0 || pn.indexOf('/proxy/') === 0) {
+                          var parts = pn.split('/');
+                          if (parts[1] && parts[2]) {
+                            input = '/' + parts[1] + '/' + parts[2] + input;
+                          }
+                        }
                       }
-                    }
+                    } catch(err) {}
                     return origFetch.call(this, input, init);
                   };
                 } catch(e) {}

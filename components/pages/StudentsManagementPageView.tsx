@@ -20,6 +20,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { parseVluStudentInfo, extractCohort } from "@/lib/vlu-student-helper";
+import { getAssetPath } from "@/lib/asset-path";
 
 function StudentsManagementContent() {
   const { user } = useAuth();
@@ -60,7 +61,7 @@ function StudentsManagementContent() {
     if (!editingStudent) return;
     setIsSavingEdit(true);
     try {
-      const res = await fetch("/api/students", {
+      const res = await fetch(getAssetPath("/api/students"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -90,7 +91,7 @@ function StudentsManagementContent() {
 
   const loadStudents = async () => {
     try {
-      const res = await fetch("/api/students");
+      const res = await fetch(getAssetPath("/api/students"));
       const json = await res.json();
       if (json.success) {
         setStudents(json.students || []);
@@ -108,7 +109,7 @@ function StudentsManagementContent() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/students", {
+      const res = await fetch(getAssetPath("/api/students"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -142,7 +143,7 @@ function StudentsManagementContent() {
   const handleDeleteStudent = async (id: string, name: string) => {
     if (!confirm(`Bạn có chắc muốn xóa sinh viên "${name}" khỏi danh sách Xưởng thực tập?`)) return;
     try {
-      const res = await fetch("/api/students", {
+      const res = await fetch(getAssetPath("/api/students"), {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
