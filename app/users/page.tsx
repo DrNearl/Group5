@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import UsersManagementPageView from "@/components/pages/UsersManagementPageView";
 
 export default function UsersPage() {
-  redirect("/students");
+  return <UsersManagementPageView />;
 }

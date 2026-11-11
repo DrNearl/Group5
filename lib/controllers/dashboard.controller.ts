@@ -41,7 +41,7 @@ export async function handleDashboardGet(req: NextRequest) {
     const lateCount = attendanceLogs.filter((l) => l.attendanceStatus === "LATE").length;
     const totalHoursAll = attendanceLogs.reduce((acc, l) => acc + (l.totalHours || 0), 0);
 
-    // Thống kê theo từng sinh viên & đánh giá chuyên cần
+    // Thống kê theo từng sinh viên: chi tiết Ca Sáng, Ca Chiều & chuyên cần
     const studentStats = students.map((sv) => {
       const logs = sv.dutySchedules
         .map((s) => s.attendanceLog)
@@ -51,6 +51,21 @@ export async function handleDashboardGet(req: NextRequest) {
       const late = logs.filter((l) => l.attendanceStatus === "LATE").length;
       const roundedHours = Math.round(totalHours * 10) / 10;
 
+      // Phân loại ca Sáng (08:00 - 12:00) và ca Chiều (13:00 - 17:00)
+      let morningShifts = 0;
+      let afternoonShifts = 0;
+
+      logs.forEach((l) => {
+        if (!l.checkInTime) return;
+        const d = new Date(l.checkInTime);
+        const checkInHour = d.getHours() + d.getMinutes() / 60;
+        if (checkInHour < 12.5) {
+          morningShifts += 1;
+        } else {
+          afternoonShifts += 1;
+        }
+      });
+
       // Tìm lượt trực gần nhất
       const sortedLogs = [...logs].sort((a, b) => new Date(b.checkInTime || b.createdAt).getTime() - new Date(a.checkInTime || a.createdAt).getTime());
       const lastLog = sortedLogs[0];
@@ -58,34 +73,43 @@ export async function handleDashboardGet(req: NextRequest) {
         ? new Date(lastLog.checkInTime).toLocaleDateString("vi-VN")
         : null;
 
-      let diligence = "Ít tham gia";
-      let diligenceTag = "LOW";
-      if (roundedHours >= 15) {
-        diligence = "Chăm chỉ";
-        diligenceTag = "HIGH";
-      } else if (roundedHours >= 5) {
-        diligence = "Đạt yêu cầu";
-        diligenceTag = "MEDIUM";
-      }
+      const completedCount = logs.filter((l) => l.checkOutTime !== null).length;
 
       return {
         id: sv.id,
         fullName: sv.fullName,
         studentCode: sv.studentCode,
+        className: sv.className || "K29CNTT16",
+        morningShifts,
+        afternoonShifts,
         totalShifts: sv.dutySchedules.length,
-        completedShifts: logs.filter((l) => l.checkOutTime !== null).length,
+        completedShifts: completedCount,
         totalHours: roundedHours,
         onTime,
         late,
         lastDutyDate,
-        diligence,
-        diligenceTag,
       };
     });
 
-    // Phân bổ số giờ theo ngày làm việc trong tuần của VLU (Thứ Hai -> Thứ Bảy; Chủ Nhật nghỉ)
+    // Phân bổ số người trực & số lượt theo ngày làm việc trong tuần (Thứ Hai -> Thứ Bảy; Chủ Nhật nghỉ)
     const weekdayNames = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
-    const weekdayMap: { [key: string]: number } = {
+    const weekdayAttendees: { [key: string]: Set<string> } = {
+      "Thứ Hai": new Set(),
+      "Thứ Ba": new Set(),
+      "Thứ Tư": new Set(),
+      "Thứ Năm": new Set(),
+      "Thứ Sáu": new Set(),
+      "Thứ Bảy": new Set(),
+    };
+    const weekdayShifts: { [key: string]: number } = {
+      "Thứ Hai": 0,
+      "Thứ Ba": 0,
+      "Thứ Tư": 0,
+      "Thứ Năm": 0,
+      "Thứ Sáu": 0,
+      "Thứ Bảy": 0,
+    };
+    const weekdayHours: { [key: string]: number } = {
       "Thứ Hai": 0,
       "Thứ Ba": 0,
       "Thứ Tư": 0,
@@ -94,7 +118,7 @@ export async function handleDashboardGet(req: NextRequest) {
       "Thứ Bảy": 0,
     };
 
-    // Phân bổ giờ theo ca làm việc chuẩn VLU (Ca Sáng: 08:00 - 11:30, Ca Chiều: 13:00 - 17:00)
+    // Phân bổ giờ theo ca làm việc chuẩn Xưởng thực tập (Ca Sáng: 08:00 - 12:00, Ca Chiều: 13:00 - 17:00)
     let morningHours = 0;
     let afternoonHours = 0;
 
@@ -104,9 +128,12 @@ export async function handleDashboardGet(req: NextRequest) {
       const dayIndex = d.getDay();
       const dayName = weekdayNames[dayIndex];
       const hrs = l.totalHours > 0 ? l.totalHours : 0;
+      const studentId = l.dutySchedule?.student?.id || l.dutySchedule?.student?.studentCode || "";
 
-      if (weekdayMap[dayName] !== undefined) {
-        weekdayMap[dayName] += hrs;
+      if (weekdayAttendees[dayName] !== undefined) {
+        if (studentId) weekdayAttendees[dayName].add(studentId);
+        weekdayShifts[dayName] += 1;
+        weekdayHours[dayName] += hrs;
       }
 
       const checkInHour = d.getHours() + d.getMinutes() / 60;
@@ -117,13 +144,15 @@ export async function handleDashboardGet(req: NextRequest) {
       }
     });
 
-    const weekdayData = Object.entries(weekdayMap).map(([day, hours]) => ({
+    const weekdayData = Object.entries(weekdayAttendees).map(([day, studentSet]) => ({
       day,
-      hours: Math.round(hours * 10) / 10,
+      peopleCount: studentSet.size,
+      shiftCount: weekdayShifts[day] || 0,
+      hours: Math.round((weekdayHours[day] || 0) * 10) / 10,
     }));
 
     const shiftDistribution = [
-      { shift: "Ca Sáng (08:00 - 11:30)", hours: Math.round(morningHours * 10) / 10 },
+      { shift: "Ca Sáng (08:00 - 12:00)", hours: Math.round(morningHours * 10) / 10 },
       { shift: "Ca Chiều (13:00 - 17:00)", hours: Math.round(afternoonHours * 10) / 10 },
     ];
 

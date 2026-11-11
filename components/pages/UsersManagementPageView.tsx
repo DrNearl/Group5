@@ -2,13 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import BarcodeLabel from "@/components/BarcodeLabel";
 import {
   Users,
   UserPlus,
   ArrowLeft,
   Search,
-  Printer,
   Shield,
   GraduationCap,
   Phone,
@@ -16,7 +14,6 @@ import {
   CheckCircle2,
   X,
   Trash2,
-  Barcode as BarcodeIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -26,7 +23,6 @@ function UsersManagementContent() {
   const [users, setUsers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedBarcodeUser, setSelectedBarcodeUser] = useState<any>(null);
 
   // Form states
   const [studentCode, setStudentCode] = useState("");
@@ -98,9 +94,10 @@ function UsersManagementContent() {
 
   const filteredUsers = users.filter(
     (u) =>
-      u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase())
+      u.username !== "admin" &&
+      (u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -119,10 +116,10 @@ function UsersManagementContent() {
             <div>
               <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <Shield className="h-6 w-6 text-red-600" />
-                QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN HỆ THỐNG
+                QUẢN LÝ TÀI KHOẢN
               </h1>
               <p className="text-xs text-gray-500">
-                Khoa Công nghệ Thông tin - Trường Đại học Văn Lang • Admin có toàn quyền tạo tài khoản và phân quyền vai trò
+                Khoa Công nghệ Thông tin - Trường Đại học Văn Lang • Quản lý danh sách tài khoản Giảng viên & Cán bộ hướng dẫn
               </p>
             </div>
           </div>
@@ -132,7 +129,7 @@ function UsersManagementContent() {
             className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition"
           >
             <UserPlus className="h-4 w-4" />
-            Thêm Tài Khoản / Phân Quyền Mới
+            Thêm Tài Khoản
           </button>
         </header>
 
@@ -151,51 +148,55 @@ function UsersManagementContent() {
         </div>
 
         {/* USERS GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredUsers.map((u) => (
-            <div
-              key={u.id}
-              className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3.5 shadow-sm hover:shadow-md hover:border-gray-300 transition flex flex-col justify-between"
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border ${
-                      u.role === "ADMIN"
-                        ? "bg-amber-50 text-amber-800 border-amber-200"
-                        : "bg-indigo-50 text-indigo-800 border-indigo-200"
-                    }`}
-                  >
-                    <Shield className="h-3 w-3" />
-                    {u.role === "ADMIN" ? "Quản trị viên (Toàn quyền)" : "Giảng viên / Quản lý"}
-                  </span>
+        {filteredUsers.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center shadow-sm space-y-3">
+            <Shield className="h-10 w-10 text-gray-300 mx-auto" />
+            <h3 className="text-sm font-bold text-gray-700">Chưa có tài khoản Giảng viên nào trong danh sách</h3>
+            <p className="text-xs text-gray-400 max-w-sm mx-auto">
+              Bấm nút &ldquo;Thêm Tài Khoản&rdquo;
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredUsers.map((u) => (
+              <div
+                key={u.id}
+                className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3.5 shadow-sm hover:shadow-md hover:border-gray-300 transition flex flex-col justify-between"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border bg-indigo-50 text-indigo-800 border-indigo-200"
+                    >
+                      <Shield className="h-3 w-3" />
+                      Giảng viên / Quản lý ca trực
+                    </span>
 
-                  <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold">
-                    Hoạt động
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="text-base font-bold text-gray-900">{u.fullName}</h3>
-                  <div className="text-xs text-gray-500 font-mono mt-0.5">Tài khoản: {u.username}</div>
-                </div>
-
-                <div className="space-y-1.5 text-xs text-gray-500 pt-2 border-t border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-3.5 w-3.5 text-gray-400" />
-                    <span className="truncate">{u.email}</span>
+                    <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold">
+                      Hoạt động
+                    </span>
                   </div>
-                  {u.phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-3.5 w-3.5 text-gray-400" />
-                      <span>{u.phone}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
 
-              {/* ACTION FOOTER */}
-              {u.username !== "admin" && (
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">{u.fullName}</h3>
+                    <div className="text-xs text-gray-500 font-mono mt-0.5">Tài khoản: {u.username}</div>
+                  </div>
+
+                  <div className="space-y-1.5 text-xs text-gray-500 pt-2 border-t border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-3.5 w-3.5 text-gray-400" />
+                      <span className="truncate">{u.email}</span>
+                    </div>
+                    {u.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3.5 w-3.5 text-gray-400" />
+                        <span>{u.phone}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ACTION FOOTER */}
                 <div className="pt-3 border-t border-gray-100 flex justify-end">
                   <button
                     onClick={() => handleDeleteUser(u.id, u.fullName)}
@@ -206,10 +207,10 @@ function UsersManagementContent() {
                     Xóa tài khoản
                   </button>
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* MODAL THÊM NGƯỜI DÙNG THẬT */}
@@ -217,7 +218,7 @@ function UsersManagementContent() {
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white border border-gray-200 rounded-2xl max-w-md w-full p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
-              <h3 className="text-base font-bold text-gray-900">THÊM TÀI KHOẢN & PHÂN QUYỀN MỚI</h3>
+              <h3 className="text-base font-bold text-gray-900">THÊM TÀI KHOẢN </h3>
               <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-700">
                 <X className="h-5 w-5" />
               </button>
@@ -225,11 +226,11 @@ function UsersManagementContent() {
 
             <form onSubmit={handleAddUser} className="space-y-3.5 text-xs">
               <div>
-                <label className="text-gray-700 font-medium block mb-1">Tên đăng nhập / Mã GV / Mã Cán bộ *:</label>
+                <label className="text-gray-700 font-medium block mb-1">Tên đăng nhập / Mã GV / Mã Cán bộ :</label>
                 <input
                   type="text"
                   required
-                  placeholder="VD: chau.lth hoặc minhanh.gv"
+                  placeholder="VD: gv.khoacntt hoặc canbo01"
                   value={studentCode}
                   onChange={(e) => setStudentCode(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 font-mono focus:outline-none focus:border-red-500 focus:bg-white"
@@ -237,11 +238,11 @@ function UsersManagementContent() {
               </div>
 
               <div>
-                <label className="text-gray-700 font-medium block mb-1">Họ và tên đầy đủ *:</label>
+                <label className="text-gray-700 font-medium block mb-1">Họ và tên đầy đủ :</label>
                 <input
                   type="text"
                   required
-                  placeholder="VD: ThS. Lý Thị Huyền Châu"
+                  placeholder="VD: ThS. Nguyễn Văn A"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-red-500 focus:bg-white"
@@ -249,11 +250,11 @@ function UsersManagementContent() {
               </div>
 
               <div>
-                <label className="text-gray-700 font-medium block mb-1">Email trường Văn Lang *:</label>
+                <label className="text-gray-700 font-medium block mb-1">Email trường Văn Lang :</label>
                 <input
                   type="email"
                   required
-                  placeholder="VD: chau.lth@vlu.edu.vn"
+                  placeholder="VD: nguyenvana@vanlanguni.vn"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-red-500 focus:bg-white"
@@ -265,7 +266,7 @@ function UsersManagementContent() {
                   <label className="text-gray-700 font-medium block mb-1">Số điện thoại:</label>
                   <input
                     type="text"
-                    placeholder="VD: 0908123456"
+                    placeholder="VD: 0981234567"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-red-500 focus:bg-white"
@@ -279,7 +280,6 @@ function UsersManagementContent() {
                     onChange={(e) => setRole(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-red-500 focus:bg-white font-semibold"
                   >
-                    <option value="ADMIN">Quản trị viên (Admin - Toàn quyền)</option>
                     <option value="LECTURER">Giảng viên / Quản lý ca trực</option>
                   </select>
                 </div>
@@ -313,41 +313,6 @@ function UsersManagementContent() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL IN TEM BARCODE THẺ SV */}
-      {selectedBarcodeUser && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-gray-200 rounded-2xl max-w-sm w-full p-6 shadow-2xl flex flex-col items-center">
-            <h3 className="text-sm font-bold text-gray-900 mb-1">TEM BARCODE THẺ SINH VIÊN VLU</h3>
-            <p className="text-xs text-gray-500 mb-4">Chuẩn mã vạch Code 128 dùng quét điểm danh</p>
-
-            <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm my-2">
-              <BarcodeLabel
-                value={selectedBarcodeUser.studentCode}
-                title={selectedBarcodeUser.fullName}
-                subtitle="TRƯỜNG ĐẠI HỌC VĂN LANG"
-                footerText="THẺ SINH VIÊN TRỰC PHÒNG LAB"
-              />
-            </div>
-
-            <div className="flex gap-3 mt-5 w-full">
-              <button
-                onClick={() => setSelectedBarcodeUser(null)}
-                className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold"
-              >
-                Đóng
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm"
-              >
-                <Printer className="h-4 w-4" />
-                In tem thẻ
-              </button>
-            </div>
           </div>
         </div>
       )}

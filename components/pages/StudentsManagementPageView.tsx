@@ -2,20 +2,18 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import BarcodeLabel from "@/components/BarcodeLabel";
 import {
   Users,
   UserPlus,
   ArrowLeft,
   Search,
-  Printer,
   GraduationCap,
   Phone,
   Mail,
   CheckCircle2,
   X,
-  Barcode as BarcodeIcon,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -25,16 +23,66 @@ function StudentsManagementContent() {
   const [students, setStudents] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedBarcodeStudent, setSelectedBarcodeStudent] = useState<any>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   // Form states
   const [studentCode, setStudentCode] = useState("");
   const [fullName, setFullName] = useState("");
-  const [className, setClassName] = useState("23DTH01");
+  const [className, setClassName] = useState("K29CNTT16");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Edit states
+  const [editingStudent, setEditingStudent] = useState<any | null>(null);
+  const [editFullName, setEditFullName] = useState("");
+  const [editStudentCode, setEditStudentCode] = useState("");
+  const [editClassName, setEditClassName] = useState("K29CNTT16");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const openEditModal = (sv: any) => {
+    setEditingStudent(sv);
+    setEditFullName(sv.fullName);
+    setEditStudentCode(sv.studentCode);
+    setEditClassName(sv.className || "K29CNTT16");
+    setEditEmail(sv.email || "");
+    setEditPhone(sv.phone || "");
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStudent) return;
+    setIsSavingEdit(true);
+    try {
+      const res = await fetch("/api/students", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingStudent.id,
+          studentCode: editStudentCode,
+          fullName: editFullName,
+          className: editClassName,
+          email: editEmail,
+          phone: editPhone,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setActionMessage(`Đã cập nhật thông tin sinh viên ${editFullName}!`);
+        setTimeout(() => setActionMessage(null), 4000);
+        setEditingStudent(null);
+        loadStudents();
+      } else {
+        alert(data.message || "Không thể cập nhật sinh viên");
+      }
+    } catch (e: any) {
+      alert("Lỗi kết nối: " + e.message);
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
 
   const loadStudents = async () => {
     try {
@@ -88,7 +136,7 @@ function StudentsManagementContent() {
   };
 
   const handleDeleteStudent = async (id: string, name: string) => {
-    if (!confirm(`Bạn có chắc muốn xóa sinh viên "${name}" khỏi danh sách trực Lab?`)) return;
+    if (!confirm(`Bạn có chắc muốn xóa sinh viên "${name}" khỏi danh sách Xưởng thực tập?`)) return;
     try {
       const res = await fetch("/api/students", {
         method: "DELETE",
@@ -129,7 +177,7 @@ function StudentsManagementContent() {
             <div>
               <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <Users className="h-6 w-6 text-rose-500" />
-                DANH SÁCH SINH VIÊN TRỰC LAB
+                DANH SÁCH SINH VIÊN XƯỞNG THỰC TẬP
               </h1>
               <p className="text-xs text-gray-500">
                 Khoa Công nghệ Thông tin • Quản lý hồ sơ mã vạch &amp; Tổng hợp ca trực
@@ -228,11 +276,11 @@ function StudentsManagementContent() {
                       </td>
                       <td className="py-3.5 px-4 text-right space-x-1.5">
                         <button
-                          onClick={() => setSelectedBarcodeStudent(sv)}
+                          onClick={() => openEditModal(sv)}
                           className="p-1.5 bg-gray-50 hover:bg-rose-50 text-gray-600 hover:text-rose-600 rounded-lg border border-gray-200 transition"
-                          title="Xem & in mã vạch Barcode"
+                          title="Chỉnh sửa thông tin sinh viên"
                         >
-                          <BarcodeIcon className="h-4 w-4" />
+                          <Pencil className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteStudent(sv.id, sv.fullName)}
@@ -268,7 +316,7 @@ function StudentsManagementContent() {
               </button>
               <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <UserPlus className="h-5 w-5 text-rose-500" />
-                Thêm Sinh Viên Trực Lab
+                Thêm Sinh Viên Xưởng Thực Tập
               </h3>
 
               <form onSubmit={handleAddStudent} className="space-y-3.5 text-xs">
@@ -304,7 +352,7 @@ function StudentsManagementContent() {
                     <label className="block text-gray-700 font-semibold mb-1">Lớp chuyên ngành</label>
                     <input
                       type="text"
-                      placeholder="vd: 23DTH01"
+                      placeholder="vd: K29CNTT16"
                       value={className}
                       onChange={(e) => setClassName(e.target.value)}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
@@ -354,45 +402,100 @@ function StudentsManagementContent() {
           </div>
         )}
 
-        {/* MODAL IN TEM MÃ VẠCH THẺ SV */}
-        {selectedBarcodeStudent && (
+        {/* MODAL CHỈNH SỬA SINH VIÊN */}
+        {editingStudent && (
           <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-gray-200 relative text-center">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 relative animate-in fade-in zoom-in-95">
               <button
-                onClick={() => setSelectedBarcodeStudent(null)}
+                onClick={() => setEditingStudent(null)}
                 className="absolute top-4 right-4 text-gray-400 hover:text-gray-700"
               >
                 <X className="h-5 w-5" />
               </button>
-              <h3 className="text-sm font-bold text-gray-900 mb-1">MÃ VẠCH THẺ SINH VIÊN</h3>
-              <p className="text-xs text-gray-500 mb-4">{selectedBarcodeStudent.fullName} - {selectedBarcodeStudent.studentCode}</p>
+              <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Pencil className="h-5 w-5 text-rose-500" />
+                Chỉnh Sửa Hồ Sơ Sinh Viên
+              </h3>
 
-              <div className="border border-gray-200 rounded-xl p-4 bg-white shadow-xs inline-block mb-4">
-                <BarcodeLabel
-                  value={selectedBarcodeStudent.studentCode}
-                  title="THẺ SINH VIÊN VLU"
-                  subtitle={selectedBarcodeStudent.fullName}
-                  width={2}
-                  height={50}
-                  fontSize={14}
-                />
-              </div>
+              <form onSubmit={handleSaveEdit} className="space-y-3.5 text-xs">
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-1">Mã số sinh viên (MSSV) *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="vd: 2373401010100"
+                    value={editStudentCode}
+                    onChange={(e) => setEditStudentCode(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 font-mono focus:outline-none focus:border-rose-400"
+                  />
+                  <span className="text-[10px] text-gray-400 mt-0.5 block">
+                    (Mã vạch thẻ sinh viên dùng quét điểm danh)
+                  </span>
+                </div>
 
-              <div className="flex justify-center gap-2">
-                <button
-                  onClick={() => window.print()}
-                  className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-                >
-                  <Printer className="h-4 w-4" />
-                  In nhãn
-                </button>
-                <button
-                  onClick={() => setSelectedBarcodeStudent(null)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-medium"
-                >
-                  Đóng
-                </button>
-              </div>
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-1">Họ và tên sinh viên *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="vd: Nguyễn Thiện Đức"
+                    value={editFullName}
+                    onChange={(e) => setEditFullName(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-gray-700 font-semibold mb-1">Lớp chuyên ngành</label>
+                    <input
+                      type="text"
+                      placeholder="vd: K29CNTT16"
+                      value={editClassName}
+                      onChange={(e) => setEditClassName(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 font-semibold mb-1">Số điện thoại</label>
+                    <input
+                      type="tel"
+                      placeholder="vd: 0912345678"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-1">Email Văn Lang</label>
+                  <input
+                    type="email"
+                    placeholder="vd: duc.2373401010100@vanlanguni.vn"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2.5 pt-3 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setEditingStudent(null)}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingEdit}
+                    className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-semibold shadow-xs disabled:opacity-50"
+                  >
+                    {isSavingEdit ? "Đang lưu..." : "Lưu thay đổi"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

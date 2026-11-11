@@ -25,6 +25,9 @@ import {
   VolumeX,
   ArrowLeft,
   LayoutDashboard,
+  Cpu,
+  Crosshair,
+  ScanLine,
 } from "lucide-react";
 
 interface ScanResult {
@@ -310,11 +313,16 @@ function ScanStationContent() {
     minBarcodeLength: 4,
   });
 
-  // 6. KHỞI CHẠY BỘ QUÉT CAMERA BẰNG HTML5-QRCODE (10 FPS CHUẨN, MƯỢT MÀ KHÔNG GIẬT LAG)
+  // 6. KHỞI CHẠY BỘ QUÉT CAMERA BẰNG HTML5-QRCODE KẾT HỢP AI YOLO VISION
   useEffect(() => {
     let isCancelled = false;
+    let animFrameId: number | null = null;
 
     const releaseCamera = (scanner = html5QrCodeRef.current) => {
+      if (animFrameId) {
+        cancelAnimationFrame(animFrameId);
+        animFrameId = null;
+      }
       stopScannerInstance(scanner);
       stopVideoStreams(
         document.getElementById("interactive-webcam-reader"),
@@ -341,35 +349,75 @@ function ScanStationContent() {
           formatsToSupport: [
             Html5QrcodeSupportedFormats.CODE_128,
             Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.EAN_13,
             Html5QrcodeSupportedFormats.QR_CODE,
           ],
           verbose: false,
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true,
+          },
         });
 
         html5QrCodeRef.current = html5QrCode;
 
+        // Quét toàn màn hình Full-frame (không giới hạn qrbox nhỏ hẹp để quét ở mọi góc)
         await html5QrCode.start(
           { facingMode: "environment" },
           {
-            fps: 10, // 10 FPS: Tần suất chuẩn giúp nhận diện cực nhạy (dưới 100ms) mà hoàn toàn không giật lag
-            qrbox: (viewfinderWidth, viewfinderHeight) => {
-              const w = viewfinderWidth > 0 ? viewfinderWidth : 480;
-              const h = viewfinderHeight > 0 ? viewfinderHeight : 320;
-              const width = Math.max(260, Math.min(Math.floor(w * 0.92), 520));
-              const height = Math.max(160, Math.min(Math.floor(h * 0.65), 230));
-              return { width, height };
+            fps: 30,
+            aspectRatio: 1.333333,
+            videoConstraints: {
+              width: { ideal: 1280, min: 640 },
+              height: { ideal: 720, min: 480 },
+              facingMode: "environment",
+              advanced: [{ focusMode: "continuous" }] as any,
             },
           },
           (decodedText) => {
             handleBarcodeProcess(decodedText, "WEBCAM");
           },
-          () => {} // Bỏ qua frame trống để tiết kiệm tài nguyên
+          () => {} // Bỏ qua frame trống
         );
 
         const video = container.querySelector("video");
         if (video?.srcObject instanceof MediaStream) {
           mediaStreamRef.current = video.srcObject;
         }
+
+        // TỐI ƯU HÓA NHẬN DIỆN MÃ VẠCH QUA NATIVE GPU BARCODE DETECTOR
+        let detectorInstance: any = null;
+        if (typeof window !== "undefined" && "BarcodeDetector" in window) {
+          try {
+            detectorInstance = new (window as any).BarcodeDetector({
+              formats: ["code_128", "code_39", "qr_code", "ean_13"],
+            });
+          } catch (e) {
+            console.log("BarcodeDetector fallback:", e);
+          }
+        }
+
+        const aiTrackingLoop = async () => {
+          if (isCancelled) return;
+          const videoEl = container.querySelector("video") as HTMLVideoElement | null;
+
+          if (videoEl && videoEl.videoWidth > 0 && !videoEl.paused && detectorInstance) {
+            try {
+              const detected = await detectorInstance.detect(videoEl);
+              if (detected && detected.length > 0) {
+                const bc = detected[0];
+                if (bc.rawValue) {
+                  handleBarcodeProcess(bc.rawValue, "WEBCAM");
+                }
+              }
+            } catch {}
+          }
+
+          if (!isCancelled) {
+            animFrameId = requestAnimationFrame(aiTrackingLoop);
+          }
+        };
+
+        animFrameId = requestAnimationFrame(aiTrackingLoop);
 
         if (isCancelled) {
           releaseCamera(html5QrCode);
@@ -392,12 +440,28 @@ function ScanStationContent() {
   }, []);
 
   return (
-    <div suppressHydrationWarning className="min-h-screen bg-[#F8F9FA] text-slate-900 font-sans flex flex-col">
+    <div suppressHydrationWarning className="min-h-screen bg-[#F8F9FA] text-slate-900 font-sans flex flex-col relative overflow-hidden">
       <canvas ref={canvasRef} className="hidden" />
 
+      {/* HỌA TIẾT TRỐNG ĐỒNG ĐỒNG TÂM LỚN PHÍA SAU KHUNG CAMERA */}
+      <img
+        src="/images/trong-dong.svg"
+        alt=""
+        aria-hidden="true"
+        className="fixed pointer-events-none select-none z-0 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1250px] h-[1250px] max-w-none opacity-[0.11] mix-blend-multiply"
+        style={{
+          maskImage: "radial-gradient(circle, black 55%, transparent 85%)",
+          WebkitMaskImage: "radial-gradient(circle, black 55%, transparent 85%)",
+        }}
+      />
+
       {/* TOP HEADER (MINIMALIST - CORAL RED PASTEL) */}
-      <header className="border-b border-gray-100 bg-white px-6 py-3.5 flex items-center justify-between gap-4 sticky top-0 z-30">
-        <div className="flex items-center gap-3">
+      <header className="border-b border-rose-200/60 bg-gradient-to-r from-white via-amber-50/20 to-white backdrop-blur-md px-6 py-3 flex items-center justify-between sticky top-0 z-30 relative overflow-hidden">
+        {/* HIỆU ỨNG ÁNH SÁNG MỜ DƯỚI NỀN HEADER */}
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-rose-100/30 to-transparent" />
+
+        {/* GÓC TRÁI: LOGO KHIÊN ĐỎ VLU */}
+        <div className="flex items-center gap-3 relative z-10">
           {pathname !== "/" && (
             <Link
               href="/"
@@ -414,8 +478,48 @@ function ScanStationContent() {
           />
         </div>
 
+        {/* CHÍNH GIỮA: CON CHIM LẠC VÀNG ĐỒNG TÂM TUYỆT ĐỐI (KHÔNG BỊ CHÈN ĐÈ LÊN ĐỒNG HỒ & LOGO) */}
+        <div className="hidden lg:flex items-center justify-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] sm:w-[380px] h-10 pointer-events-none select-none z-10">
+          <div
+            className="w-full h-full relative flex items-center justify-center overflow-hidden"
+            style={{
+              maskImage: "linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)",
+              WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 18%, black 82%, transparent 100%)",
+            }}
+          >
+            {/* LỚP NỀN SỌC CHÉO PASTEL NHẬN DIỆN VLU */}
+            <div
+              className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(45deg, rgba(185,28,28,0.22) 0px, rgba(185,28,28,0.22) 10px, rgba(30,58,138,0.18) 10px, rgba(30,58,138,0.18) 20px, rgba(217,119,6,0.20) 20px, rgba(217,119,6,0.20) 30px)",
+              }}
+            />
+
+            {/* ĐƯỜNG KẺ MẢNH CHUYỂN SẮC CÂN ĐỐI 2 BÊN */}
+            <div className="w-full flex items-center justify-center relative z-10 px-2">
+              {/* ĐƯỜNG CHỈ MẢNH TRÁI */}
+              <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-amber-400/60 to-amber-500" />
+
+              {/* CON CHIM LẠC VÀNG NẰM CHÍNH TÂM TUYỆT ĐỐI */}
+              <div className="relative mx-3.5 flex items-center justify-center flex-shrink-0">
+                <div className="absolute w-12 h-12 bg-amber-300/25 rounded-full blur-md" />
+                <img
+                  src="/images/chim-lac.png"
+                  alt=""
+                  aria-hidden="true"
+                  className="h-9 sm:h-10 w-auto object-contain opacity-95 contrast-110 drop-shadow-md relative z-10"
+                />
+              </div>
+
+              {/* ĐƯỜNG CHỈ MẢNH PHẢI */}
+              <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent via-amber-400/60 to-amber-500" />
+            </div>
+          </div>
+        </div>
+
         {/* BÊN PHẢI: ĐỒNG HỒ + NÚT QUẢN LÝ (TỐI GIẢN) */}
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-center gap-3 sm:gap-4 relative z-10">
           <div className="text-right">
             <div className="text-xl font-mono font-bold tracking-wide text-gray-800 flex items-center gap-1.5 justify-end">
               <Clock className="h-4 w-4 text-gray-400" />
@@ -499,7 +603,7 @@ function ScanStationContent() {
       {/* MAIN BODY: CHỈ CÓ KHUNG QUÉT BARCODE TẬP TRUNG */}
       <main className="flex-1 p-4 sm:p-8 flex items-center justify-center max-w-4xl mx-auto w-full">
         <section className="w-full flex flex-col items-center">
-          <div className="w-full bg-white rounded-3xl border border-gray-100 p-4 sm:p-7 shadow-sm space-y-4">
+          <div className="relative z-10 w-full bg-white/90 backdrop-blur-sm rounded-3xl border border-gray-100/80 p-4 sm:p-7 shadow-xl space-y-4">
             {/* CAMERA FEED & SCAN BOX */}
             <div
               className={`relative rounded-2xl overflow-hidden border bg-black shadow-inner aspect-[4/3] sm:aspect-[16/10] flex flex-col items-center justify-center transition-all duration-300 ${
@@ -508,10 +612,16 @@ function ScanStationContent() {
                   : "border-gray-200"
               }`}
             >
-              {/* CONTAINER DÀNH CHO HTML5-QRCODE ENGINE (ZXING) */}
-              <div id="interactive-webcam-reader" className="w-full h-full overflow-hidden" />
+              {/* CONTAINER DÀNH CHO HTML5-QRCODE ENGINE & BỘ LỌC KHỬ LÓA BẢO VỆ MÃ VẠCH */}
+              <div
+                id="interactive-webcam-reader"
+                className="w-full h-full overflow-hidden [&_video]:w-full [&_video]:h-full [&_video]:object-cover [&_svg]:hidden"
+                style={{
+                  filter: "contrast(1.22) brightness(0.95)",
+                }}
+              />
 
-              {/* GÓC NGẮM ĐỎ PASTEL & TIA LASER */}
+              {/* GÓC NGẮM ĐỎ PASTEL & TIA LASER QUÉT MƯỢT MÀ */}
               <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-6 sm:p-8">
                 <div className="flex justify-between">
                   <div
@@ -548,25 +658,11 @@ function ScanStationContent() {
                 </div>
               </div>
 
-              {/* NHÃN TRẠNG THÁI GÓC TRÊN */}
-              <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 flex items-center gap-2 text-xs font-semibold shadow-md z-10">
+              {/* DUY NHẤT CHỮ: ● SẴN SÀNG */}
+              <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 flex items-center gap-2 text-xs font-semibold shadow-md z-20">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-emerald-400">Trạm quét sẵn sàng</span>
+                <span className="text-emerald-400">Sẵn sàng</span>
               </div>
-
-              {/* HƯỚNG DẪN DƯỚI KHUNG CAMERA */}
-              <div className="absolute bottom-4 inset-x-4 sm:inset-x-8 bg-black/65 backdrop-blur-md py-2.5 px-4 rounded-2xl border border-white/10 text-center z-10 shadow-md">
-                <div className="text-xs sm:text-sm text-white font-medium flex items-center justify-center gap-2">
-                  <span>Đưa mã vạch trên thẻ sinh viên vào khung camera (hoặc dùng đầu đọc Barcode USB)</span>
-                </div>
-              </div>
-            </div>
-
-            {/* CHÚ THÍCH DƯỚI GỌN GÀNG */}
-            <div className="text-center pt-2">
-              <p className="text-xs text-gray-500">
-                Hệ thống tự động ghi nhận Check-in và Check-out ca trực phòng Lab theo thời gian thực.
-              </p>
             </div>
           </div>
         </section>

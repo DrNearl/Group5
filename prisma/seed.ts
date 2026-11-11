@@ -30,7 +30,8 @@ async function main() {
 
   console.log("🧹 Đã làm sạch cơ sở dữ liệu SQL Server.");
 
-  // 2. TÀI KHOẢN ĐĂNG NHẬP: CHỈ CÓ ADMIN DUY NHẤT (TOÀN QUYỀN HỆ THỐNG)
+  // 2. TÀI KHOẢN ĐĂNG NHẬP
+  // 2.1 Tài khoản Quản trị viên hệ thống (Admin)
   await prisma.user.create({
     data: {
       username: "admin",
@@ -43,46 +44,59 @@ async function main() {
     },
   });
 
-  console.log(`✅ Đã tạo tài khoản quản trị duy nhất: admin / admin (Toàn quyền hệ thống).`);
+  // 2.2 Tài khoản Giảng viên / Cán bộ quản lý ca trực thực tế
+  await prisma.user.create({
+    data: {
+      username: "gv.khoacntt",
+      fullName: "ThS. Nguyễn Văn A",
+      email: "nguyenvana@vanlanguni.vn",
+      passwordHash: await hashPassword("123456"),
+      phone: "0981234567",
+      role: "LECTURER",
+      isActive: true,
+    },
+  });
 
-  // 3. TẠO DANH SÁCH SINH VIÊN TRỰC LAB
+  console.log(`✅ Đã tạo tài khoản quản trị hệ thống và tài khoản Giảng viên mẫu (gv.khoacntt / 123456).`);
+
+  // 3. TẠO DANH SÁCH SINH VIÊN TRỰC LAB (THEO DANH SÁCH THỰC TẾ)
   // Sinh viên 1: Nguyễn Thiện Đức
   const svDuc = await prisma.student.create({
     data: {
       studentCode: "2373401010100", // Chuỗi barcode thực tế in trên thẻ SV VLU
       fullName: "Nguyễn Thiện Đức",
       email: "duc.2373401010100@vanlanguni.vn",
-      className: "23DTH01",
-      phone: "0912345678",
+      className: "K29CNTT16",
+      phone: "0981331007",
       isActive: true,
     },
   });
 
-  // Sinh viên 2: Nguyễn Bảo Thiên
+  // Sinh viên 2: Trần Thái Thuận
+  const svThuan = await prisma.student.create({
+    data: {
+      studentCode: "2374802010490", // Chuỗi barcode thực tế in trên thẻ SV VLU
+      fullName: "Trần Thái Thuận",
+      email: "thuan.2374802010490@vanlanguni.vn",
+      className: "K29CNTT16",
+      phone: "0985820170",
+      isActive: true,
+    },
+  });
+
+  // Sinh viên 3: Nguyễn Bảo Thiên
   const svThien = await prisma.student.create({
     data: {
       studentCode: "2174802010708", // Chuỗi barcode thực tế in trên thẻ SV VLU
       fullName: "Nguyễn Bảo Thiên",
       email: "thien.2174802010708@vanlanguni.vn",
-      className: "21CNTT02",
-      phone: "0923456789",
+      className: "K27CNTT25",
+      phone: "0898437282",
       isActive: true,
     },
   });
 
-  // Sinh viên 3: Trần Thái Thuận
-  const svThuan = await prisma.student.create({
-    data: {
-      studentCode: "2373401010001", // Chuỗi barcode thực tế in trên thẻ SV VLU
-      fullName: "Trần Thái Thuận",
-      email: "thuan.2373401010001@vanlanguni.vn",
-      className: "23DTH01",
-      phone: "0934567890",
-      isActive: true,
-    },
-  });
-
-  console.log(`✅ Đã nạp 3 Sinh viên trực Lab chính thức: Nguyễn Thiện Đức, Nguyễn Bảo Thiên, Trần Thái Thuận.`);
+  console.log(`✅ Đã nạp 3 Sinh viên trực Lab chính thức: Nguyễn Thiện Đức, Trần Thái Thuận, Nguyễn Bảo Thiên.`);
 
   // 4. TẠO PHÒNG LAB
   const lab801 = await prisma.labRoom.create({
@@ -109,12 +123,12 @@ async function main() {
 
   console.log(`✅ Đã tạo các Phòng Thực hành Lab chính thức tại Cơ sở 3 VLU.`);
 
-  // 5. TẠO CÁC KHUNG CA TRỰC CHUẨN THEO QUY ĐỊNH LÀM VIỆC VĂN LANG
+  // 5. TẠO CÁC KHUNG CA LÀM VIỆC CHUẨN XƯỞNG THỰC TẬP KHOA CNTT
   const shiftMorning = await prisma.shift.create({
     data: {
-      shiftName: "Ca Sáng (08:00 - 11:30)",
+      shiftName: "Ca Sáng (08:00 - 12:00)",
       startTime: "08:00",
-      endTime: "11:30",
+      endTime: "12:00",
       gracePeriodMinutes: 15,
     },
   });
@@ -128,16 +142,7 @@ async function main() {
     },
   });
 
-  await prisma.shift.create({
-    data: {
-      shiftName: "Ca Thứ Bảy (08:00 - 11:00)",
-      startTime: "08:00",
-      endTime: "11:00",
-      gracePeriodMinutes: 15,
-    },
-  });
-
-  console.log(`✅ Đã tạo Khung ca trực chuẩn theo quy định làm việc VLU.`);
+  console.log(`✅ Đã tạo Khung ca trực chuẩn Xưởng Thực tập (Sáng: 08:00 - 12:00, Chiều: 13:00 - 17:00).`);
 
   // 6. LỊCH PHÂN CÔNG HÔM NAY (MẪU)
   const today = new Date();
