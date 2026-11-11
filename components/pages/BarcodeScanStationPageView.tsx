@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { soundFX } from "@/lib/audio";
 import { useAuth } from "@/lib/auth-context";
+import { getAssetPath } from "@/lib/asset-path";
 import {
   Camera,
   ShieldAlert,
@@ -445,7 +446,7 @@ function ScanStationContent() {
 
       {/* HỌA TIẾT TRỐNG ĐỒNG ĐỒNG TÂM LỚN PHÍA SAU KHUNG CAMERA */}
       <img
-        src="/images/trong-dong.svg"
+        src={getAssetPath("/images/trong-dong.svg")}
         alt=""
         aria-hidden="true"
         className="fixed pointer-events-none select-none z-0 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1250px] h-[1250px] max-w-none opacity-[0.11] mix-blend-multiply"
@@ -472,7 +473,7 @@ function ScanStationContent() {
             </Link>
           )}
           <img
-            src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}/vlu-logo.png`}
+            src={getAssetPath("/vlu-logo.png")}
             alt="Đại học Văn Lang"
             className="h-9 sm:h-10 w-auto object-contain"
           />
@@ -505,7 +506,7 @@ function ScanStationContent() {
               <div className="relative mx-3.5 flex items-center justify-center flex-shrink-0">
                 <div className="absolute w-12 h-12 bg-amber-300/25 rounded-full blur-md" />
                 <img
-                  src="/images/chim-lac.png"
+                  src={getAssetPath("/images/chim-lac.png")}
                   alt=""
                   aria-hidden="true"
                   className="h-9 sm:h-10 w-auto object-contain opacity-95 contrast-110 drop-shadow-md relative z-10"
