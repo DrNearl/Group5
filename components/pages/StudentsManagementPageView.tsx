@@ -244,56 +244,35 @@ function StudentsManagementContent() {
           </div>
         )}
 
-        {/* BỘ LỌC TÌM KIẾM VÀ NIÊN KHÓA */}
-        <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="relative flex-1 min-w-[240px]">
-              <Search className="h-4 w-4 text-gray-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                placeholder="Tìm theo MSSV, Họ và tên hoặc Lớp..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-rose-400 transition"
-              />
-            </div>
-            <div className="text-xs text-gray-500 font-medium">
-              Hiển thị: <strong className="text-rose-600">{filteredStudents.length}</strong> / {students.length} sinh viên
-            </div>
+        {/* BỘ LỌC TÌM KIẾM VÀ DANH SÁCH KHÓA */}
+        <div className="bg-white p-3.5 rounded-2xl border border-gray-200 shadow-xs flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="h-4 w-4 text-gray-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              placeholder="Tìm theo MSSV, Họ và tên hoặc Lớp..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-rose-400 transition"
+            />
           </div>
 
-          {/* CÁC TABS NIÊN KHÓA (K27 - K32 & KHÁCH) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 text-xs scrollbar-thin">
-            <span className="text-[11px] text-gray-400 font-medium mr-1 shrink-0 flex items-center gap-1">
-              <GraduationCap className="h-3.5 w-3.5" /> Khóa:
-            </span>
-            {COHORT_TABS.map((tab) => {
-              const count =
-                tab.key === "ALL"
-                  ? students.length
-                  : students.filter((s) => extractCohort(s.className, s.studentCode) === tab.key).length;
-              const isActive = selectedCohort === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => setSelectedCohort(tab.key)}
-                  className={`px-3 py-1 rounded-lg font-medium transition shrink-0 flex items-center gap-1.5 cursor-pointer ${
-                    isActive
-                      ? "bg-rose-500 text-white shadow-xs"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                      isActive ? "bg-white/20 text-white" : "bg-gray-200 text-gray-700"
-                    }`}
-                  >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
+          {/* LIST DROPDOWN LỌC THEO KHÓA */}
+          <div className="w-full sm:w-auto">
+            <select
+              value={selectedCohort}
+              onChange={(e) => setSelectedCohort(e.target.value)}
+              className="w-full sm:w-48 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 font-medium focus:outline-none focus:border-rose-400 transition cursor-pointer"
+            >
+              <option value="ALL">Tất cả các khóa</option>
+              <option value="K27">Khóa K27</option>
+              <option value="K28">Khóa K28</option>
+              <option value="K29">Khóa K29</option>
+              <option value="K30">Khóa K30</option>
+              <option value="K31">Khóa K31</option>
+              <option value="K32">Khóa K32</option>
+              <option value="OTHER">Khách / Ngoài khoa</option>
+            </select>
           </div>
         </div>
 
@@ -458,14 +437,40 @@ function StudentsManagementContent() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-gray-700 font-semibold mb-1">Lớp chuyên ngành</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-gray-700 font-semibold">Lớp chuyên ngành</label>
+                      <span className="text-[10px] text-gray-400">Chọn hoặc nhập</span>
+                    </div>
                     <input
                       type="text"
-                      placeholder="vd: 23DTH01 hoặc DTH-CNTT"
+                      list="suggested-classes-add"
+                      placeholder="vd: 24DTH01, 23DTH01..."
                       value={className}
                       onChange={(e) => setClassName(e.target.value)}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
                     />
+                    <datalist id="suggested-classes-add">
+                      <option value="24DTH01">Khóa K30 - 24DTH01</option>
+                      <option value="24DTH02">Khóa K30 - 24DTH02</option>
+                      <option value="23DTH01">Khóa K29 - 23DTH01</option>
+                      <option value="23DTH02">Khóa K29 - 23DTH02</option>
+                      <option value="22DTH01">Khóa K28 - 22DTH01</option>
+                      <option value="21DTH01">Khóa K27 - 21DTH01</option>
+                      <option value="DTH-CNTT">Đại học Công nghệ Thông tin</option>
+                      <option value="KHACH-VLANGLAI">Khách vãng lai / Khác</option>
+                    </datalist>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {["24DTH01", "23DTH01", "22DTH01", "DTH-CNTT"].map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setClassName(c)}
+                          className="px-1.5 py-0.5 rounded bg-gray-100 hover:bg-rose-50 hover:text-rose-600 text-[10px] text-gray-600 border border-gray-200 transition cursor-pointer"
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-gray-700 font-semibold mb-1">Số điện thoại</label>
@@ -556,14 +561,40 @@ function StudentsManagementContent() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-gray-700 font-semibold mb-1">Lớp chuyên ngành</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-gray-700 font-semibold">Lớp chuyên ngành</label>
+                      <span className="text-[10px] text-gray-400">Chọn hoặc nhập</span>
+                    </div>
                     <input
                       type="text"
-                      placeholder="vd: 23DTH01 hoặc DTH-CNTT"
+                      list="suggested-classes-edit"
+                      placeholder="vd: 24DTH01, 23DTH01..."
                       value={editClassName}
                       onChange={(e) => setEditClassName(e.target.value)}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
                     />
+                    <datalist id="suggested-classes-edit">
+                      <option value="24DTH01">Khóa K30 - 24DTH01</option>
+                      <option value="24DTH02">Khóa K30 - 24DTH02</option>
+                      <option value="23DTH01">Khóa K29 - 23DTH01</option>
+                      <option value="23DTH02">Khóa K29 - 23DTH02</option>
+                      <option value="22DTH01">Khóa K28 - 22DTH01</option>
+                      <option value="21DTH01">Khóa K27 - 21DTH01</option>
+                      <option value="DTH-CNTT">Đại học Công nghệ Thông tin</option>
+                      <option value="KHACH-VLANGLAI">Khách vãng lai / Khác</option>
+                    </datalist>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {["24DTH01", "23DTH01", "22DTH01", "DTH-CNTT"].map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setEditClassName(c)}
+                          className="px-1.5 py-0.5 rounded bg-gray-100 hover:bg-rose-50 hover:text-rose-600 text-[10px] text-gray-600 border border-gray-200 transition cursor-pointer"
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-gray-700 font-semibold mb-1">Số điện thoại</label>
