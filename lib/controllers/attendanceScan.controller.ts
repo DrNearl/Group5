@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { parseVluStudentInfo } from "@/lib/vlu-student-helper";
 const AttendanceStatus = {
   ON_TIME: "ON_TIME",
   LATE: "LATE",
@@ -64,13 +65,14 @@ export async function handleAttendanceScan(req: NextRequest) {
     });
 
     if (!student) {
-      // Tự động tạo hồ sơ cho sinh viên quét lần đầu
+      // Tự động phân tích niên khóa K27 - K32 hoặc khách ngoài theo MSSV Văn Lang
+      const vluInfo = parseVluStudentInfo(cleanBarcode);
       student = await prisma.student.create({
         data: {
           studentCode: cleanBarcode,
-          fullName: `Sinh viên VLU (${cleanBarcode})`,
-          email: `${cleanBarcode}@vanlanguni.vn`,
-          className: "K29CNTT16",
+          fullName: vluInfo.defaultFullName,
+          email: vluInfo.defaultEmail,
+          className: vluInfo.suggestedClass,
           isActive: true,
         },
       });

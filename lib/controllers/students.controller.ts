@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { parseVluStudentInfo } from "@/lib/vlu-student-helper";
 
 // GET: Lấy danh sách toàn bộ Sinh viên trực Lab
 export async function handleStudentsGet(req: NextRequest) {
@@ -58,6 +59,7 @@ export async function handleStudentsPost(req: NextRequest) {
     }
 
     const cleanCode = studentCode.trim();
+    const vluParsed = parseVluStudentInfo(cleanCode);
 
     // Kiểm tra xem MSSV đã tồn tại chưa
     const existing = await prisma.student.findUnique({
@@ -75,9 +77,9 @@ export async function handleStudentsPost(req: NextRequest) {
       data: {
         studentCode: cleanCode,
         fullName: fullName.trim(),
-        email: email ? email.trim().toLowerCase() : `${cleanCode}@vanlanguni.vn`,
+        email: email ? email.trim().toLowerCase() : vluParsed.defaultEmail,
         phone: phone ? phone.trim() : null,
-        className: className ? className.trim() : "K29CNTT16",
+        className: className && className.trim() ? className.trim() : vluParsed.suggestedClass,
         isActive: true,
       },
     });
@@ -124,6 +126,7 @@ export async function handleStudentsPut(req: NextRequest) {
     }
 
     const cleanCode = studentCode.trim();
+    const vluParsed = parseVluStudentInfo(cleanCode);
 
     // Kiểm tra xem MSSV có bị trùng với sinh viên khác không
     const duplicate = await prisma.student.findFirst({
@@ -145,9 +148,9 @@ export async function handleStudentsPut(req: NextRequest) {
       data: {
         studentCode: cleanCode,
         fullName: fullName.trim(),
-        email: email ? email.trim().toLowerCase() : `${cleanCode}@vanlanguni.vn`,
+        email: email ? email.trim().toLowerCase() : vluParsed.defaultEmail,
         phone: phone ? phone.trim() : null,
-        className: className ? className.trim() : "K29CNTT16",
+        className: className && className.trim() ? className.trim() : vluParsed.suggestedClass,
       },
     });
 
