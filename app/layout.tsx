@@ -3,7 +3,6 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import AppShell from "@/components/AppShell";
-import BasePathProvider from "@/components/BasePathProvider";
 
 const inter = Inter({ subsets: ["latin", "vietnamese"] });
 
@@ -24,17 +23,29 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              try {
-                if (window.location.pathname.startsWith('/proxy/3000')) {
-                  window.location.replace(window.location.href.replace('/proxy/3000', '/absproxy/3000'));
-                }
-              } catch(e) {}
+              (function() {
+                try {
+                  if (window.location.pathname.startsWith('/proxy/3000')) {
+                    window.location.replace(window.location.href.replace('/proxy/3000', '/absproxy/3000'));
+                    return;
+                  }
+                  var origFetch = window.fetch;
+                  window.fetch = function(input, init) {
+                    if (typeof input === 'string' && input.indexOf('/api/') === 0) {
+                      var match = window.location.pathname.match(/^(\\\\/(?:abs)?proxy\\\\/\\\\d+)/);
+                      if (match) {
+                        input = match[1] + input;
+                      }
+                    }
+                    return origFetch.call(this, input, init);
+                  };
+                } catch(e) {}
+              })();
             `,
           }}
         />
       </head>
       <body className={inter.className} suppressHydrationWarning>
-        <BasePathProvider />
         <AuthProvider>
           <AppShell>{children}</AppShell>
         </AuthProvider>
