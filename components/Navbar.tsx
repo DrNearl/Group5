@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { getAssetPath } from "@/lib/asset-path";
 import {
   LogOut,
   LogIn,
@@ -17,7 +18,7 @@ export default function Navbar() {
         {/* LOGO TRƯỜNG ĐẠI HỌC VĂN LANG */}
         <Link href="/" className="flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2">
           <img
-            src="/vlu-logo.png"
+            src={getAssetPath("/vlu-logo.png")}
             alt="Logo Đại học Văn Lang"
             className="h-8 sm:h-9 w-auto object-contain"
           />
