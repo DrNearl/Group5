@@ -70,7 +70,7 @@ export async function handleAttendanceScan(req: NextRequest) {
           studentCode: cleanBarcode,
           fullName: `Sinh viên VLU (${cleanBarcode})`,
           email: `${cleanBarcode}@vanlanguni.vn`,
-          className: "DTH-CNTT",
+          className: "K29CNTT16",
           isActive: true,
         },
       });

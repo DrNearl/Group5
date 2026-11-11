@@ -48,7 +48,7 @@ export async function handleStudentsGet(req: NextRequest) {
 export async function handleStudentsPost(req: NextRequest) {
   try {
     const body = await req.json();
-    const { studentCode, fullName, email, phone = "", className = "23DTH01" } = body;
+    const { studentCode, fullName, email, phone = "", className = "K29CNTT16" } = body;
 
     if (!studentCode || !fullName) {
       return NextResponse.json(
@@ -77,7 +77,7 @@ export async function handleStudentsPost(req: NextRequest) {
         fullName: fullName.trim(),
         email: email ? email.trim().toLowerCase() : `${cleanCode}@vanlanguni.vn`,
         phone: phone ? phone.trim() : null,
-        className: className ? className.trim() : "23DTH01",
+        className: className ? className.trim() : "K29CNTT16",
         isActive: true,
       },
     });
@@ -105,6 +105,57 @@ export async function handleStudentsDelete(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, message: "Đã xóa sinh viên khỏi danh sách trực Lab!" });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}
+
+// PUT: Cập nhật thông tin sinh viên trực Lab
+export async function handleStudentsPut(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id, studentCode, fullName, email, phone = "", className = "K29CNTT16" } = body;
+
+    if (!id || !studentCode || !fullName) {
+      return NextResponse.json(
+        { success: false, message: "Thiếu ID hoặc thông tin sinh viên bắt buộc!" },
+        { status: 400 }
+      );
+    }
+
+    const cleanCode = studentCode.trim();
+
+    // Kiểm tra xem MSSV có bị trùng với sinh viên khác không
+    const duplicate = await prisma.student.findFirst({
+      where: {
+        studentCode: cleanCode,
+        NOT: { id },
+      },
+    });
+
+    if (duplicate) {
+      return NextResponse.json(
+        { success: false, message: `MSSV ${cleanCode} đã được dùng bởi sinh viên ${duplicate.fullName}!` },
+        { status: 409 }
+      );
+    }
+
+    const updatedStudent = await prisma.student.update({
+      where: { id },
+      data: {
+        studentCode: cleanCode,
+        fullName: fullName.trim(),
+        email: email ? email.trim().toLowerCase() : `${cleanCode}@vanlanguni.vn`,
+        phone: phone ? phone.trim() : null,
+        className: className ? className.trim() : "K29CNTT16",
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Đã cập nhật thông tin sinh viên ${updatedStudent.fullName}!`,
+      student: updatedStudent,
+    });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }

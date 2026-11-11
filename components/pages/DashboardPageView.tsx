@@ -31,6 +31,7 @@ import {
   Calendar,
   AlertTriangle,
   Award,
+  Eye,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -49,12 +50,15 @@ function DashboardContent() {
   const [manualStudentCode, setManualStudentCode] = useState("");
   const [manualDate, setManualDate] = useState(new Date().toISOString().slice(0, 10));
   const [manualInTime, setManualInTime] = useState("08:00");
-  const [manualOutTime, setManualOutTime] = useState("11:30");
+  const [manualOutTime, setManualOutTime] = useState("12:00");
   const [manualNote, setManualNote] = useState("Quên thẻ sinh viên");
   const [manualSubmitting, setManualSubmitting] = useState(false);
 
   // Modal phóng to ảnh Snapshot
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Modal xem toàn bộ lịch sử quẹt thẻ của 1 sinh viên
+  const [historyStudent, setHistoryStudent] = useState<any | null>(null);
 
   const loadDashboard = async () => {
     try {
@@ -335,7 +339,7 @@ function DashboardContent() {
         {/* TIÊU ĐỀ KHI IN ẤN CHUẨN VLU (Chỉ hiện khi in) */}
         <div className="hidden print:block text-center border-b pb-4 mb-4">
           <div className="text-sm font-bold uppercase">Trường Đại Học Văn Lang • Khoa Công Nghệ Thông Tin</div>
-          <h2 className="text-xl font-bold uppercase mt-1">BẢNG TỔNG HỢP CÔNG TRỰC PHÒNG KHOA / LAB</h2>
+          <h2 className="text-xl font-bold uppercase mt-1">BẢNG TỔNG HỢP CÔNG TRỰC XƯỞNG THỰC TẬP</h2>
           <div className="text-xs text-gray-500 mt-1">Ngày lập báo cáo: {new Date().toLocaleDateString("vi-VN")}</div>
         </div>
 
@@ -347,7 +351,7 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* KHỐI 1: GIÁM SÁT REALTIME - ĐANG CÓ MẶT TRONG PHÒNG KHOA */}
+        {/* KHỐI 1: GIÁM SÁT REALTIME - ĐANG CÓ MẶT TẠI XƯỞNG THỰC TẬP */}
         <div className="print:hidden bg-white rounded-2xl border border-gray-200 p-5 shadow-xs space-y-3">
           <div className="flex items-center justify-between border-b border-gray-100 pb-3">
             <div className="flex items-center gap-2.5">
@@ -367,7 +371,7 @@ function DashboardContent() {
 
           {(!data?.activeInLab || data.activeInLab.length === 0) ? (
             <div className="py-6 text-center text-xs text-gray-400">
-              Hiện tại không có sinh viên nào trong phòng. Sinh viên quẹt thẻ tại Laptop Trạm để vào ca!
+              Hiện tại không có sinh viên nào trong xưởng. Sinh viên quẹt thẻ tại Laptop Trạm để vào ca!
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
@@ -588,8 +592,8 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* KHỐI 2: 6 THẺ KPI THỐNG KÊ CHUYÊN SÂU */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {/* KHỐI 2: 5 THẺ KPI THỐNG KÊ CHUYÊN SÂU */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {/* 1. Tổng giờ */}
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
             <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">Tổng giờ tích lũy</div>
@@ -629,47 +633,39 @@ function DashboardContent() {
               {data?.stats?.completionRate || 100}%
             </div>
           </div>
-
-          {/* 6. Nghi vấn quên check-out */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">Nghi vấn quá 4h</div>
-            <div className="text-xl font-bold text-amber-600 font-mono mt-1">
-              {data?.stats?.staleCount || 0} <span className="text-xs text-gray-400 font-normal">ca</span>
-            </div>
-          </div>
         </div>
 
-        {/* THÔNG TIN KHUNG GIỜ LÀM VIỆC CHUẨN VĂN LANG */}
+        {/* THÔNG TIN KHUNG GIỜ LÀM VIỆC XƯỞNG THỰC TẬP KHOA CNTT */}
         <div className="print:hidden bg-gradient-to-r from-red-50/70 via-white to-amber-50/60 rounded-2xl border border-red-100 p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs shadow-xs">
           <div className="flex items-center gap-2.5">
             <span className="px-2 py-0.5 bg-red-600 text-white rounded-md font-bold text-[11px] tracking-wide">VLU</span>
-            <span className="font-bold text-gray-800">Quy định thời gian làm việc & trực phòng Lab:</span>
+            <span className="font-bold text-gray-800">Xưởng Thực Tập - Khoa Công Nghệ Thông Tin:</span>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-gray-600">
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-              <span>Thứ 2 - Thứ 6: <strong>Sáng 08h00 – 11h30</strong> | <strong>Chiều 13h00 – 17h00</strong></span>
+              <span>Thời gian làm việc: <strong>Từ Thứ 2 – Thứ 7</strong></span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-              <span>Thứ Bảy: <strong>Sáng 08h00 – 11h00</strong> <span className="text-gray-400">(Chiều T7 & CN nghỉ)</span></span>
+              <span><strong>Sáng: 08:00 – 12:00</strong> | <strong>Chiều: 13:00 – 17:00</strong></span>
             </div>
           </div>
         </div>
 
         {/* KHỐI 3: 2 BIỂU ĐỒ PHÂN TÍCH SỐ LIỆU CHUYÊN SÂU */}
         <div className="print:hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Biểu đồ 1: Giờ trực theo Sinh viên */}
+          {/* Biểu đồ 1: Số ca trực theo Sinh viên */}
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
             <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-4 flex items-center gap-2">
               <Users className="h-4 w-4 text-rose-500" />
-              Tổng Giờ Trực Từng Sinh Viên (hrs)
+              Tổng Số Ca Trực Từng Sinh Viên (Ca)
             </h3>
             <div className="h-60 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data?.studentStats || []}>
                   <XAxis dataKey="fullName" stroke="#94a3b8" fontSize={11} />
-                  <YAxis stroke="#94a3b8" fontSize={11} />
+                  <YAxis stroke="#94a3b8" fontSize={11} allowDecimals={false} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "#ffffff",
@@ -677,23 +673,23 @@ function DashboardContent() {
                       borderRadius: "10px",
                     }}
                   />
-                  <Bar dataKey="totalHours" fill="#f43f5e" radius={[6, 6, 0, 0]} name="Số giờ trực" />
+                  <Bar dataKey="totalShifts" fill="#f43f5e" radius={[6, 6, 0, 0]} name="Số ca trực" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Biểu đồ 2: Phân Bổ Theo Ngày Làm Việc Trong Tuần (Thứ 2 -> Thứ 7) */}
+          {/* Biểu đồ 2: Phân Bổ Số Người Trực Theo Ngày Làm Việc Trong Tuần */}
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
             <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-4 flex items-center gap-2">
               <Calendar className="h-4 w-4 text-blue-600" />
-              Xu Hướng Các Ngày Làm Việc Trong Tuần (hrs)
+              Số Người Trực Các Ngày Trong Tuần (Người)
             </h3>
             <div className="h-60 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data?.weekdayData || []}>
                   <XAxis dataKey="day" stroke="#94a3b8" fontSize={11} />
-                  <YAxis stroke="#94a3b8" fontSize={11} />
+                  <YAxis stroke="#94a3b8" fontSize={11} allowDecimals={false} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "#ffffff",
@@ -701,21 +697,28 @@ function DashboardContent() {
                       borderRadius: "10px",
                     }}
                   />
-                  <Bar dataKey="hours" fill="#3b82f6" radius={[6, 6, 0, 0]} name="Số giờ trực" />
+                  <Bar dataKey="peopleCount" fill="#3b82f6" radius={[6, 6, 0, 0]} name="Số người trực" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
         </div>
 
-        {/* KHỐI 4: BẢNG TỔNG HỢP GIỜ TRỰC SINH VIÊN */}
+        {/* KHỐI 4: BẢNG CHẤM CÔNG CHI TIẾT CA SÁNG / CA CHIỀU */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs space-y-3">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-            <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
-              <Award className="h-4 w-4 text-rose-500" />
-              Bảng Tổng Hợp Giờ Trực Sinh Viên
-            </h3>
-            <span className="text-[11px] text-gray-400">Tính dồn theo số giờ thực tế</span>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3">
+            <div>
+              <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
+                <Award className="h-4 w-4 text-rose-500" />
+                Bảng Chấm Công Chi Tiết Ca Sáng / Ca Chiều
+              </h3>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                Xưởng Thực Tập Khoa CNTT • Thống kê ca sáng (08h00 - 12h00) và ca chiều (13h00 - 17h00)
+              </p>
+            </div>
+            <span className="text-[11px] text-gray-500 font-medium">
+              Tổng cộng: <strong className="text-rose-600">{data?.studentStats?.length || 0}</strong> sinh viên
+            </span>
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-gray-100">
@@ -724,35 +727,58 @@ function DashboardContent() {
                 <tr>
                   <th className="py-3 px-4">STT</th>
                   <th className="py-3 px-4">Sinh viên</th>
-                  <th className="py-3 px-4">MSSV</th>
-                  <th className="py-3 px-4">Số buổi tham gia</th>
-                  <th className="py-3 px-4">Lượt trực gần nhất</th>
-                  <th className="py-3 px-4 text-right">Tổng giờ tích lũy</th>
-                  <th className="py-3 px-4 text-right">Đánh giá</th>
+                  <th className="py-3 px-4">Lớp</th>
+                  <th className="py-3 px-4 text-center">
+                    Ca Sáng
+                    <div className="text-[9px] font-normal lowercase text-gray-400">(08:00 - 12:00)</div>
+                  </th>
+                  <th className="py-3 px-4 text-center">
+                    Ca Chiều
+                    <div className="text-[9px] font-normal lowercase text-gray-400">(13:00 - 17:00)</div>
+                  </th>
+                  <th className="py-3 px-4 text-center">Tổng ca hoàn thành</th>
+                  <th className="py-3 px-4 text-right">Quy đổi số giờ</th>
+                  <th className="py-3 px-4 text-right">Lịch sử quẹt thẻ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 font-mono">
                 {data?.studentStats?.map((sv: any, idx: number) => (
                   <tr key={sv.id} className="hover:bg-gray-50/80 transition">
-                    <td className="py-3 px-4 text-gray-400">{idx + 1}</td>
-                    <td className="py-3 px-4 font-sans font-bold text-gray-900">{sv.fullName}</td>
-                    <td className="py-3 px-4 text-gray-500">{sv.studentCode}</td>
-                    <td className="py-3 px-4 text-gray-700 font-sans">{sv.totalShifts} buổi</td>
-                    <td className="py-3 px-4 text-gray-500">{sv.lastDutyDate || "Chưa có"}</td>
-                    <td className="py-3 px-4 text-right font-bold text-rose-600">
-                      {sv.totalHours} hrs
+                    <td className="py-3.5 px-4 text-gray-400">{idx + 1}</td>
+                    <td className="py-3.5 px-4 font-sans">
+                      <div className="font-bold text-gray-900">{sv.fullName}</div>
+                      <div className="text-[11px] text-gray-400 font-mono">{sv.studentCode}</div>
                     </td>
-                    <td className="py-3 px-4 text-right font-sans">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${sv.diligenceTag === "HIGH"
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                          : sv.diligenceTag === "MEDIUM"
-                            ? "bg-blue-50 text-blue-700 border border-blue-200"
-                            : "bg-amber-50 text-amber-700 border border-amber-200"
-                          }`}
-                      >
-                        {sv.diligence}
+                    <td className="py-3.5 px-4 font-sans">
+                      <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 font-medium text-[11px]">
+                        {sv.className || "K29CNTT16"}
                       </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold text-xs">
+                        {sv.morningShifts || 0} ca
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold text-xs">
+                        {sv.afternoonShifts || 0} ca
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-center font-bold text-gray-900 text-sm">
+                      {sv.completedShifts || 0} <span className="text-gray-400 font-normal text-xs">/ {sv.totalShifts} ca</span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right font-bold text-rose-600 text-sm">
+                      {sv.totalHours} <span className="text-gray-400 font-normal text-[11px]">hrs</span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right font-sans">
+                      <button
+                        onClick={() => setHistoryStudent(sv)}
+                        className="px-2.5 py-1.5 rounded-lg bg-gray-50 hover:bg-rose-50 text-gray-700 hover:text-rose-600 border border-gray-200 hover:border-rose-200 text-xs font-semibold inline-flex items-center gap-1.5 transition shadow-2xs"
+                        title="Xem toàn bộ lịch sử quẹt thẻ check-in / check-out"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>Xem nhật ký</span>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -967,16 +993,16 @@ function DashboardContent() {
                 />
               </div>
 
-              {/* GỢI Ý CHỌN NHANH CA LÀM VIỆC CHUẨN VLU */}
+              {/* GỢI Ý CHỌN NHANH CA LÀM VIỆC CHUẨN XƯỞNG THỰC TẬP */}
               <div className="bg-gray-50 border border-gray-100 rounded-lg p-2.5 space-y-1.5">
-                <span className="text-[11px] font-semibold text-gray-500 block">Chọn nhanh khung ca chuẩn VLU:</span>
+                <span className="text-[11px] font-semibold text-gray-500 block">Chọn nhanh ca làm việc Xưởng Thực tập:</span>
                 <div className="flex flex-wrap gap-1.5">
                   <button
                     type="button"
-                    onClick={() => { setManualInTime("08:00"); setManualOutTime("11:30"); }}
+                    onClick={() => { setManualInTime("08:00"); setManualOutTime("12:00"); }}
                     className="px-2.5 py-1 rounded bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 border border-gray-200 text-[11px] font-medium text-gray-700 transition"
                   >
-                    Ca Sáng (08:00 - 11:30)
+                    Ca Sáng (08:00 - 12:00)
                   </button>
                   <button
                     type="button"
@@ -984,13 +1010,6 @@ function DashboardContent() {
                     className="px-2.5 py-1 rounded bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 border border-gray-200 text-[11px] font-medium text-gray-700 transition"
                   >
                     Ca Chiều (13:00 - 17:00)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setManualInTime("08:00"); setManualOutTime("11:00"); }}
-                    className="px-2.5 py-1 rounded bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 border border-gray-200 text-[11px] font-medium text-gray-700 transition"
-                  >
-                    Thứ 7 (08:00 - 11:00)
                   </button>
                 </div>
               </div>
@@ -1066,6 +1085,116 @@ function DashboardContent() {
               </button>
             </div>
             <img src={previewImage} alt="Face Snapshot Preview" className="w-full rounded-xl object-contain max-h-[70vh]" />
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: XEM TOÀN BỘ LỊCH SỬ QUẸT THẺ CHECK-IN / CHECK-OUT CỦA SINH VIÊN */}
+      {historyStudent && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-gray-200 relative max-h-[90vh] flex flex-col">
+            <button
+              onClick={() => setHistoryStudent(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-center gap-3 border-b border-gray-100 pb-3 mb-4 shrink-0">
+              <div className="p-2.5 rounded-xl bg-rose-50 text-rose-500">
+                <Clock className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                  <span>Nhật Ký Quẹt Thẻ: {historyStudent.fullName}</span>
+                  <span className="px-2 py-0.5 rounded-md bg-gray-100 text-rose-600 font-mono text-xs font-bold">
+                    {historyStudent.studentCode}
+                  </span>
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Lớp: <strong className="text-gray-800">{historyStudent.className || "K29CNTT16"}</strong> • Ca Sáng: <strong className="text-amber-600">{historyStudent.morningShifts || 0} ca</strong> • Ca Chiều: <strong className="text-blue-600">{historyStudent.afternoonShifts || 0} ca</strong> • Tích lũy: <strong className="text-rose-600">{historyStudent.totalHours} hrs</strong>
+                </p>
+              </div>
+            </div>
+
+            {/* BẢNG LỊCH SỬ QUẸT CỦA BẠN NÀY */}
+            <div className="overflow-y-auto flex-1 rounded-xl border border-gray-100">
+              {(() => {
+                const studentLogs = (data?.allLogs || []).filter(
+                  (l: any) => l.studentCode === historyStudent.studentCode
+                );
+
+                if (studentLogs.length === 0) {
+                  return (
+                    <div className="py-12 text-center text-xs text-gray-400 font-sans">
+                      Sinh viên chưa có lịch sử quẹt thẻ check-in / check-out nào được ghi nhận.
+                    </div>
+                  );
+                }
+
+                return (
+                  <table className="w-full text-left text-xs text-gray-700">
+                    <thead className="bg-gray-50 text-gray-400 uppercase text-[10px] font-semibold tracking-wider sticky top-0 border-b border-gray-100">
+                      <tr>
+                        <th className="py-2.5 px-3">STT</th>
+                        <th className="py-2.5 px-3">Ngày trực</th>
+                        <th className="py-2.5 px-3">Khung ca</th>
+                        <th className="py-2.5 px-3">Giờ vào</th>
+                        <th className="py-2.5 px-3">Giờ ra</th>
+                        <th className="py-2.5 px-3">Thời gian</th>
+                        <th className="py-2.5 px-3 text-right">Trạng thái</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50 font-mono">
+                      {studentLogs.map((log: any, idx: number) => (
+                        <tr key={log.id} className="hover:bg-rose-50/20 transition">
+                          <td className="py-2.5 px-3 text-gray-400">{idx + 1}</td>
+                          <td className="py-2.5 px-3 font-sans font-medium text-gray-900">
+                            {new Date(log.dutyDate).toLocaleDateString("vi-VN")}
+                          </td>
+                          <td className="py-2.5 px-3 font-sans">
+                            <span className="text-[11px] text-gray-600">
+                              {log.shiftName || "Ca trực"}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-emerald-700 font-bold">
+                            {log.checkInTime ? new Date(log.checkInTime).toLocaleTimeString("vi-VN") : "--:--"}
+                          </td>
+                          <td className="py-2.5 px-3 text-rose-600 font-bold">
+                            {log.checkOutTime ? new Date(log.checkOutTime).toLocaleTimeString("vi-VN") : <span className="text-gray-400 font-normal">--:--</span>}
+                          </td>
+                          <td className="py-2.5 px-3 text-gray-800 font-medium font-sans">
+                            {log.durationText || "--"}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-sans">
+                            {log.checkOutTime ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">
+                                Đã về
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Đang trực
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
+            </div>
+
+            <div className="pt-3 border-t border-gray-100 mt-4 flex justify-end shrink-0">
+              <button
+                type="button"
+                onClick={() => setHistoryStudent(null)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition"
+              >
+                Đóng
+              </button>
+            </div>
           </div>
         </div>
       )}

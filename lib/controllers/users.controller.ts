@@ -5,7 +5,10 @@ import { hashPassword } from "@/lib/password";
 export async function handleUsersGet(req: NextRequest) {
   try {
     const users = await prisma.user.findMany({
-      orderBy: { id: "desc" },
+      where: {
+        username: { not: "admin" },
+      },
+      orderBy: { createdAt: "desc" },
       select: {
         id: true,
         username: true,
@@ -35,7 +38,7 @@ export async function handleUsersPost(req: NextRequest) {
       );
     }
 
-    const safeRole = role === "ADMIN" ? "ADMIN" : "LECTURER";
+    const safeRole = "LECTURER";
     const userPassword = (password && password.trim().length > 0) ? password.trim() : "123456";
 
     const user = await prisma.user.create({

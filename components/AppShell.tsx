@@ -103,7 +103,7 @@ function SignedInLayout({ children }: { children: React.ReactNode }) {
               className="inline-flex min-h-11 items-center gap-2 rounded-md border border-gray-300 px-3 text-sm font-medium text-gray-800 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700"
             >
               <Menu aria-hidden="true" className="h-4 w-4" />
-              Mở phân hệ
+              Menu chức năng
             </button>
           </div>
           <main id="main-content" className="min-w-0">{children}</main>
@@ -114,13 +114,13 @@ function SignedInLayout({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
             type="button"
-            aria-label="Đóng menu phân hệ"
+            aria-label="Đóng menu chức năng"
             className="absolute inset-0 bg-black/30"
             onClick={() => setMobileOpen(false)}
           />
           <aside
             id="mobile-system-navigation"
-            aria-label="Menu phân hệ"
+            aria-label="Menu chức năng"
             className="absolute inset-y-0 left-0 w-72 max-w-[85vw] border-r border-gray-200 bg-white shadow-lg"
           >
             <div className="flex min-h-14 items-center justify-between border-b border-gray-200 px-4">
@@ -128,7 +128,7 @@ function SignedInLayout({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                aria-label="Đóng menu phân hệ"
+                aria-label="Đóng menu chức năng"
                 className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-gray-700 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700"
               >
                 <X aria-hidden="true" className="h-5 w-5" />
