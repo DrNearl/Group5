@@ -49,7 +49,7 @@ export async function handleStudentsGet(req: NextRequest) {
 export async function handleStudentsPost(req: NextRequest) {
   try {
     const body = await req.json();
-    const { studentCode, fullName, email, phone = "", className = "K29CNTT16" } = body;
+    const { studentCode, fullName, email, phone = "", className = "" } = body;
 
     if (!studentCode || !fullName) {
       return NextResponse.json(
@@ -116,7 +116,7 @@ export async function handleStudentsDelete(req: NextRequest) {
 export async function handleStudentsPut(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, studentCode, fullName, email, phone = "", className = "K29CNTT16" } = body;
+    const { id, studentCode, fullName, email, phone = "", className = "" } = body;
 
     if (!id || !studentCode || !fullName) {
       return NextResponse.json(

@@ -751,7 +751,7 @@ function DashboardContent() {
                     </td>
                     <td className="py-3.5 px-4 font-sans">
                       <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 font-medium text-[11px]">
-                        {sv.className || "K29CNTT16"}
+                        {sv.className || "DTH-CNTT"}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-center">
@@ -1112,7 +1112,7 @@ function DashboardContent() {
                   </span>
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Lớp: <strong className="text-gray-800">{historyStudent.className || "K29CNTT16"}</strong> • Ca Sáng: <strong className="text-amber-600">{historyStudent.morningShifts || 0} ca</strong> • Ca Chiều: <strong className="text-blue-600">{historyStudent.afternoonShifts || 0} ca</strong> • Tích lũy: <strong className="text-rose-600">{historyStudent.totalHours} hrs</strong>
+                  Lớp: <strong className="text-gray-800">{historyStudent.className || "DTH-CNTT"}</strong> • Ca Sáng: <strong className="text-amber-600">{historyStudent.morningShifts || 0} ca</strong> • Ca Chiều: <strong className="text-blue-600">{historyStudent.afternoonShifts || 0} ca</strong> • Tích lũy: <strong className="text-rose-600">{historyStudent.totalHours} hrs</strong>
                 </p>
               </div>
             </div>

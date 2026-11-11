@@ -79,7 +79,7 @@ export async function handleDashboardGet(req: NextRequest) {
         id: sv.id,
         fullName: sv.fullName,
         studentCode: sv.studentCode,
-        className: sv.className || "K29CNTT16",
+        className: sv.className || "DTH-CNTT",
         morningShifts,
         afternoonShifts,
         totalShifts: sv.dutySchedules.length,
