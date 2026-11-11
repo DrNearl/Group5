@@ -32,7 +32,7 @@ function StudentsManagementContent() {
   // Form states
   const [studentCode, setStudentCode] = useState("");
   const [fullName, setFullName] = useState("");
-  const [className, setClassName] = useState("K29CNTT16");
+  const [className, setClassName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,7 +41,7 @@ function StudentsManagementContent() {
   const [editingStudent, setEditingStudent] = useState<any | null>(null);
   const [editFullName, setEditFullName] = useState("");
   const [editStudentCode, setEditStudentCode] = useState("");
-  const [editClassName, setEditClassName] = useState("K29CNTT16");
+  const [editClassName, setEditClassName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -50,7 +50,7 @@ function StudentsManagementContent() {
     setEditingStudent(sv);
     setEditFullName(sv.fullName);
     setEditStudentCode(sv.studentCode);
-    setEditClassName(sv.className || "K29CNTT16");
+    setEditClassName(sv.className || "");
     setEditEmail(sv.email || "");
     setEditPhone(sv.phone || "");
   };
@@ -434,24 +434,13 @@ function StudentsManagementContent() {
                   <input
                     type="text"
                     required
-                    placeholder="vd: 2474802010100 (Khóa K30)"
+                    placeholder="vd: 2373401010100"
                     value={studentCode}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setStudentCode(val);
-                      const parsed = parseVluStudentInfo(val);
-                      if (parsed.isVluStudent) {
-                        setClassName(parsed.suggestedClass);
-                        if (!email || email.includes("@vanlanguni.vn") || email === "") {
-                          setEmail(parsed.defaultEmail);
-                        }
-                      }
-                    }}
+                    onChange={(e) => setStudentCode(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 font-mono focus:outline-none focus:border-rose-400"
                   />
-                  <span className="text-[10px] text-gray-400 mt-0.5 block flex items-center gap-1">
-                    <Sparkles className="h-3 w-3 text-amber-500" />
-                    Tự động nhận diện Khóa K27 - K32 và gợi ý Lớp, Email
+                  <span className="text-[10px] text-gray-400 mt-0.5 block">
+                    (Chuỗi mã vạch in sẵn trên thẻ sinh viên VLU)
                   </span>
                 </div>
 
@@ -472,7 +461,7 @@ function StudentsManagementContent() {
                     <label className="block text-gray-700 font-semibold mb-1">Lớp chuyên ngành</label>
                     <input
                       type="text"
-                      placeholder="vd: K29CNTT16"
+                      placeholder="vd: 23DTH01 hoặc DTH-CNTT"
                       value={className}
                       onChange={(e) => setClassName(e.target.value)}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
@@ -570,7 +559,7 @@ function StudentsManagementContent() {
                     <label className="block text-gray-700 font-semibold mb-1">Lớp chuyên ngành</label>
                     <input
                       type="text"
-                      placeholder="vd: K29CNTT16"
+                      placeholder="vd: 23DTH01 hoặc DTH-CNTT"
                       value={editClassName}
                       onChange={(e) => setEditClassName(e.target.value)}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
