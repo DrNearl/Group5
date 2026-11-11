@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { getAssetPath } from "@/lib/asset-path";
 
 function DashboardContent() {
   const { user, role } = useAuth();
@@ -62,7 +63,7 @@ function DashboardContent() {
 
   const loadDashboard = async () => {
     try {
-      const res = await fetch("/api/dashboard");
+      const res = await fetch(getAssetPath("/api/dashboard"));
       const json = await res.json();
       if (json.success) {
         setData(json);
@@ -84,7 +85,7 @@ function DashboardContent() {
   const handleForceCheckout = async (logId: string, studentName: string) => {
     if (!confirm(`Xác nhận Check-out kết thúc lượt trực cho sinh viên ${studentName}?`)) return;
     try {
-      const res = await fetch("/api/attendance/scan", {
+      const res = await fetch(getAssetPath("/api/attendance/scan"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ logId }),
@@ -111,7 +112,7 @@ function DashboardContent() {
 
     setManualSubmitting(true);
     try {
-      const res = await fetch("/api/dashboard", {
+      const res = await fetch(getAssetPath("/api/dashboard"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

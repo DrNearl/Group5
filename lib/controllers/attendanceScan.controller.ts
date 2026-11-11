@@ -135,12 +135,9 @@ export async function handleAttendanceScan(req: NextRequest) {
       const checkInDate = new Date(openLog.checkInTime);
       const diffMs = now.getTime() - checkInDate.getTime();
 
-      // Chống quẹt nhầm Check-out sớm trong vòng 3 phút sau khi Check-in
-      if (diffMs < 180000) {
-        const remainingSec = Math.ceil((180000 - diffMs) / 1000);
-        const m = Math.floor(remainingSec / 60);
-        const s = remainingSec % 60;
-        const timeWaitText = m > 0 ? `${m} phút ${s} giây` : `${s} giây`;
+      // Chống quẹt nhầm Check-out sớm trong vòng 20 giây sau khi Check-in
+      if (diffMs < 20000) {
+        const remainingSec = Math.ceil((20000 - diffMs) / 1000);
         return NextResponse.json({
           success: false,
           type: "COOLDOWN_WAIT",
@@ -148,7 +145,7 @@ export async function handleAttendanceScan(req: NextRequest) {
             fullName: student.fullName,
             studentCode: student.studentCode,
           },
-          message: `Bạn vừa Check-in lúc ${checkInDate.toLocaleTimeString("vi-VN")}! Vui lòng đợi thêm ${timeWaitText} trước khi Check-out.`,
+          message: `Bạn vừa Check-in lúc ${checkInDate.toLocaleTimeString("vi-VN")}! Vui lòng đợi ${remainingSec} giây trước khi Check-out.`,
         });
       }
 
