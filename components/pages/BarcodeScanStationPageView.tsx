@@ -173,7 +173,7 @@ function ScanStationContent() {
   // 2. Tải danh sách Logs gần đây (tự động đồng bộ mỗi 5s)
   const fetchStationData = useCallback(async () => {
     try {
-      const res = await fetch("/api/attendance/scan");
+      const res = await fetch(getAssetPath("/api/attendance/scan"));
       const data = await res.json();
       if (data.success) {
         setRecentLogs(data.logs || []);
@@ -240,7 +240,7 @@ function ScanStationContent() {
     const snapshot = captureSnapshot();
 
     try {
-      const res = await fetch("/api/attendance/scan", {
+      const res = await fetch(getAssetPath("/api/attendance/scan"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -250,7 +250,12 @@ function ScanStationContent() {
         }),
       });
 
-      const data = await res.json();
+      let data: any;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`Máy chủ phản hồi mã ${res.status} (${res.statusText || "Lỗi định dạng phản hồi"})`);
+      }
 
       if (!data.success) {
         if (isSoundEnabled) soundFX.playWarning();
