@@ -151,3 +151,18 @@ model EquipmentIncident {
   reportedBy Student?      @relation(fields: [reportedByStudentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   schedule   DutySchedule? @relation(fields: [scheduleId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
+
+// 8. AuditLog: Nhật ký thao tác quản trị (chống gian lận & đối soát)
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String?
+  actorName String
+  actorRole String
+  action    String
+  target    String
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+}

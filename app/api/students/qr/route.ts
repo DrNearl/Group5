@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { requireStaffAuth } from "@/lib/auth-server";
 import { generatePersonalQrToken } from "@/lib/qr-security";
 import { generateQrImageAssets, sendPersonalQrEmail } from "@/lib/mailer";
+import { recordAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -124,6 +125,18 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      await recordAuditLog({
+        actor: auth.user,
+        action: action === "REISSUE" ? "QR_REISSUE" : "QR_SEND_EMAIL",
+        target: `${student.fullName} (${student.studentCode})`,
+        detail:
+          action === "REISSUE"
+            ? `Thu hồi mã cũ & cấp mã mới (v${student.qrVersion})${emailResult.sent ? ", đã gửi email" : ""}`
+            : emailResult.sent
+              ? `Gửi thẻ QR qua email ${student.email}`
+              : `Gửi email thất bại: ${emailResult.message}`,
+      });
+
       return NextResponse.json({
         success: true,
         qrToken: token,
@@ -138,6 +151,13 @@ export async function POST(req: NextRequest) {
             : emailResult.message,
       });
     }
+
+    await recordAuditLog({
+      actor: auth.user,
+      action: "QR_REISSUE",
+      target: `${student.fullName} (${student.studentCode})`,
+      detail: `Thu hồi mã cũ & cấp mã mới (v${student.qrVersion}), reset trạng thái gửi QR`,
+    });
 
     return NextResponse.json({
       success: true,

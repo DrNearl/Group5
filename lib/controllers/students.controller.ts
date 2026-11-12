@@ -4,6 +4,7 @@ import { parseVluStudentInfo } from "@/lib/vlu-student-helper";
 import { requireStaffAuth } from "@/lib/auth-server";
 import { generatePersonalQrToken } from "@/lib/qr-security";
 import { sendPersonalQrEmail } from "@/lib/mailer";
+import { recordAuditLog } from "@/lib/audit";
 
 // GET: Lấy danh sách toàn bộ Sinh viên trực Lab
 export async function handleStudentsGet(req: NextRequest) {
@@ -124,6 +125,13 @@ export async function handleStudentsPost(req: NextRequest) {
       }
     }
 
+    await recordAuditLog({
+      req,
+      action: "STUDENT_CREATE",
+      target: `${student.fullName} (${student.studentCode})`,
+      detail: `Lớp ${student.className || "DTH-CNTT"}${emailResult?.sent ? " • Đã gửi QR qua email" : ""}`,
+    });
+
     return NextResponse.json({
       success: true,
       message:
@@ -146,11 +154,18 @@ export async function handleStudentsDelete(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Thiếu ID sinh viên cần xóa!" }, { status: 400 });
     }
 
-    await prisma.student.delete({
+    const deletedStudent = await prisma.student.delete({
       where: { id },
     });
 
-    return NextResponse.json({ success: true, message: "Đã xóa sinh viên khỏi danh sách trực Lab!" });
+    await recordAuditLog({
+      req,
+      action: "STUDENT_DELETE",
+      target: `${deletedStudent.fullName} (${deletedStudent.studentCode})`,
+      detail: `Xóa sinh viên khỏi danh sách phòng Lab`,
+    });
+
+    return NextResponse.json({ success: true, message: "Đã xóa sinh viên khỏi danh sách phòng Lab!" });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
@@ -196,6 +211,13 @@ export async function handleStudentsPut(req: NextRequest) {
         phone: phone ? phone.trim() : null,
         className: className && className.trim() ? className.trim() : vluParsed.suggestedClass,
       },
+    });
+
+    await recordAuditLog({
+      req,
+      action: "STUDENT_UPDATE",
+      target: `${updatedStudent.fullName} (${updatedStudent.studentCode})`,
+      detail: `Cập nhật thông tin sinh viên (${updatedStudent.className || "DTH-CNTT"})`,
     });
 
     return NextResponse.json({
