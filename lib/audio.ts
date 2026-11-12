@@ -5,6 +5,11 @@ class SoundFX {
 
   private getContext() {
     if (typeof window === "undefined") return null;
+    try {
+      if (localStorage.getItem("vlu_sound") === "off") return null;
+    } catch {
+      // Ignore storage errors
+    }
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) {

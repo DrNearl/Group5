@@ -42,3 +42,17 @@ body {
 #interactive-webcam-reader__scan_region {
   border: none !important;
 }
+
+/* Dark theme support toggled from Settings */
+@media screen {
+  html[data-theme="dark"] {
+    filter: invert(0.92) hue-rotate(180deg);
+    background: #111827;
+  }
+
+  html[data-theme="dark"] img,
+  html[data-theme="dark"] video,
+  html[data-theme="dark"] canvas {
+    filter: invert(1) hue-rotate(180deg);
+  }
+}

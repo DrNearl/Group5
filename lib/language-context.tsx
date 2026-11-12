@@ -27,6 +27,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         setLangState(saved);
         document.documentElement.lang = saved;
       }
+      const savedTheme = localStorage.getItem("vlu_theme");
+      if (savedTheme === "dark" || savedTheme === "light") {
+        document.documentElement.setAttribute("data-theme", savedTheme);
+      }
     } catch {
       // Ignore storage errors
     }
