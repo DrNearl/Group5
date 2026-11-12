@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   Users,
@@ -25,6 +26,14 @@ import { parseVluStudentInfo, extractCohort } from "@/lib/vlu-student-helper";
 import { getAssetPath } from "@/lib/asset-path";
 import StudentQrModal from "@/components/modals/StudentQrModal";
 import StudentBulkImportModal from "@/components/modals/StudentBulkImportModal";
+
+function ModalPortal({ children }: { children: React.ReactNode }) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => setIsMounted(true), []);
+
+  return isMounted ? createPortal(children, document.body) : null;
+}
 
 function StudentsManagementContent() {
   const { user } = useAuth();
@@ -431,7 +440,8 @@ function StudentsManagementContent() {
 
         {/* MODAL THÊM SINH VIÊN MỚI */}
         {showAddModal && (
-          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <ModalPortal>
+            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 relative animate-in fade-in zoom-in-95">
               <button
                 onClick={() => setShowAddModal(false)}
@@ -560,12 +570,14 @@ function StudentsManagementContent() {
                 </div>
               </form>
             </div>
-          </div>
+            </div>
+          </ModalPortal>
         )}
 
         {/* MODAL CHỈNH SỬA SINH VIÊN */}
         {editingStudent && (
-          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <ModalPortal>
+            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 relative animate-in fade-in zoom-in-95">
               <button
                 onClick={() => setEditingStudent(null)}
@@ -684,7 +696,8 @@ function StudentsManagementContent() {
                 </div>
               </form>
             </div>
-          </div>
+            </div>
+          </ModalPortal>
         )}
 
         {qrStudent && (
@@ -719,5 +732,4 @@ export default function StudentsManagementPageView() {
     </ProtectedRoute>
   );
 }
-
 
