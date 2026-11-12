@@ -12,7 +12,7 @@ export default function VluLogo({ className = "h-8 sm:h-9 w-auto object-contain"
         className={`vlu-logo-light ${className}`}
       />
       <img
-        src={getAssetPath("/vlu-logo-dark.svg")}
+        src={getAssetPath("/vlu-logo-dark.png")}
         alt="Logo Đại học Văn Lang"
         className={`vlu-logo-dark ${className}`}
       />
