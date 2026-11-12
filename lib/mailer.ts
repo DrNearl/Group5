@@ -54,16 +54,15 @@ function buildHtmlQrTable(qrToken: string): string {
     const cells: string[] = [];
     for (let c = 0; c < size; c++) {
       const dark = qr.modules.get(r, c);
+      const color = dark ? "#000000" : "#ffffff";
       cells.push(
-        `<td style="width:5px;height:5px;padding:0;margin:0;background:${
-          dark ? "#111827" : "#ffffff"
-        };"></td>`
+        `<td bgcolor="${color}" style="width:6px;height:6px;padding:0;margin:0;background-color:${color};background-image:linear-gradient(${color},${color});"></td>`
       );
     }
     rows.push(`<tr>${cells.join("")}</tr>`);
   }
 
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 12px;border-collapse:collapse;border:10px solid #ffffff;background:#ffffff;border-radius:8px;"><tbody>${rows.join("")}</tbody></table>`;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="margin:0 auto 12px;border-collapse:collapse;background-color:#ffffff;background-image:linear-gradient(#ffffff,#ffffff);border-radius:10px;color-scheme:light only;"><tbody><tr><td bgcolor="#ffffff" style="padding:14px;background-color:#ffffff;background-image:linear-gradient(#ffffff,#ffffff);border-radius:10px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tbody>${rows.join("")}</tbody></table></td></tr></tbody></table>`;
 }
 
 function buildQrEmailHtml(params: SendPersonalQrParams): string {
@@ -83,7 +82,7 @@ function buildQrEmailHtml(params: SendPersonalQrParams): string {
       <div style="padding: 24px; color: #1f2937;">
         <p style="margin: 0 0 12px; font-size: 14px;">Chào <strong>${params.fullName}</strong>,</p>
         <p style="margin: 0 0 18px; font-size: 13px; color: #4b5563; line-height: 1.5;">
-          Hệ thống Xưởng Thực tập Khoa CNTT cấp cho bạn Mã QR cá nhân định danh điện tử để sử dụng Check-in / Check-out tại Camera Trạm quét (hoặc lưu tệp ảnh đính kèm bên dưới về điện thoại).
+          Hệ thống Xưởng Thực tập Khoa CNTT cấp cho bạn Mã QR cá nhân định danh điện tử để sử dụng Check-in / Check-out tại Camera Trạm quét (hoặc lưu tệp ảnh PNG đính kèm trong email về điện thoại).
         </p>
 
         <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 18px;">
@@ -92,6 +91,9 @@ function buildQrEmailHtml(params: SendPersonalQrParams): string {
           <div style="font-size: 13px; font-family: monospace; color: #b91c1c; font-weight: bold; margin-top: 2px;">MSSV: ${params.studentCode}</div>
           <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
             Lớp: ${params.className || "Đang cập nhật"} • Hiệu lực: ${expiryText}
+          </div>
+          <div style="font-size: 11px; color: #9ca3af; margin-top: 6px;">
+            Mẹo: Nếu bật Chế độ tối (Dark Mode), hãy mở tệp ảnh PNG đính kèm để quét nhạy nhất.
           </div>
         </div>
 
