@@ -165,9 +165,7 @@ function DashboardContent() {
       "Họ và tên": sv.fullName,
       MSSV: sv.studentCode,
       "Lớp": sv.className || "DTH-CNTT",
-      "Ca sáng": sv.morningShifts || 0,
-      "Ca chiều": sv.afternoonShifts || 0,
-      "Tổng ca trực": sv.totalShifts || 0,
+      "Tổng lượt vào/ra": sv.totalShifts || 0,
     }));
 
     studentSummaryData.push({
@@ -175,9 +173,7 @@ function DashboardContent() {
       "Họ và tên": "TỔNG CỘNG TOÀN BỘ SINH VIÊN",
       MSSV: "",
       "Lớp": "",
-      "Ca sáng": (data.studentStats || []).reduce((acc: number, s: any) => acc + (s.morningShifts || 0), 0),
-      "Ca chiều": (data.studentStats || []).reduce((acc: number, s: any) => acc + (s.afternoonShifts || 0), 0),
-      "Tổng ca trực": (data.studentStats || []).reduce((acc: number, s: any) => acc + (s.totalShifts || 0), 0),
+      "Tổng lượt vào/ra": (data.studentStats || []).reduce((acc: number, s: any) => acc + (s.totalShifts || 0), 0),
     });
 
     const detailedLogsData = data.allLogs.map((log: any, idx: number) => ({
@@ -207,7 +203,7 @@ function DashboardContent() {
       { wch: 12 },
       { wch: 14 },
     ];
-    XLSX.utils.book_append_sheet(workbook, wsSummary, "ThongKeCaTruc");
+    XLSX.utils.book_append_sheet(workbook, wsSummary, "DanhSachSinhVien");
 
     const wsDetails = XLSX.utils.json_to_sheet(detailedLogsData);
     wsDetails["!cols"] = [
@@ -224,7 +220,7 @@ function DashboardContent() {
 
     XLSX.writeFile(
       workbook,
-      `VLU_ThongKeCaTruc_${new Date().toISOString().slice(0, 10)}.xlsx`
+      `VLU_PhongLab_${new Date().toISOString().slice(0, 10)}.xlsx`
     );
   };
 
@@ -306,7 +302,7 @@ function DashboardContent() {
                 BẢNG QUẢN LÝ ĐIỂM DANH
               </h1>
               <p className="text-xs text-gray-500">
-                Khoa Công nghệ Thông tin • Giám sát ra vào &amp; Thống kê ca trực
+                Khoa Công nghệ Thông tin • Giám sát ra vào phòng Lab
               </p>
             </div>
           </div>
@@ -350,7 +346,7 @@ function DashboardContent() {
         {/* TIÊU ĐỀ KHI IN ẤN CHUẨN VLU (Chỉ hiện khi in) */}
         <div className="hidden print:block text-center border-b pb-4 mb-4">
           <div className="text-sm font-bold uppercase">Trường Đại Học Văn Lang • Khoa Công Nghệ Thông Tin</div>
-          <h2 className="text-xl font-bold uppercase mt-1">BẢNG TỔNG HỢP CÔNG TRỰC XƯỞNG THỰC TẬP</h2>
+          <h2 className="text-xl font-bold uppercase mt-1">BẢNG THỐNG KÊ RA VÀO PHÒNG LAB</h2>
           <div className="text-xs text-gray-500 mt-1">Ngày lập báo cáo: {new Date().toLocaleDateString("vi-VN")}</div>
         </div>
 
@@ -381,7 +377,7 @@ function DashboardContent() {
 
           {(!data?.activeInLab || data.activeInLab.length === 0) ? (
             <div className="py-6 text-center text-xs text-gray-400">
-              Hiện tại không có sinh viên nào trong xưởng. Sinh viên quẹt thẻ tại Laptop Trạm để vào ca!
+              Hiện tại chưa có sinh viên nào trong phòng Lab.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
@@ -598,11 +594,11 @@ function DashboardContent() {
             </div>
           </div>
 
-          {/* 2. Tổng số ca trực */}
+          {/* 2. Tổng lượt điểm danh */}
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">Tổng số ca trực</div>
+            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">Tổng lượt điểm danh</div>
             <div className="text-xl font-bold text-rose-500 font-mono mt-1">
-              {data?.stats?.totalLogs || 0} <span className="text-xs text-gray-400 font-normal">ca</span>
+              {data?.stats?.totalLogs || 0} <span className="text-xs text-gray-400 font-normal">lượt</span>
             </div>
           </div>
 
@@ -615,16 +611,16 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* THÔNG TIN KHUNG GIỜ LÀM VIỆC XƯỞNG THỰC TẬP KHOA CNTT */}
+        {/* THÔNG TIN GIỜ MỞ CỬA PHÒNG LAB KHOA CNTT */}
         <div className="print:hidden bg-gradient-to-r from-red-50/70 via-white to-amber-50/60 rounded-2xl border border-red-100 p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs shadow-xs">
           <div className="flex items-center gap-2.5">
             <span className="px-2 py-0.5 bg-red-600 text-white rounded-md font-bold text-[11px] tracking-wide">VLU</span>
-            <span className="font-bold text-gray-800">Xưởng Thực Tập - Khoa Công Nghệ Thông Tin:</span>
+            <span className="font-bold text-gray-800">Phòng Lab - Khoa Công Nghệ Thông Tin:</span>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-gray-600">
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-              <span>Thời gian làm việc: <strong>Từ Thứ 2 – Thứ 7</strong></span>
+              <span>Giờ mở cửa: <strong>Từ Thứ 2 – Thứ 7</strong></span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-blue-500"></span>
@@ -633,16 +629,16 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* KHỐI 3: THỐNG KÊ CA TRỰC SINH VIÊN */}
+        {/* KHỐI 3: DANH SÁCH SINH VIÊN PHÒNG LAB */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3">
             <div>
               <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
                 <Award className="h-4 w-4 text-rose-500" />
-                Thống Kê Ca Trực Sinh Viên
+                Danh Sách Sinh Viên Phòng Lab
               </h3>
               <p className="text-[11px] text-gray-400 mt-0.5">
-                Xưởng Thực Tập Khoa CNTT • Tổng hợp ca Sáng (08:00 - 12:00) và ca Chiều (13:00 - 17:00)
+                Phòng Lab Khoa CNTT • Tổng hợp lượt ra vào theo từng sinh viên
               </p>
             </div>
             <span className="text-[11px] text-gray-500 font-medium">
@@ -657,15 +653,7 @@ function DashboardContent() {
                   <th className="py-3 px-4">STT</th>
                   <th className="py-3 px-4">Sinh viên</th>
                   <th className="py-3 px-4">Lớp</th>
-                  <th className="py-3 px-4 text-center">
-                    Ca Sáng
-                    <div className="text-[9px] font-normal lowercase text-gray-400">(08:00 - 12:00)</div>
-                  </th>
-                  <th className="py-3 px-4 text-center">
-                    Ca Chiều
-                    <div className="text-[9px] font-normal lowercase text-gray-400">(13:00 - 17:00)</div>
-                  </th>
-                  <th className="py-3 px-4 text-center">Tổng ca trực</th>
+                  <th className="py-3 px-4 text-center">Tổng lượt</th>
                   <th className="py-3 px-4 text-right">Chi tiết</th>
                 </tr>
               </thead>
@@ -682,24 +670,14 @@ function DashboardContent() {
                         {sv.className || "DTH-CNTT"}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold text-xs">
-                        {sv.morningShifts || 0} ca
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold text-xs">
-                        {sv.afternoonShifts || 0} ca
-                      </span>
-                    </td>
                     <td className="py-3.5 px-4 text-center font-bold text-gray-900 text-sm">
-                      {sv.totalShifts || 0} <span className="text-gray-400 font-normal text-xs">ca</span>
+                      {sv.totalShifts || 0} <span className="text-gray-400 font-normal text-xs">lượt</span>
                     </td>
                     <td className="py-3.5 px-4 text-right font-sans">
                       <button
                         onClick={() => setHistoryStudent(sv)}
                         className="px-2.5 py-1.5 rounded-lg bg-gray-50 hover:bg-rose-50 text-gray-700 hover:text-rose-600 border border-gray-200 hover:border-rose-200 text-xs font-semibold inline-flex items-center gap-1.5 transition shadow-2xs"
-                        title="Xem toàn bộ lịch sử quẹt thẻ check-in / check-out"
+                        title="Xem toàn bộ lịch sử quét thẻ check-in / check-out"
                       >
                         <Eye className="h-3.5 w-3.5" />
                         <span>Xem nhật ký</span>
@@ -909,23 +887,23 @@ function DashboardContent() {
                 />
               </div>
 
-              {/* GỢI Ý CHỌN NHANH CA LÀM VIỆC CHUẨN XƯỞNG THỰC TẬP */}
+              {/* GỢI Ý CHỌN NHANH KHUNG GIỜ PHÒNG LAB */}
               <div className="bg-gray-50 border border-gray-100 rounded-lg p-2.5 space-y-1.5">
-                <span className="text-[11px] font-semibold text-gray-500 block">Chọn nhanh ca làm việc Xưởng Thực tập:</span>
+                <span className="text-[11px] font-semibold text-gray-500 block">Chọn nhanh khung giờ phòng Lab:</span>
                 <div className="flex flex-wrap gap-1.5">
                   <button
                     type="button"
                     onClick={() => { setManualInTime("08:00"); setManualOutTime("12:00"); }}
                     className="px-2.5 py-1 rounded bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 border border-gray-200 text-[11px] font-medium text-gray-700 transition"
                   >
-                    Ca Sáng (08:00 - 12:00)
+                    Buổi Sáng (08:00 - 12:00)
                   </button>
                   <button
                     type="button"
                     onClick={() => { setManualInTime("13:00"); setManualOutTime("17:00"); }}
                     className="px-2.5 py-1 rounded bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 border border-gray-200 text-[11px] font-medium text-gray-700 transition"
                   >
-                    Ca Chiều (13:00 - 17:00)
+                    Buổi Chiều (13:00 - 17:00)
                   </button>
                 </div>
               </div>
@@ -1028,7 +1006,7 @@ function DashboardContent() {
                   </span>
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Lớp: <strong className="text-gray-800">{historyStudent.className || "DTH-CNTT"}</strong> • Ca Sáng: <strong className="text-amber-600">{historyStudent.morningShifts || 0} ca</strong> • Ca Chiều: <strong className="text-blue-600">{historyStudent.afternoonShifts || 0} ca</strong> • Tổng: <strong className="text-rose-600">{historyStudent.totalShifts || 0} ca</strong>
+                  Lớp: <strong className="text-gray-800">{historyStudent.className || "DTH-CNTT"}</strong> • Tổng: <strong className="text-rose-600">{historyStudent.totalShifts || 0} lượt</strong>
                 </p>
               </div>
             </div>
@@ -1070,7 +1048,7 @@ function DashboardContent() {
                           </td>
                           <td className="py-2.5 px-3 font-sans">
                             <span className="text-[11px] text-gray-600">
-                              {log.shiftName || "Ca trực"}
+                              {log.shiftName || "Phòng Lab"}
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-emerald-700 font-bold">
