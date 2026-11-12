@@ -92,7 +92,10 @@ export async function POST(req: NextRequest) {
     if (action === "REISSUE") {
       student = await prisma.student.update({
         where: { id: studentId },
-        data: { qrVersion: { increment: 1 } },
+        data: {
+          qrVersion: { increment: 1 },
+          qrSentAt: null,
+        },
       });
     }
 
