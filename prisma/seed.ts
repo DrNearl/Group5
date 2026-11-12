@@ -1,10 +1,11 @@
-// Prisma Database Seed Script (DỮ LIỆU THỰC TẾ 100%)
+// Prisma Database Seed Script (an toàn khi chạy lặp lại, không xóa dữ liệu)
 // Trường Đại học Văn Lang - Khoa Công nghệ Thông tin
-// Hệ quản trị cơ sở dữ liệu: Microsoft SQL Server (MSSQL)
+// Hệ quản trị cơ sở dữ liệu: SQLite
 
 import { PrismaClient } from "@prisma/client";
 import { randomBytes, scrypt as scryptCallback } from "crypto";
 import { promisify } from "util";
+import { getValidStudentCode } from "../lib/studentCode";
 
 const scrypt = promisify(scryptCallback);
 async function hashPassword(password: string) {
@@ -16,24 +17,18 @@ async function hashPassword(password: string) {
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🚀 Bắt đầu nạp dữ liệu thực tế cho Khoa CNTT - Đại học Văn Lang vào SQL Server...");
+  const studentCodes = ["2373401010100", "2174802010708", "2373401010001", "2374802010491"].map((code) => {
+    const validCode = getValidStudentCode(code);
+    if (!validCode) throw new Error(`MSSV seed không hợp lệ: ${code}`);
+    return validCode;
+  });
+  console.log("🚀 Bổ sung dữ liệu mẫu còn thiếu cho Khoa CNTT - Đại học Văn Lang...");
 
-  // 1. Dọn dẹp dữ liệu cũ theo thứ tự ràng buộc khóa ngoại
-  await prisma.attendanceLog.deleteMany();
-  await prisma.equipmentIncident.deleteMany();
-  await prisma.labEquipment.deleteMany();
-  await prisma.dutySchedule.deleteMany();
-  await prisma.shift.deleteMany();
-  await prisma.labRoom.deleteMany();
-  await prisma.student.deleteMany();
-  await prisma.user.deleteMany();
-
-  console.log("🧹 Đã làm sạch cơ sở dữ liệu SQL Server.");
-
-  // 2. TÀI KHOẢN ĐĂNG NHẬP
-  // 2.1 Tài khoản Quản trị viên hệ thống (Admin)
-  await prisma.user.create({
-    data: {
+  // 2. TÀI KHOẢN ĐĂNG NHẬP: CHỈ CÓ ADMIN DUY NHẤT (TOÀN QUYỀN HỆ THỐNG)
+  await prisma.user.upsert({
+    where: { username: "admin" },
+    update: {},
+    create: {
       username: "admin",
       fullName: "Quản trị viên Hệ thống (Admin)",
       email: "admin@vlu.edu.vn",
@@ -44,111 +39,80 @@ async function main() {
     },
   });
 
-  // 2.2 Tài khoản Giảng viên / Cán bộ quản lý ca trực thực tế
-  await prisma.user.create({
-    data: {
-      username: "gv.khoacntt",
-      fullName: "ThS. Nguyễn Văn A",
-      email: "nguyenvana@vanlanguni.vn",
-      passwordHash: await hashPassword("123456"),
-      phone: "0981234567",
-      role: "LECTURER",
-      isActive: true,
-    },
-  });
+  console.log(`✅ Đã tạo tài khoản quản trị duy nhất: admin / admin (Toàn quyền hệ thống).`);
 
-  console.log(`✅ Đã tạo tài khoản quản trị hệ thống và tài khoản Giảng viên mẫu (gv.khoacntt / 123456).`);
-
-  // 3. TẠO DANH SÁCH SINH VIÊN TRỰC LAB (THEO DANH SÁCH THỰC TẾ)
+  // 3. TẠO DANH SÁCH SINH VIÊN TRỰC LAB
   // Sinh viên 1: Nguyễn Thiện Đức
-  const svDuc = await prisma.student.create({
-    data: {
-      studentCode: "2373401010100", // Chuỗi barcode thực tế in trên thẻ SV VLU
+  const svDuc = await prisma.student.upsert({
+    where: { studentCode: studentCodes[0] },
+    update: {},
+    create: {
+      studentCode: studentCodes[0], // Chuỗi barcode thực tế in trên thẻ SV VLU
       fullName: "Nguyễn Thiện Đức",
       email: "duc.2373401010100@vanlanguni.vn",
-      className: "K29CNTT16",
-      phone: "0981331007",
+      className: "23DTH01",
+      phone: "0912345678",
+      profileStatus: "VERIFIED",
+      source: "MANUAL",
       isActive: true,
     },
   });
 
-  // Sinh viên 2: Trần Thái Thuận
-  const svThuan = await prisma.student.create({
-    data: {
-      studentCode: "2374802010490", // Chuỗi barcode thực tế in trên thẻ SV VLU
-      fullName: "Trần Thái Thuận",
-      email: "thuan.2374802010490@vanlanguni.vn",
-      className: "K29CNTT16",
-      phone: "0985820170",
-      isActive: true,
-    },
-  });
-
-  // Sinh viên 3: Nguyễn Bảo Thiên (K27)
-  const svThien = await prisma.student.create({
-    data: {
-      studentCode: "2174802010708", // Chuỗi barcode thực tế in trên thẻ SV VLU
+  // Sinh viên 2: Nguyễn Bảo Thiên
+  const svThien = await prisma.student.upsert({
+    where: { studentCode: studentCodes[1] },
+    update: {},
+    create: {
+      studentCode: studentCodes[1], // Chuỗi barcode thực tế in trên thẻ SV VLU
       fullName: "Nguyễn Bảo Thiên",
       email: "thien.2174802010708@vanlanguni.vn",
-      className: "K27CNTT25",
-      phone: "0898437282",
+      className: "21CNTT02",
+      phone: "0923456789",
+      profileStatus: "VERIFIED",
+      source: "MANUAL",
       isActive: true,
     },
   });
 
-  // Sinh viên 4: Lê Hoàng Long (K28)
-  const svLong = await prisma.student.create({
-    data: {
-      studentCode: "2274802010432",
-      fullName: "Lê Hoàng Long",
-      email: "long.2274802010432@vanlanguni.vn",
-      className: "K28-CNTT02",
-      phone: "0912345678",
+  // Sinh viên 3: Trần Thái Thuận
+  const svThuan = await prisma.student.upsert({
+    where: { studentCode: studentCodes[2] },
+    update: {},
+    create: {
+      studentCode: studentCodes[2], // Chuỗi barcode thực tế in trên thẻ SV VLU
+      fullName: "Trần Thái Thuận",
+      email: "thuan.2373401010001@vanlanguni.vn",
+      className: "23DTH01",
+      phone: "0934567890",
+      profileStatus: "VERIFIED",
+      source: "MANUAL",
       isActive: true,
     },
   });
 
-  // Sinh viên 5: Phạm Minh Quân (K30)
-  const svQuan = await prisma.student.create({
-    data: {
-      studentCode: "2474802010012",
-      fullName: "Phạm Minh Quân",
-      email: "quan.2474802010012@vanlanguni.vn",
-      className: "K30-CNTT01",
-      phone: "0938112233",
+  await prisma.student.upsert({
+    where: { studentCode: studentCodes[3] },
+    update: {},
+    create: {
+      studentCode: studentCodes[3],
+      fullName: null,
+      email: null,
+      phone: null,
+      className: null,
+      profileStatus: "PENDING",
+      source: "SCAN_AUTO",
+      firstSeenAt: new Date(),
       isActive: true,
     },
   });
 
-  // Sinh viên 6: Đỗ Hoàng Nam (K31)
-  const svNam = await prisma.student.create({
-    data: {
-      studentCode: "2574802010055",
-      fullName: "Đỗ Hoàng Nam",
-      email: "nam.2574802010055@vanlanguni.vn",
-      className: "K31-CNTT03",
-      phone: "0977889900",
-      isActive: true,
-    },
-  });
-
-  // Sinh viên 7: Vũ Hải Đăng (K32)
-  const svDang = await prisma.student.create({
-    data: {
-      studentCode: "2674802010088",
-      fullName: "Vũ Hải Đăng",
-      email: "dang.2674802010088@vanlanguni.vn",
-      className: "K32-CNTT01",
-      phone: "0966554433",
-      isActive: true,
-    },
-  });
-
-  console.log(`✅ Đã nạp danh sách Sinh viên trực Lab từ Khóa K27 đến K32 đầy đủ.`);
+  console.log(`✅ Đã nạp 3 Sinh viên trực Lab chính thức: Nguyễn Thiện Đức, Nguyễn Bảo Thiên, Trần Thái Thuận.`);
 
   // 4. TẠO PHÒNG LAB
-  const lab801 = await prisma.labRoom.create({
-    data: {
+  const lab801 = await prisma.labRoom.upsert({
+    where: { labCode: "LAB-CS3-G801" },
+    update: {},
+    create: {
       labCode: "LAB-CS3-G801",
       labName: "Phòng Lab Mạng máy tính & An ninh mạng 8.01",
       building: "Cơ sở 3 - Tòa nhà G, Tầng 8",
@@ -158,8 +122,10 @@ async function main() {
     },
   });
 
-  const lab802 = await prisma.labRoom.create({
-    data: {
+  await prisma.labRoom.upsert({
+    where: { labCode: "LAB-CS3-G802" },
+    update: {},
+    create: {
       labCode: "LAB-CS3-G802",
       labName: "Phòng Lab Trí tuệ nhân tạo & Khoa học dữ liệu 8.02",
       building: "Cơ sở 3 - Tòa nhà G, Tầng 8",
@@ -171,17 +137,19 @@ async function main() {
 
   console.log(`✅ Đã tạo các Phòng Thực hành Lab chính thức tại Cơ sở 3 VLU.`);
 
-  // 5. TẠO CÁC KHUNG CA LÀM VIỆC CHUẨN XƯỞNG THỰC TẬP KHOA CNTT
-  const shiftMorning = await prisma.shift.create({
+  // 5. TẠO CÁC KHUNG CA TRỰC CHUẨN THEO QUY ĐỊNH LÀM VIỆC VĂN LANG
+  const shiftMorningExisting = await prisma.shift.findFirst({ where: { shiftName: "Ca Sáng (08:00 - 11:30)" } });
+  const shiftMorning = shiftMorningExisting || await prisma.shift.create({
     data: {
-      shiftName: "Ca Sáng (08:00 - 12:00)",
+      shiftName: "Ca Sáng (08:00 - 11:30)",
       startTime: "08:00",
-      endTime: "12:00",
+      endTime: "11:30",
       gracePeriodMinutes: 15,
     },
   });
 
-  const shiftAfternoon = await prisma.shift.create({
+  const shiftAfternoonExisting = await prisma.shift.findFirst({ where: { shiftName: "Ca Chiều (13:00 - 17:00)" } });
+  const shiftAfternoon = shiftAfternoonExisting || await prisma.shift.create({
     data: {
       shiftName: "Ca Chiều (13:00 - 17:00)",
       startTime: "13:00",
@@ -190,13 +158,26 @@ async function main() {
     },
   });
 
-  console.log(`✅ Đã tạo Khung ca trực chuẩn Xưởng Thực tập (Sáng: 08:00 - 12:00, Chiều: 13:00 - 17:00).`);
+  const saturdayShift = await prisma.shift.findFirst({ where: { shiftName: "Ca Thứ Bảy (08:00 - 11:00)" } });
+  if (!saturdayShift) await prisma.shift.create({
+    data: {
+      shiftName: "Ca Thứ Bảy (08:00 - 11:00)",
+      startTime: "08:00",
+      endTime: "11:00",
+      gracePeriodMinutes: 15,
+    },
+  });
+
+  console.log(`✅ Đã tạo Khung ca trực chuẩn theo quy định làm việc VLU.`);
 
   // 6. LỊCH PHÂN CÔNG HÔM NAY (MẪU)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  await prisma.dutySchedule.create({
+  const morningSchedule = await prisma.dutySchedule.findFirst({
+    where: { studentId: svDuc.id, labId: lab801.id, shiftId: shiftMorning.id, dutyDate: today },
+  });
+  if (!morningSchedule) await prisma.dutySchedule.create({
     data: {
       studentId: svDuc.id,
       labId: lab801.id,
@@ -207,7 +188,10 @@ async function main() {
     },
   });
 
-  await prisma.dutySchedule.create({
+  const afternoonSchedule = await prisma.dutySchedule.findFirst({
+    where: { studentId: svThien.id, labId: lab801.id, shiftId: shiftAfternoon.id, dutyDate: today },
+  });
+  if (!afternoonSchedule) await prisma.dutySchedule.create({
     data: {
       studentId: svThien.id,
       labId: lab801.id,
@@ -218,7 +202,7 @@ async function main() {
     },
   });
 
-  console.log("🎉 Hoàn tất nạp dữ liệu sạch vào SQL Server (Chỉ Admin, không data máy trạm)!");
+  console.log("🎉 Hoàn tất bổ sung dữ liệu mẫu, dữ liệu hiện có được giữ nguyên.");
 }
 
 main()

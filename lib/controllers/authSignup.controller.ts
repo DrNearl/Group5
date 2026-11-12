@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
+import { getValidStudentCode } from "@/lib/studentCode";
 
 export async function handleAuthSignup(req: NextRequest) {
   try {
     const body = await req.json();
     const fullName = typeof body.fullName === "string" ? body.fullName.trim() : "";
-    const studentCode = typeof body.studentCode === "string" ? body.studentCode.trim() : "";
+    const studentCode = getValidStudentCode(body.studentCode) || "";
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     const password = typeof body.password === "string" ? body.password : "";
     const role = body.role;
@@ -17,7 +18,7 @@ export async function handleAuthSignup(req: NextRequest) {
     if (role !== "LECTURER" && (role as any) !== "STUDENT") {
       return NextResponse.json({ success: false, message: "Chỉ giảng viên có thể đăng ký tài khoản quản lý." }, { status: 403 });
     }
-    if (fullName.length > 120 || studentCode.length < 4 || studentCode.length > 32) {
+    if (fullName.length > 120 || !studentCode) {
       return NextResponse.json({ success: false, message: "Họ tên hoặc mã tài khoản không đúng định dạng." }, { status: 400 });
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 190) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getValidStudentCode } from "@/lib/studentCode";
 const EquipmentStatus = {
   GOOD: "GOOD",
   BROKEN: "BROKEN",
@@ -37,8 +38,11 @@ export async function handleIncidentsCreate(req: NextRequest) {
       );
     }
 
+    const normalizedStudentCode = studentCode ? getValidStudentCode(studentCode) : null;
+    if (studentCode && !normalizedStudentCode) return NextResponse.json({ success: false, message: "MSSV phải gồm đúng 13 chữ số." }, { status: 400 });
+
     // Tìm sinh viên báo cáo (nếu có)
-    const reporter = await prisma.student.findFirst();
+    const reporter = normalizedStudentCode ? await prisma.student.findUnique({ where: { studentCode: normalizedStudentCode } }) : null;
 
     // Tạo sự cố mới
     const incident = await prisma.equipmentIncident.create({

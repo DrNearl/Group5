@@ -76,7 +76,7 @@ function ScheduleTableRow({ schedule, role, onDelete }: { schedule: any; role: s
         <div className="mt-1 text-xs tabular-nums text-gray-600">{schedule.shift.startTime}–{schedule.shift.endTime}</div>
       </td>
       <td className="px-4 py-3">
-        <div className="font-semibold text-gray-900">{schedule.user.fullName}</div>
+        <div className="font-semibold text-gray-900">{schedule.user.fullName || "Sinh viên VLU"}</div>
         <div className="mt-1 font-mono text-xs tabular-nums text-gray-700">{schedule.user.studentCode}</div>
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-gray-800">{schedule.labRoom.labCode}</td>
@@ -89,7 +89,7 @@ function ScheduleTableRow({ schedule, role, onDelete }: { schedule: any; role: s
           <button
             type="button"
             onClick={() => onDelete(schedule.id)}
-            aria-label={`Xóa lịch trực của ${schedule.user.fullName}`}
+            aria-label={`Xóa lịch trực của ${schedule.user.fullName || schedule.user.studentCode}`}
             className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-gray-600 transition-colors duration-150 hover:bg-rose-50 hover:text-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-700"
           >
             <Trash2 aria-hidden="true" className="h-4 w-4" />
@@ -112,7 +112,7 @@ function ScheduleMobileCard({ schedule, role, onDelete }: { schedule: any; role:
           <button
             type="button"
             onClick={() => onDelete(schedule.id)}
-            aria-label={`Xóa lịch trực của ${schedule.user.fullName}`}
+            aria-label={`Xóa lịch trực của ${schedule.user.fullName || schedule.user.studentCode}`}
             className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md text-gray-600 hover:bg-rose-50 hover:text-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-700"
           >
             <Trash2 aria-hidden="true" className="h-4 w-4" />
@@ -121,7 +121,7 @@ function ScheduleMobileCard({ schedule, role, onDelete }: { schedule: any; role:
       </div>
       <div className="space-y-3 pt-3 text-sm">
         <div>
-          <p className="font-semibold text-gray-900">{schedule.user.fullName}</p>
+          <p className="font-semibold text-gray-900">{schedule.user.fullName || "Sinh viên VLU"}</p>
           <p className="mt-0.5 font-mono text-xs tabular-nums text-gray-700">MSSV: {schedule.user.studentCode}</p>
         </div>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
@@ -232,7 +232,7 @@ function SchedulesContent() {
     const matchesDate = scheduleDate === selectedDate;
     const matchesStudent =
       !query ||
-      schedule.user.fullName.toLocaleLowerCase("vi-VN").includes(query) ||
+      (schedule.user.fullName || "Sinh viên VLU").toLocaleLowerCase("vi-VN").includes(query) ||
       schedule.user.studentCode.toLocaleLowerCase("vi-VN").includes(query);
     const pcStatus = getPcStatus(schedule);
     const matchesPc = pcFilter === "ALL" || pcStatus === pcFilter;
@@ -402,7 +402,7 @@ function SchedulesContent() {
                 >
                   {students.map((sv) => (
                     <option key={sv.id} value={sv.id}>
-                      {sv.fullName} ({sv.studentCode})
+                      {sv.fullName || "Sinh viên VLU"} ({sv.studentCode})
                     </option>
                   ))}
                 </select>

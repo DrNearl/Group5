@@ -14,6 +14,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { getUniqueAttendanceHours } from "@/lib/attendance-hours";
 
 type AttendanceLog = {
   id: string;
@@ -153,9 +154,9 @@ function StudentOverview({ userName, userId, studentCode }: { userName: string; 
       .sort((a, b) => new Date(b.checkInTime || b.dutyDate).getTime() - new Date(a.checkInTime || a.dutyDate).getTime());
   }, [dashboard, studentCode]);
 
-  const monthlyHours = studentLogs
-    .filter((log) => dateKey(log.dutyDate).startsWith(monthPrefix))
-    .reduce((total, log) => total + (Number(log.totalHours) || 0), 0);
+  const monthlyHours = getUniqueAttendanceHours(
+    studentLogs.filter((log) => dateKey(log.dutyDate).startsWith(monthPrefix))
+  );
 
   const nextShift = useMemo(() => {
     const now = new Date();

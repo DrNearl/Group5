@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
+import { getValidStudentCode } from "@/lib/studentCode";
 
 export async function handleUsersGet(req: NextRequest) {
   try {
@@ -37,13 +38,15 @@ export async function handleUsersPost(req: NextRequest) {
         { status: 400 }
       );
     }
+    const normalizedStudentCode = getValidStudentCode(studentCode);
+    if (!normalizedStudentCode) return NextResponse.json({ success: false, message: "MSSV phải gồm đúng 13 chữ số." }, { status: 400 });
 
     const safeRole = "LECTURER";
     const userPassword = (password && password.trim().length > 0) ? password.trim() : "123456";
 
     const user = await prisma.user.create({
       data: {
-        username: studentCode.trim(),
+        username: normalizedStudentCode,
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
         passwordHash: await hashPassword(userPassword),

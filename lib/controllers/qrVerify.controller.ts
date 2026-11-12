@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyQrSessionToken } from "@/lib/qr-security";
+import { getValidStudentCode } from "@/lib/studentCode";
 const AttendanceStatus = {
   ON_TIME: "ON_TIME",
   LATE: "LATE",
@@ -36,6 +37,11 @@ export async function handleQrVerify(req: NextRequest) {
       );
     }
 
+    const cleanStudentCode = getValidStudentCode(studentCode);
+    if (!cleanStudentCode) {
+      return NextResponse.json({ success: false, code: "INVALID_FORMAT", message: "MSSV phải gồm đúng 13 chữ số." }, { status: 400 });
+    }
+
     // 1. Xác thực tính hợp lệ và thời hạn của Token mã QR
     const verification = verifyQrSessionToken(token);
     if (!verification.valid || !verification.payload) {
@@ -50,7 +56,6 @@ export async function handleQrVerify(req: NextRequest) {
     }
 
     // 2. Tra cứu sinh viên theo MSSV trong cơ sở dữ liệu
-    const cleanStudentCode = studentCode.trim();
     const { labCode } = verification.payload;
 
     // 3. Tra cứu sinh viên theo MSSV trong cơ sở dữ liệu

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { parseVluStudentInfo } from "@/lib/vlu-student-helper";
+import { getStudentDisplayName } from "@/lib/student-display";
+import { getValidStudentCode } from "@/lib/studentCode";
 const AttendanceStatus = {
   ON_TIME: "ON_TIME",
   LATE: "LATE",
@@ -40,18 +41,43 @@ export async function handleAttendanceScan(req: NextRequest) {
       );
     }
 
-    const cleanBarcode = barcode.trim();
+    const cleanBarcode = getValidStudentCode(barcode);
     const forwardedFor = req.headers.get("x-forwarded-for");
     const clientIp = forwardedFor ? forwardedFor.split(",")[0].trim() : "127.0.0.1";
+    const now = new Date();
+    const scanSource = typeof scanMethod === "string" ? scanMethod : "USB_SCANNER";
+    const device = req.headers.get("x-device-name") || req.headers.get("user-agent");
 
     // =========================================================================
     // 1. NẾU QUÉT TRÚNG MÃ EQ- (ĐÃ BỎ DATA MÁY TRẠM)
     // =========================================================================
-    if (cleanBarcode.toUpperCase().startsWith("EQ-")) {
+    if (barcode.trim().toUpperCase().startsWith("EQ-")) {
+      await prisma.rejectedScan.create({ data: {
+        rawCode: barcode, reason: "INVALID_FORMAT", scannedAt: now,
+        source: scanSource, device, clientIp,
+      } });
       return NextResponse.json({
         success: false,
+        type: "UNAUTHORIZED_SCAN",
+        unauthorized: true,
         message: "Trạm quét chỉ phục vụ điểm danh thẻ sinh viên!",
       });
+    }
+
+    if (!cleanBarcode) {
+      await prisma.rejectedScan.create({ data: {
+        rawCode: barcode, reason: "INVALID_FORMAT", scannedAt: now,
+        source: scanSource, device, clientIp,
+      } });
+      return NextResponse.json(
+        {
+          success: false,
+          type: "UNAUTHORIZED_SCAN",
+          unauthorized: true,
+          message: "Mã thẻ không hợp lệ. MSSV phải gồm đúng 13 chữ số.",
+        },
+        { status: 400 }
+      );
     }
 
     // =========================================================================
@@ -59,24 +85,41 @@ export async function handleAttendanceScan(req: NextRequest) {
     // Sinh viên quét thẻ Barcode, không cần tài khoản đăng nhập!
     // =========================================================================
     
-    // Tìm hoặc tự động tạo hồ sơ Sinh viên nếu chưa có
-    let student = await prisma.student.findUnique({
+    // Upsert bảo đảm chỉ có một hồ sơ khi cùng MSSV được quét đồng thời.
+    const student = await prisma.student.upsert({
       where: { studentCode: cleanBarcode },
+      update: {},
+      create: {
+        studentCode: cleanBarcode,
+        fullName: null,
+        email: null,
+        className: null,
+        phone: null,
+        profileStatus: "PENDING",
+        source: "SCAN_AUTO",
+        firstSeenAt: now,
+        isActive: true,
+      },
     });
 
-    if (!student) {
-      // Tự động phân tích niên khóa K27 - K32 hoặc khách ngoài theo MSSV Văn Lang
-      const vluInfo = parseVluStudentInfo(cleanBarcode);
-      student = await prisma.student.create({
-        data: {
-          studentCode: cleanBarcode,
-          fullName: vluInfo.defaultFullName,
-          email: vluInfo.defaultEmail,
-          className: vluInfo.suggestedClass,
-          isActive: true,
+    if (!student.isActive) {
+      await prisma.rejectedScan.create({ data: {
+        rawCode: barcode, studentId: student.id, reason: "INACTIVE_STUDENT", scannedAt: now,
+        source: scanSource, device, clientIp,
+      } });
+      return NextResponse.json(
+        {
+          success: false,
+          type: "INACTIVE_STUDENT",
+          studentId: student.id,
+          message: `MSSV ${cleanBarcode} đã ngừng hoạt động. Vui lòng liên hệ quản trị viên.`,
         },
-      });
+        { status: 403 }
+      );
     }
+
+    const studentName = getStudentDisplayName(student.fullName);
+    const isPendingProfile = student.profileStatus === "PENDING";
 
     // Lấy thông tin phòng Lab thực tế
     let targetLab = labId ? await prisma.labRoom.findUnique({ where: { id: labId } }) : null;
@@ -109,7 +152,6 @@ export async function handleAttendanceScan(req: NextRequest) {
       });
     }
 
-    const now = new Date();
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
 
@@ -135,17 +177,21 @@ export async function handleAttendanceScan(req: NextRequest) {
       const checkInDate = new Date(openLog.checkInTime);
       const diffMs = now.getTime() - checkInDate.getTime();
 
-      // Chống quẹt nhầm Check-out sớm trong vòng 20 giây sau khi Check-in
-      if (diffMs < 20000) {
-        const remainingSec = Math.ceil((20000 - diffMs) / 1000);
+      // Chống quẹt nhầm Check-out sớm trong vòng 3 phút sau khi Check-in
+      if (diffMs < 180000) {
+        const remainingSec = Math.ceil((180000 - diffMs) / 1000);
+        const m = Math.floor(remainingSec / 60);
+        const s = remainingSec % 60;
+        const timeWaitText = m > 0 ? `${m} phút ${s} giây` : `${s} giây`;
         return NextResponse.json({
           success: false,
           type: "COOLDOWN_WAIT",
           student: {
-            fullName: student.fullName,
+            fullName: studentName,
             studentCode: student.studentCode,
+            isPendingProfile,
           },
-          message: `Bạn vừa Check-in lúc ${checkInDate.toLocaleTimeString("vi-VN")}! Vui lòng đợi ${remainingSec} giây trước khi Check-out.`,
+          message: `Bạn vừa Check-in lúc ${checkInDate.toLocaleTimeString("vi-VN")}! Vui lòng đợi thêm ${timeWaitText} trước khi Check-out.`,
         });
       }
 
@@ -190,8 +236,9 @@ export async function handleAttendanceScan(req: NextRequest) {
         message: `Check-out thành công lúc ${now.toLocaleTimeString("vi-VN")}! Tổng thời gian có mặt: ${durationText}.`,
         data: {
           logId: updatedLog.id,
-          studentName: student.fullName,
+          studentName,
           studentCode: student.studentCode,
+          isPendingProfile,
           labName: openLog.dutySchedule.labRoom.labName,
           shiftName: "Check-out phòng Lab",
           checkInTime: checkInDate.toISOString(),
@@ -208,7 +255,7 @@ export async function handleAttendanceScan(req: NextRequest) {
     // -------------------------------------------------------------------------
     // TRƯỜNG HỢP B: CHƯA CHECK-IN -> THỰC HIỆN CHECK-IN VÀO PHÒNG LAB
     // -------------------------------------------------------------------------
-    
+
     // Tạo bản ghi Schedule gắn với lượt điểm danh
     const newSchedule = await prisma.dutySchedule.create({
       data: {
@@ -241,8 +288,9 @@ export async function handleAttendanceScan(req: NextRequest) {
       message: `Check-in thành công vào phòng Lab lúc ${now.toLocaleTimeString("vi-VN")}!`,
       data: {
         logId: newLog.id,
-        studentName: student.fullName,
+        studentName,
         studentCode: student.studentCode,
+        isPendingProfile,
         labName: targetLab.labName,
         shiftName: "Check-in phòng Lab",
         checkInTime: now.toISOString(),
@@ -300,7 +348,7 @@ export async function GET(req: NextRequest) {
         include: {
           dutySchedule: {
             include: {
-              student: { select: { id: true, fullName: true, studentCode: true } },
+              student: { select: { id: true, fullName: true, studentCode: true, profileStatus: true, isActive: true } },
               labRoom: { select: { labCode: true } },
             },
           },
@@ -333,8 +381,10 @@ export async function GET(req: NextRequest) {
 
       return {
         id: log.id,
-        studentName: log.dutySchedule.student.fullName,
+        studentName: getStudentDisplayName(log.dutySchedule.student.fullName),
         studentCode: log.dutySchedule.student.studentCode,
+        isPendingProfile: log.dutySchedule.student.profileStatus === "PENDING",
+        isActive: log.dutySchedule.student.isActive,
         labCode: log.dutySchedule.labRoom.labCode,
         labName: log.dutySchedule.labRoom.labName,
         shiftName: log.dutySchedule.shift.shiftName,
@@ -351,15 +401,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       logs: formattedLogs,
-      activeStudents: activeAttendanceLogs.map((log) => ({
-        id: log.id,
-        studentId: log.dutySchedule.student.id,
-        studentName: log.dutySchedule.student.fullName,
-        studentCode: log.dutySchedule.student.studentCode,
-        labCode: log.dutySchedule.labRoom.labCode,
-        checkInTime: log.checkInTime,
-        attendanceStatus: log.attendanceStatus,
-      })),
+      activeStudents: activeAttendanceLogs
+        .filter((log) => log.dutySchedule.student.isActive)
+        .map((log) => ({
+          id: log.id,
+          studentId: log.dutySchedule.student.id,
+          studentName: getStudentDisplayName(log.dutySchedule.student.fullName),
+          studentCode: log.dutySchedule.student.studentCode,
+          isPendingProfile: log.dutySchedule.student.profileStatus === "PENDING",
+          labCode: log.dutySchedule.labRoom.labCode,
+          checkInTime: log.checkInTime,
+          attendanceStatus: log.attendanceStatus,
+        })),
       labs: labRooms,
       shifts: activeShifts,
     });
@@ -410,7 +463,7 @@ export async function handleManualCheckout(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Đã kết thúc lượt trực cho sinh viên ${log.dutySchedule.student.fullName}!`,
+      message: `Đã kết thúc lượt trực cho sinh viên ${getStudentDisplayName(log.dutySchedule.student.fullName)}!`,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

@@ -35,6 +35,7 @@ interface ScanResult {
   logId?: string;
   studentName: string;
   studentCode: string;
+  isPendingProfile?: boolean;
   labName: string;
   checkInTime: string;
   checkOutTime?: string | null;
@@ -698,6 +699,7 @@ function ScanStationContent() {
               </span>
               <h2 className="text-xl font-extrabold text-gray-900 mt-2.5">{lastResult.studentName}</h2>
               <div className="text-xs font-mono text-gray-400 mt-0.5">MSSV: {lastResult.studentCode}</div>
+              {lastResult.isPendingProfile && <span className="inline-flex mt-2 px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">Hồ sơ chưa xác minh</span>}
             </div>
 
             <div className="bg-gray-50 rounded-xl p-3.5 text-xs text-gray-700 font-medium">

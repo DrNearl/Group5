@@ -29,20 +29,42 @@ model User {
 
 // 2. Student: Danh mục Sinh viên trực Lab (Dùng mã Barcode trên thẻ SV để quẹt, KHÔNG cần tài khoản đăng nhập)
 model Student {
-  id          String   @id @default(uuid())
-  studentCode String   @unique // MSSV - Mã vạch Code 128 trên thẻ sinh viên (vd: "2373401010100")
-  fullName    String
-  email       String?  // Email sinh viên Văn Lang (để gửi thông báo ca trực)
-  phone       String?
-  className   String?  // Lớp chuyên ngành (vd: "23DTH01", "21CNTT02")
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String    @id @default(uuid())
+  studentCode   String    @unique // MSSV - Mã vạch Code 128 trên thẻ sinh viên (vd: "2373401010100")
+  fullName      String?
+  email         String? // Email sinh viên Văn Lang (để gửi thông báo ca trực)
+  phone         String?
+  className     String? // Lớp chuyên ngành (vd: "23DTH01", "21CNTT02")
+  profileStatus String    @default("VERIFIED") // PENDING, VERIFIED
+  source        String    @default("MANUAL") // MANUAL, SCAN_AUTO, IMPORT
+  firstSeenAt   DateTime?
+  isActive      Boolean   @default(true)
+  deactivatedAt DateTime?
+  deactivatedBy String?
+  reactivatedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   dutySchedules     DutySchedule[]
   reportedIncidents EquipmentIncident[]
+  rejectedScans     RejectedScan[]
 
   @@index([studentCode])
+}
+
+model RejectedScan {
+  id        String   @id @default(uuid())
+  rawCode   String
+  studentId String?
+  reason    String // INVALID_FORMAT, INACTIVE_STUDENT
+  scannedAt DateTime @default(now())
+  source    String?
+  device    String?
+  clientIp  String?
+
+  student Student? @relation(fields: [studentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([studentId, reason, scannedAt])
 }
 
 // 3. LabRoom: Phòng máy thực hành thực tế tại VLU

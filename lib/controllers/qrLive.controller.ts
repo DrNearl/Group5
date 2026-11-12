@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getStudentDisplayName } from "@/lib/student-display";
 
 export async function handleQrLive() {
   try {
@@ -20,6 +21,7 @@ export async function handleQrLive() {
                 fullName: true,
                 studentCode: true,
                 email: true,
+                profileStatus: true,
               },
             },
             labRoom: {
@@ -39,8 +41,9 @@ export async function handleQrLive() {
 
     const formattedLogs = logs.map((log) => ({
       id: log.id,
-      studentName: log.dutySchedule?.student?.fullName || "Sinh viên",
+      studentName: getStudentDisplayName(log.dutySchedule?.student?.fullName),
       studentCode: log.dutySchedule?.student?.studentCode || log.scannedBarcode,
+      isPendingProfile: log.dutySchedule?.student?.profileStatus === "PENDING",
       checkInTime: log.checkInTime,
       checkOutTime: log.checkOutTime,
       scanMethod: log.scanMethod,

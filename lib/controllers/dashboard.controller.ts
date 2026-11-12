@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getValidStudentCode } from "@/lib/studentCode";
+import { getUniqueAttendanceHours, getUniqueAttendanceIntervals } from "@/lib/attendance-hours";
+import { getStudentDisplayName } from "@/lib/student-display";
 
 export async function handleDashboardGet(req: NextRequest) {
   try {
     const [totalSchedules, attendanceLogs, students, incidents, labs] = await Promise.all([
-      prisma.dutySchedule.count(),
+      prisma.dutySchedule.count({ where: { student: { isActive: true } } }),
       prisma.attendanceLog.findMany({
         include: {
           dutySchedule: {
@@ -18,6 +21,7 @@ export async function handleDashboardGet(req: NextRequest) {
         orderBy: { createdAt: "desc" },
       }),
       prisma.student.findMany({
+        where: { isActive: true },
         include: {
           dutySchedules: {
             include: {
@@ -36,35 +40,29 @@ export async function handleDashboardGet(req: NextRequest) {
       prisma.labRoom.findMany(),
     ]);
 
-    // Thống kê tổng hợp
-    const onTimeCount = attendanceLogs.filter((l) => l.attendanceStatus === "ON_TIME").length;
-    const lateCount = attendanceLogs.filter((l) => l.attendanceStatus === "LATE").length;
-    const totalHoursAll = attendanceLogs.reduce((acc, l) => acc + (l.totalHours || 0), 0);
+    // Thống kê chỉ tính hồ sơ đang hoạt động; attendanceLogs vẫn giữ toàn bộ lịch sử.
+    const activeAttendanceLogs = attendanceLogs.filter((l) => l.dutySchedule.student.isActive);
+    const activeLogsByStudent = new Map<string, typeof activeAttendanceLogs>();
+    for (const log of activeAttendanceLogs) {
+      const studentId = log.dutySchedule.studentId;
+      const studentLogs = activeLogsByStudent.get(studentId) || [];
+      studentLogs.push(log);
+      activeLogsByStudent.set(studentId, studentLogs);
+    }
+    const totalHoursAll = Array.from(activeLogsByStudent.values())
+      .reduce((total, logs) => total + getUniqueAttendanceHours(logs), 0);
+    const onTimeCount = activeAttendanceLogs.filter((l) => l.attendanceStatus === "ON_TIME").length;
+    const lateCount = activeAttendanceLogs.filter((l) => l.attendanceStatus === "LATE").length;
 
-    // Thống kê theo từng sinh viên: chi tiết Ca Sáng, Ca Chiều & chuyên cần
+    // Thống kê theo từng sinh viên & đánh giá chuyên cần
     const studentStats = students.map((sv) => {
       const logs = sv.dutySchedules
         .map((s) => s.attendanceLog)
         .filter((l): l is NonNullable<typeof l> => l !== null);
-      const totalHours = logs.reduce((acc, l) => acc + (l.totalHours || 0), 0);
+      const totalHours = getUniqueAttendanceHours(logs);
       const onTime = logs.filter((l) => l.attendanceStatus === "ON_TIME").length;
       const late = logs.filter((l) => l.attendanceStatus === "LATE").length;
       const roundedHours = Math.round(totalHours * 10) / 10;
-
-      // Phân loại ca Sáng (08:00 - 12:00) và ca Chiều (13:00 - 17:00)
-      let morningShifts = 0;
-      let afternoonShifts = 0;
-
-      logs.forEach((l) => {
-        if (!l.checkInTime) return;
-        const d = new Date(l.checkInTime);
-        const checkInHour = d.getHours() + d.getMinutes() / 60;
-        if (checkInHour < 12.5) {
-          morningShifts += 1;
-        } else {
-          afternoonShifts += 1;
-        }
-      });
 
       // Tìm lượt trực gần nhất
       const sortedLogs = [...logs].sort((a, b) => new Date(b.checkInTime || b.createdAt).getTime() - new Date(a.checkInTime || a.createdAt).getTime());
@@ -73,43 +71,35 @@ export async function handleDashboardGet(req: NextRequest) {
         ? new Date(lastLog.checkInTime).toLocaleDateString("vi-VN")
         : null;
 
-      const completedCount = logs.filter((l) => l.checkOutTime !== null).length;
+      let diligence = "Ít tham gia";
+      let diligenceTag = "LOW";
+      if (roundedHours >= 15) {
+        diligence = "Chăm chỉ";
+        diligenceTag = "HIGH";
+      } else if (roundedHours >= 5) {
+        diligence = "Đạt yêu cầu";
+        diligenceTag = "MEDIUM";
+      }
 
       return {
         id: sv.id,
-        fullName: sv.fullName,
+        fullName: getStudentDisplayName(sv.fullName),
         studentCode: sv.studentCode,
-        className: sv.className || "DTH-CNTT",
-        morningShifts,
-        afternoonShifts,
+        profileStatus: sv.profileStatus,
         totalShifts: sv.dutySchedules.length,
-        completedShifts: completedCount,
+        completedShifts: logs.filter((l) => l.checkOutTime !== null).length,
         totalHours: roundedHours,
         onTime,
         late,
         lastDutyDate,
+        diligence,
+        diligenceTag,
       };
     });
 
-    // Phân bổ số người trực & số lượt theo ngày làm việc trong tuần (Thứ Hai -> Thứ Bảy; Chủ Nhật nghỉ)
+    // Phân bổ số giờ theo ngày làm việc trong tuần của VLU (Thứ Hai -> Thứ Bảy; Chủ Nhật nghỉ)
     const weekdayNames = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
-    const weekdayAttendees: { [key: string]: Set<string> } = {
-      "Thứ Hai": new Set(),
-      "Thứ Ba": new Set(),
-      "Thứ Tư": new Set(),
-      "Thứ Năm": new Set(),
-      "Thứ Sáu": new Set(),
-      "Thứ Bảy": new Set(),
-    };
-    const weekdayShifts: { [key: string]: number } = {
-      "Thứ Hai": 0,
-      "Thứ Ba": 0,
-      "Thứ Tư": 0,
-      "Thứ Năm": 0,
-      "Thứ Sáu": 0,
-      "Thứ Bảy": 0,
-    };
-    const weekdayHours: { [key: string]: number } = {
+    const weekdayMap: { [key: string]: number } = {
       "Thứ Hai": 0,
       "Thứ Ba": 0,
       "Thứ Tư": 0,
@@ -118,47 +108,49 @@ export async function handleDashboardGet(req: NextRequest) {
       "Thứ Bảy": 0,
     };
 
-    // Phân bổ giờ theo ca làm việc chuẩn Xưởng thực tập (Ca Sáng: 08:00 - 12:00, Ca Chiều: 13:00 - 17:00)
+    // Phân bổ giờ theo ca làm việc chuẩn VLU (Ca Sáng: 08:00 - 11:30, Ca Chiều: 13:00 - 17:00)
     let morningHours = 0;
     let afternoonHours = 0;
 
-    attendanceLogs.forEach((l) => {
-      if (!l.checkInTime) return;
-      const d = new Date(l.checkInTime);
-      const dayIndex = d.getDay();
-      const dayName = weekdayNames[dayIndex];
-      const hrs = l.totalHours > 0 ? l.totalHours : 0;
-      const studentId = l.dutySchedule?.student?.id || l.dutySchedule?.student?.studentCode || "";
+    for (const logs of Array.from(activeLogsByStudent.values())) {
+      for (const interval of getUniqueAttendanceIntervals(logs)) {
+        let cursor = new Date(interval.start);
+        while (cursor < interval.end) {
+          const nextDay = new Date(cursor);
+          nextDay.setHours(24, 0, 0, 0);
+          const daySegmentEnd = interval.end < nextDay ? interval.end : nextDay;
+          const dayName = weekdayNames[cursor.getDay()];
+          if (weekdayMap[dayName] !== undefined) {
+            weekdayMap[dayName] += (daySegmentEnd.getTime() - cursor.getTime()) / 3_600_000;
+          }
 
-      if (weekdayAttendees[dayName] !== undefined) {
-        if (studentId) weekdayAttendees[dayName].add(studentId);
-        weekdayShifts[dayName] += 1;
-        weekdayHours[dayName] += hrs;
+          const noon = new Date(cursor);
+          noon.setHours(12, 0, 0, 0);
+          if (cursor < noon) {
+            const morningEnd = daySegmentEnd < noon ? daySegmentEnd : noon;
+            morningHours += (morningEnd.getTime() - cursor.getTime()) / 3_600_000;
+            if (daySegmentEnd > noon) afternoonHours += (daySegmentEnd.getTime() - noon.getTime()) / 3_600_000;
+          } else {
+            afternoonHours += (daySegmentEnd.getTime() - cursor.getTime()) / 3_600_000;
+          }
+          cursor = daySegmentEnd;
+        }
       }
+    }
 
-      const checkInHour = d.getHours() + d.getMinutes() / 60;
-      if (checkInHour < 12) {
-        morningHours += hrs;
-      } else {
-        afternoonHours += hrs;
-      }
-    });
-
-    const weekdayData = Object.entries(weekdayAttendees).map(([day, studentSet]) => ({
+    const weekdayData = Object.entries(weekdayMap).map(([day, hours]) => ({
       day,
-      peopleCount: studentSet.size,
-      shiftCount: weekdayShifts[day] || 0,
-      hours: Math.round((weekdayHours[day] || 0) * 10) / 10,
+      hours: Math.round(hours * 10) / 10,
     }));
 
     const shiftDistribution = [
-      { shift: "Ca Sáng (08:00 - 12:00)", hours: Math.round(morningHours * 10) / 10 },
+      { shift: "Ca Sáng (08:00 - 11:30)", hours: Math.round(morningHours * 10) / 10 },
       { shift: "Ca Chiều (13:00 - 17:00)", hours: Math.round(afternoonHours * 10) / 10 },
     ];
 
     // Danh sách sinh viên đang có mặt trong phòng Lab (Live)
     const activeInLab = attendanceLogs
-      .filter((l) => l.checkInTime && !l.checkOutTime)
+      .filter((l) => l.checkInTime && !l.checkOutTime && l.dutySchedule.student.isActive)
       .map((l) => {
         const checkIn = new Date(l.checkInTime!);
         const elapsedSec = Math.max(1, Math.floor((Date.now() - checkIn.getTime()) / 1000));
@@ -169,8 +161,11 @@ export async function handleDashboardGet(req: NextRequest) {
 
         return {
           id: l.id,
-          studentName: l.dutySchedule.student.fullName,
+          studentName: getStudentDisplayName(l.dutySchedule.student.fullName),
           studentCode: l.dutySchedule.student.studentCode,
+          profileStatus: l.dutySchedule.student.profileStatus,
+          isPendingProfile: l.dutySchedule.student.profileStatus === "PENDING",
+          isActive: l.dutySchedule.student.isActive,
           labName: l.dutySchedule.labRoom.labName,
           checkInTime: l.checkInTime,
           snapshot: l.checkInSnapshot,
@@ -180,12 +175,17 @@ export async function handleDashboardGet(req: NextRequest) {
         };
       });
 
-    const completedLogs = attendanceLogs.filter((l) => l.checkInTime && l.checkOutTime);
-    const avgHours = completedLogs.length > 0
-      ? Math.round((totalHoursAll / completedLogs.length) * 10) / 10
+    const completedLogs = activeAttendanceLogs.filter((l) => l.checkInTime && l.checkOutTime);
+    const uniqueCompletedPeriods = Array.from(activeLogsByStudent.values()).reduce((total, logs) => {
+      const intervals = getUniqueAttendanceIntervals(logs);
+      const legacyPeriods = logs.filter((log) => !log.checkInTime && log.totalHours > 0).length;
+      return total + intervals.length + legacyPeriods;
+    }, 0);
+    const avgHours = uniqueCompletedPeriods > 0
+      ? Math.round((totalHoursAll / uniqueCompletedPeriods) * 10) / 10
       : 0;
-    const completionRate = attendanceLogs.length > 0
-      ? Math.round((completedLogs.length / attendanceLogs.length) * 100)
+    const completionRate = activeAttendanceLogs.length > 0
+      ? Math.round((completedLogs.length / activeAttendanceLogs.length) * 100)
       : 100;
     const staleCount = activeInLab.filter((s) => s.isStale).length;
 
@@ -193,7 +193,7 @@ export async function handleDashboardGet(req: NextRequest) {
       success: true,
       stats: {
         totalSchedules,
-        totalLogs: attendanceLogs.length,
+        totalLogs: activeAttendanceLogs.length,
         totalStudents: students.length,
         onTimeCount,
         lateCount,
@@ -224,8 +224,12 @@ export async function handleDashboardGet(req: NextRequest) {
         }
         return {
           id: l.id,
-          studentName: l.dutySchedule.student.fullName,
+          studentName: getStudentDisplayName(l.dutySchedule.student.fullName),
           studentCode: l.dutySchedule.student.studentCode,
+          profileStatus: l.dutySchedule.student.profileStatus,
+          isPendingProfile: l.dutySchedule.student.profileStatus === "PENDING",
+          isActive: l.dutySchedule.student.isActive,
+          deactivatedAt: l.dutySchedule.student.deactivatedAt,
           dutyDate: l.dutySchedule.dutyDate,
           shiftName: l.dutySchedule.shift.shiftName,
           labName: l.dutySchedule.labRoom.labName,
@@ -257,8 +261,11 @@ export async function handleManualAttendanceCreate(req: NextRequest) {
       );
     }
 
+    const normalizedStudentCode = getValidStudentCode(studentCode);
+    if (!normalizedStudentCode) return NextResponse.json({ success: false, message: "MSSV phải gồm đúng 13 chữ số." }, { status: 400 });
+
     const student = await prisma.student.findUnique({
-      where: { studentCode: studentCode.trim() },
+      where: { studentCode: normalizedStudentCode },
     });
 
     if (!student) {
@@ -313,7 +320,7 @@ export async function handleManualAttendanceCreate(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Đã ghi nhận điểm danh bổ sung cho sinh viên ${student.fullName}!`,
+      message: `Đã ghi nhận điểm danh bổ sung cho sinh viên ${getStudentDisplayName(student.fullName)}!`,
       logId: newLog.id,
     });
   } catch (error: any) {
