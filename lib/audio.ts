@@ -38,7 +38,11 @@ class SoundFX {
     }
   }
 
-  private playToneSequence(notes: Array<{ freq: number; delay: number; dur: number }>, peakGain: number) {
+  private playToneSequence(
+    notes: Array<{ freq: number; delay: number; dur: number }>,
+    peakGain: number,
+    waveType: OscillatorType = "sine"
+  ) {
     const ctx = this.getContext();
     if (!ctx) return;
     try {
@@ -47,7 +51,7 @@ class SoundFX {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
 
-        osc.type = "sine";
+        osc.type = waveType;
         osc.frequency.setValueAtTime(freq, now + delay);
 
         gain.gain.setValueAtTime(peakGain, now + delay);
@@ -97,29 +101,18 @@ class SoundFX {
     this.playCheckIn();
   }
 
-  // Tiếng Cảnh báo Gian lận / Lỗi thao tác
+  // Tiếng Cảnh báo Gian lận / Lỗi thao tác: dùng /sounds/error.mp3 nếu có, fallback 2 nốt trầm gọn
   playWarning() {
-    const ctx = this.getContext();
-    if (!ctx) return;
-    try {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(320, ctx.currentTime);
-      osc.frequency.setValueAtTime(200, ctx.currentTime + 0.12);
-
-      gain.gain.setValueAtTime(0.28, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.28);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start();
-      osc.stop(ctx.currentTime + 0.28);
-    } catch (e) {
-      console.warn("Audio play error", e);
-    }
+    this.playCustomOrFallback("/sounds/error.mp3", () =>
+      this.playToneSequence(
+        [
+          { freq: 440.0, delay: 0.0, dur: 0.12 },
+          { freq: 311.13, delay: 0.13, dur: 0.22 },
+        ],
+        0.24,
+        "triangle"
+      )
+    );
   }
 
   // Tiếng Phát hiện Thiết bị Lab (EQ-)
