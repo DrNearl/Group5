@@ -68,6 +68,11 @@ const ACTION_META: Record<string, { label: string; group: string; badgeClass: st
     group: "USER",
     badgeClass: "bg-red-50 text-red-700 border-red-200",
   },
+  PASSWORD_CHANGE: {
+    label: "Đổi mật khẩu",
+    group: "USER",
+    badgeClass: "bg-teal-50 text-teal-700 border-teal-200",
+  },
 };
 
 function AuditLogsContent() {

@@ -12,7 +12,8 @@ export type AuditAction =
   | "STUDENT_DELETE"
   | "STUDENT_IMPORT"
   | "USER_CREATE"
-  | "USER_DELETE";
+  | "USER_DELETE"
+  | "PASSWORD_CHANGE";
 
 interface RecordAuditLogParams {
   req?: NextRequest;
