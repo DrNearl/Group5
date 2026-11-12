@@ -306,7 +306,7 @@ function DashboardContent() {
                 BẢNG QUẢN LÝ ĐIỂM DANH
               </h1>
               <p className="text-xs text-gray-500">
-                Khoa Công nghệ Thông tin • Giám sát ra vào &amp; Bảng chấm công
+                Khoa Công nghệ Thông tin • Giám sát ra vào &amp; Thống kê ca trực
               </p>
             </div>
           </div>
@@ -377,7 +377,6 @@ function DashboardContent() {
                 </span>
               </h2>
             </div>
-            <span className="text-[11px] text-gray-400">Tự động đồng bộ mỗi 10 giây</span>
           </div>
 
           {(!data?.activeInLab || data.activeInLab.length === 0) ? (
@@ -512,11 +511,6 @@ function DashboardContent() {
                   Chưa có lượt quét thẻ nào được ghi nhận.
                 </div>
               )}
-            </div>
-
-            <div className="pt-3 mt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400">
-              <span>Phương thức: {latestLog?.scanMethod || "Mã vạch"}</span>
-              <span>Cập nhật tự động</span>
             </div>
           </div>
 
