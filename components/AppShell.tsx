@@ -6,10 +6,10 @@ import Navbar from "@/components/Navbar";
 import { useAuth, UserRole } from "@/lib/auth-context";
 import {
   AlertTriangle,
-  Barcode,
   BarChart3,
   CalendarDays,
   ClipboardCheck,
+  History,
   LayoutDashboard,
   Menu,
   QrCode,
@@ -28,14 +28,15 @@ type SidebarItem = {
 
 const navigationByRole: Record<string, SidebarItem[]> = {
   ADMIN: [
-    { href: "/", label: "Trạm Quét Barcode", icon: Barcode },
-    { href: "/dashboard", label: "Bảng Quản Lý Số Liệu", icon: BarChart3 },
+    { href: "/", label: "Trạm Quét QR", icon: QrCode },
+    { href: "/dashboard", label: "Giám Sát Phòng Lab", icon: BarChart3 },
     { href: "/students", label: "Danh Sách Sinh Viên", icon: Users },
     { href: "/users", label: "Tài Khoản & Phân Quyền", icon: Shield },
+    { href: "/audit-logs", label: "Nhật Ký Thao Tác", icon: History },
   ],
   LECTURER: [
-    { href: "/", label: "Trạm Quét Barcode", icon: Barcode },
-    { href: "/dashboard", label: "Bảng Quản Lý Số Liệu", icon: BarChart3 },
+    { href: "/", label: "Trạm Quét QR", icon: QrCode },
+    { href: "/dashboard", label: "Giám Sát Phòng Lab", icon: BarChart3 },
     { href: "/students", label: "Danh Sách Sinh Viên", icon: Users },
   ],
 };

@@ -4,6 +4,7 @@ import { PDFParse } from "pdf-parse";
 import prisma from "@/lib/prisma";
 import { requireStaffAuth } from "@/lib/auth-server";
 import { parseVluStudentInfo } from "@/lib/vlu-student-helper";
+import { recordAuditLog } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -313,6 +314,13 @@ export async function POST(req: NextRequest) {
         qrSentAt: upserted.qrSentAt,
       });
     }
+
+    await recordAuditLog({
+      actor: auth.user,
+      action: "STUDENT_IMPORT",
+      target: `${savedStudents.length} sinh viên`,
+      detail: `Nhập danh sách sinh viên từ file PDF/Excel`,
+    });
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function handleDashboardGet(req: NextRequest) {
   try {
@@ -309,6 +310,13 @@ export async function handleManualAttendanceCreate(req: NextRequest) {
         scanMethod: "USB_SCANNER",
         attendanceStatus: "ON_TIME",
       },
+    });
+
+    await recordAuditLog({
+      req,
+      action: "MANUAL_ATTENDANCE",
+      target: `${student.fullName} (${student.studentCode})`,
+      detail: `Ngày ${dutyDate} (${checkInTimeStr}${checkOutTimeStr ? ` - ${checkOutTimeStr}` : ""})${note ? ` • ${note}` : ""}`,
     });
 
     return NextResponse.json({

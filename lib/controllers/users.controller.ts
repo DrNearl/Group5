@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function handleUsersGet(req: NextRequest) {
   try {
@@ -62,6 +63,13 @@ export async function handleUsersPost(req: NextRequest) {
       },
     });
 
+    await recordAuditLog({
+      req,
+      action: "USER_CREATE",
+      target: `${user.fullName} (${user.username})`,
+      detail: `Tạo tài khoản mới • Vai trò: ${user.role}`,
+    });
+
     return NextResponse.json({ success: true, user });
   } catch (error: any) {
     if (error.code === "P2002") {
@@ -97,6 +105,13 @@ export async function handleUsersDelete(req: NextRequest) {
 
     await prisma.user.delete({
       where: { id },
+    });
+
+    await recordAuditLog({
+      req,
+      action: "USER_DELETE",
+      target: `${existingUser.fullName} (${existingUser.username})`,
+      detail: `Xóa tài khoản (${existingUser.role})`,
     });
 
     return NextResponse.json({ success: true, message: "Đã xóa người dùng thành công!" });
