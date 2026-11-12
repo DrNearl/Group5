@@ -155,7 +155,7 @@ function StudentsManagementContent() {
   };
 
   const handleDeleteStudent = async (id: string, name: string) => {
-    if (!confirm(`Bạn có chắc muốn xóa sinh viên "${name}" khỏi danh sách Xưởng thực tập?`)) return;
+    if (!confirm(`Bạn có chắc muốn xóa sinh viên "${name}" khỏi danh sách phòng Lab?`)) return;
     try {
       const res = await fetch(getAssetPath("/api/students"), {
         method: "DELETE",
@@ -232,10 +232,10 @@ function StudentsManagementContent() {
             <div>
               <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <Users className="h-6 w-6 text-rose-500" />
-                DANH SÁCH SINH VIÊN XƯỞNG THỰC TẬP
+                DANH SÁCH SINH VIÊN PHÒNG LAB
               </h1>
               <p className="text-xs text-gray-500">
-                Khoa Công nghệ Thông tin • Quản lý hồ sơ mã vạch &amp; Tổng hợp ca trực
+                Khoa Công nghệ Thông tin • Quản lý hồ sơ &amp; Thẻ QR điểm danh
               </p>
             </div>
           </div>
@@ -309,8 +309,6 @@ function StudentsManagementContent() {
                   <th className="py-3 px-4">Khóa & Lớp</th>
                   <th className="py-3 px-4">Trạng thái QR</th>
                   <th className="py-3 px-4">Thông tin liên hệ</th>
-                  <th className="py-3 px-4 text-center">Số ca trực</th>
-                  <th className="py-3 px-4 text-right">Tổng giờ tích lũy</th>
                   <th className="py-3 px-4 text-right">Hành động</th>
                 </tr>
               </thead>
@@ -385,12 +383,6 @@ function StudentsManagementContent() {
                             </button>
                           )}
                         </td>
-                        <td className="py-3.5 px-4 text-center font-mono font-bold text-gray-800">
-                          {sv.totalShifts}
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-mono font-bold text-rose-600 text-sm">
-                          {sv.totalHours} <span className="text-[11px] font-normal text-gray-400">hrs</span>
-                        </td>
                         <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
                           <button
                             onClick={() => setQrStudent(sv)}
@@ -419,7 +411,7 @@ function StudentsManagementContent() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-gray-400">
+                    <td colSpan={6} className="py-12 text-center text-gray-400">
                       Không tìm thấy sinh viên nào thuộc bộ lọc này
                     </td>
                   </tr>
@@ -441,7 +433,7 @@ function StudentsManagementContent() {
               </button>
               <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <UserPlus className="h-5 w-5 text-rose-500" />
-                Thêm Sinh Viên Xưởng Thực Tập
+                Thêm Sinh Viên Phòng Lab
               </h3>
 
               <form onSubmit={handleAddStudent} className="space-y-3.5 text-xs">
