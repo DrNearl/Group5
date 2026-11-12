@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
         emailResult,
         message:
           action === "REISSUE"
-            ? `Đã cấp lại QR v${student.qrVersion} (${emailResult.sent ? "đã gửi email" : emailResult.message})`
+            ? `Đã thu hồi mã cũ và cấp lại Thẻ QR mới (${emailResult.sent ? "đã gửi email" : emailResult.message})`
             : emailResult.message,
       });
     }
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
       qrVersion: student.qrVersion,
       qrSentAt: student.qrSentAt,
       expiresAtSec,
-      message: `Đã thu hồi mã cũ và cấp lại Thẻ QR mới (v${student.qrVersion})!`,
+      message: "Đã thu hồi mã cũ và cấp lại Thẻ QR mới!",
     });
   } catch (error: any) {
     console.error("QR POST error:", error);

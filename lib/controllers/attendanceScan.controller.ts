@@ -92,7 +92,7 @@ export async function handleAttendanceScan(req: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            message: `Mã QR (v${qrCheck.payload.qrVersion}) đã bị thu hồi! Vui lòng dùng mã QR mới nhất (v${student.qrVersion}).`,
+            message: "Mã QR này đã bị thu hồi! Vui lòng sử dụng Thẻ QR mới nhất đã được cấp.",
           },
           { status: 403 }
         );
