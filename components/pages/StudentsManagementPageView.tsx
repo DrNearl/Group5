@@ -23,11 +23,13 @@ import { useAuth } from "@/lib/auth-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { parseVluStudentInfo, extractCohort } from "@/lib/vlu-student-helper";
 import { getAssetPath } from "@/lib/asset-path";
+import { useLanguage } from "@/lib/language-context";
 import StudentQrModal from "@/components/modals/StudentQrModal";
 import StudentBulkImportModal from "@/components/modals/StudentBulkImportModal";
 
 function StudentsManagementContent() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [students, setStudents] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCohort, setSelectedCohort] = useState<string>("ALL");
@@ -232,10 +234,10 @@ function StudentsManagementContent() {
             <div>
               <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <Users className="h-6 w-6 text-rose-500" />
-                DANH SÁCH SINH VIÊN PHÒNG LAB
+                {t.students.title}
               </h1>
               <p className="text-xs text-gray-500">
-                Khoa Công nghệ Thông tin • Quản lý hồ sơ &amp; Thẻ QR điểm danh
+                {t.students.subtitle}
               </p>
             </div>
           </div>
@@ -246,14 +248,14 @@ function StudentsManagementContent() {
               className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-800 border border-gray-200 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition"
             >
               <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-              Nhập PDF / Excel
+              {t.students.importBtn}
             </button>
             <button
               onClick={() => setShowAddModal(true)}
               className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition"
             >
               <UserPlus className="h-4 w-4" />
-              Thêm sinh viên mới
+              {t.students.addBtn}
             </button>
           </div>
         </header>
@@ -272,7 +274,7 @@ function StudentsManagementContent() {
             <Search className="h-4 w-4 text-gray-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Tìm theo MSSV, Họ và tên hoặc Lớp..."
+              placeholder={t.students.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-rose-400 transition"
@@ -286,7 +288,7 @@ function StudentsManagementContent() {
               onChange={(e) => setSelectedCohort(e.target.value)}
               className="w-full sm:w-48 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 font-medium focus:outline-none focus:border-rose-400 transition cursor-pointer"
             >
-              <option value="ALL">Tất cả các khóa</option>
+              <option value="ALL">{t.students.allCohorts}</option>
               <option value="K27">Khóa K27</option>
               <option value="K28">Khóa K28</option>
               <option value="K29">Khóa K29</option>

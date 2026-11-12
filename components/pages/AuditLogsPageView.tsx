@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Filter, History, RefreshCw, Search } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { getAssetPath } from "@/lib/asset-path";
+import { useLanguage } from "@/lib/language-context";
 
 interface AuditLogItem {
   id: string;
@@ -70,6 +71,7 @@ const ACTION_META: Record<string, { label: string; group: string; badgeClass: st
 };
 
 function AuditLogsContent() {
+  const { t } = useLanguage();
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -124,10 +126,10 @@ function AuditLogsContent() {
             <div>
               <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <History className="h-6 w-6 text-rose-500" />
-                NHẬT KÝ THAO TÁC
+                {t.audit.title}
               </h1>
               <p className="text-xs text-gray-500">
-                Khoa Công nghệ Thông tin • Theo dõi thao tác quản trị &amp; đối soát minh bạch
+                {t.audit.subtitle}
               </p>
             </div>
           </div>
@@ -137,7 +139,7 @@ function AuditLogsContent() {
             className="px-3.5 py-2 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin text-rose-500" : "text-gray-500"}`} />
-            <span>Làm mới</span>
+            <span>{t.audit.refreshBtn}</span>
           </button>
         </header>
 
@@ -147,7 +149,7 @@ function AuditLogsContent() {
             <Search className="h-4 w-4 text-gray-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Tìm theo người thực hiện, MSSV, đối tượng hoặc chi tiết..."
+              placeholder={t.audit.searchPlaceholder}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-3 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-rose-400 transition"
@@ -161,7 +163,7 @@ function AuditLogsContent() {
               onChange={(e) => setGroupFilter(e.target.value)}
               className="bg-transparent text-gray-700 text-xs font-medium focus:outline-none cursor-pointer"
             >
-              <option value="ALL">Tất cả thao tác</option>
+              <option value="ALL">{t.audit.allActions}</option>
               <option value="QR">Thẻ QR</option>
               <option value="ATTENDANCE">Điểm danh thủ công</option>
               <option value="STUDENT">Sinh viên</option>

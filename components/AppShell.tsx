@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { useAuth, UserRole } from "@/lib/auth-context";
+import { useLanguage } from "@/lib/language-context";
 import {
   AlertTriangle,
   BarChart3,
@@ -13,6 +14,7 @@ import {
   LayoutDashboard,
   Menu,
   QrCode,
+  Settings,
   Users,
   Shield,
   X,
@@ -26,29 +28,33 @@ type SidebarItem = {
   icon: LucideIcon;
 };
 
-const navigationByRole: Record<string, SidebarItem[]> = {
-  ADMIN: [
-    { href: "/", label: "Trạm Quét QR", icon: QrCode },
-    { href: "/dashboard", label: "Giám Sát Phòng Lab", icon: BarChart3 },
-    { href: "/students", label: "Danh Sách Sinh Viên", icon: Users },
-    { href: "/users", label: "Tài Khoản & Phân Quyền", icon: Shield },
-    { href: "/audit-logs", label: "Nhật Ký Thao Tác", icon: History },
-  ],
-  LECTURER: [
-    { href: "/", label: "Trạm Quét QR", icon: QrCode },
-    { href: "/dashboard", label: "Giám Sát Phòng Lab", icon: BarChart3 },
-    { href: "/students", label: "Danh Sách Sinh Viên", icon: Users },
-  ],
-};
-
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { role } = useAuth();
+  const { t } = useLanguage();
+
+  const navigationByRole: Record<string, SidebarItem[]> = {
+    ADMIN: [
+      { href: "/", label: t.nav.scanStation, icon: QrCode },
+      { href: "/dashboard", label: t.nav.dashboard, icon: BarChart3 },
+      { href: "/students", label: t.nav.students, icon: Users },
+      { href: "/users", label: t.nav.users, icon: Shield },
+      { href: "/audit-logs", label: t.nav.auditLogs, icon: History },
+      { href: "/settings", label: t.nav.settings, icon: Settings },
+    ],
+    LECTURER: [
+      { href: "/", label: t.nav.scanStation, icon: QrCode },
+      { href: "/dashboard", label: t.nav.dashboard, icon: BarChart3 },
+      { href: "/students", label: t.nav.students, icon: Users },
+      { href: "/settings", label: t.nav.settings, icon: Settings },
+    ],
+  };
+
   const items = (role && navigationByRole[role]) ? navigationByRole[role] : (navigationByRole["ADMIN"] || []);
 
   return (
-    <nav aria-label="Chức năng hệ thống" className="h-full overflow-y-auto bg-white p-3">
-      <p className="px-3 pb-2 pt-1 text-xs font-semibold uppercase tracking-wide text-gray-500">MENU</p>
+    <nav aria-label={t.nav.mobileMenu} className="h-full overflow-y-auto bg-white p-3">
+      <p className="px-3 pb-2 pt-1 text-xs font-semibold uppercase tracking-wide text-gray-500">{t.nav.menu}</p>
       <ul className="space-y-1">
         {(items || []).map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
