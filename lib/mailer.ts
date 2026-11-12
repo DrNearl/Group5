@@ -14,7 +14,7 @@ export interface SendPersonalQrParams {
 export interface SendEmailResult {
   sent: boolean;
   configured: boolean;
-  provider?: "WEBHOOK_HTTPS" | "RESEND_API" | "SMTP";
+  provider?: "WEBHOOK_HTTPS" | "BREVO_API" | "RESEND_API" | "SMTP";
   message: string;
 }
 
@@ -144,7 +144,64 @@ export async function sendPersonalQrEmail(params: SendPersonalQrParams): Promise
     }
   }
 
-  // KÊNH 2: Resend API qua cổng HTTPS 443 (chạy ổn định trên FITLAB)
+  // KÊNH 2: Brevo HTTP API qua cổng HTTPS 443 (Free 300 mail/ngày, không cần domain riêng)
+  const brevoKey = process.env.BREVO_API_KEY?.trim();
+  if (brevoKey) {
+    const brevoSender = process.env.BREVO_SENDER_EMAIL?.trim() || process.env.SMTP_USER?.trim();
+    if (!brevoSender || !brevoSender.includes("@")) {
+      return {
+        sent: false,
+        configured: true,
+        provider: "BREVO_API",
+        message: "Thiếu BREVO_SENDER_EMAIL (email người gửi đã xác minh trên Brevo)!",
+      };
+    }
+
+    try {
+      const htmlContent = buildQrEmailHtml(params, dataUrl);
+      const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "api-key": brevoKey,
+          "Content-Type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify({
+          sender: { name: "VLU Lab Khoa CNTT", email: brevoSender },
+          to: [{ email: emailTo, name: params.fullName }],
+          subject,
+          htmlContent,
+          attachment: [{ name: filename, content: base64Raw }],
+        }),
+      });
+
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return {
+          sent: false,
+          configured: true,
+          provider: "BREVO_API",
+          message: `Brevo API lỗi: ${resData?.message || res.status}`,
+        };
+      }
+
+      return {
+        sent: true,
+        configured: true,
+        provider: "BREVO_API",
+        message: `Đã gửi Mã QR (v${params.qrVersion}) tới ${emailTo} qua Brevo!`,
+      };
+    } catch (err: any) {
+      return {
+        sent: false,
+        configured: true,
+        provider: "BREVO_API",
+        message: `Lỗi kết nối Brevo API: ${err.message}`,
+      };
+    }
+  }
+
+  // KÊNH 3: Resend API qua cổng HTTPS 443 (chạy ổn định trên FITLAB)
   const resendKey = process.env.RESEND_API_KEY?.trim();
   if (resendKey) {
     try {
@@ -252,6 +309,6 @@ export async function sendPersonalQrEmail(params: SendPersonalQrParams): Promise
     sent: false,
     configured: false,
     message:
-      "Chưa cấu hình biến môi trường gửi Email (EMAIL_WEBHOOK_URL, RESEND_API_KEY hoặc SMTP_USER). Bạn vẫn có thể tải trực tiếp ảnh QR hoặc in A4 tại đây.",
+      "Chưa cấu hình biến môi trường gửi Email (EMAIL_WEBHOOK_URL, BREVO_API_KEY, RESEND_API_KEY hoặc SMTP_USER). Bạn vẫn có thể tải trực tiếp ảnh QR hoặc in A4 tại đây.",
   };
 }

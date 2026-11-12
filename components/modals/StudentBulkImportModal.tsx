@@ -65,14 +65,14 @@ export default function StudentBulkImportModal({
         MSSV: "2374802010101",
         "Họ và tên": "Nguyễn Văn An",
         Lớp: "K29-CNTT1",
-        Email: "2374802010101@vanlanguni.vn",
+        Email: "an.2374802010101@vanlanguni.vn",
         "Số điện thoại": "0901234567",
       },
       {
         MSSV: "2374802010102",
         "Họ và tên": "Trần Thị Bình",
         Lớp: "K29-CNTT1",
-        Email: "2374802010102@vanlanguni.vn",
+        Email: "binh.2374802010102@vanlanguni.vn",
         "Số điện thoại": "",
       },
     ];
