@@ -92,7 +92,7 @@ function parseExcelRows(buffer: Buffer): ParsedImportStudent[] {
       fullName = `${ho} ${ten}`.trim();
     }
 
-    const vluInfo = parseVluStudentInfo(studentCode);
+    const vluInfo = parseVluStudentInfo(studentCode, fullName);
     const rawEmail = emailIdx >= 0 ? String(row[emailIdx] || "").trim().toLowerCase() : "";
     const rawClass = classIdx >= 0 ? String(row[classIdx] || "").trim() : "";
     const rawPhone = phoneIdx >= 0 ? String(row[phoneIdx] || "").trim() : "";
@@ -158,7 +158,10 @@ async function parsePdfRows(buffer: Buffer): Promise<ParsedImportStudent[]> {
       if (nextCandidate.length >= 3) nameCandidate = nextCandidate;
     }
 
-    const vluInfo = parseVluStudentInfo(studentCode);
+    const vluInfo = parseVluStudentInfo(
+      studentCode,
+      nameCandidate.length >= 2 ? nameCandidate : ""
+    );
     results.push({
       studentCode,
       fullName: nameCandidate.length >= 2 ? nameCandidate : vluInfo.defaultFullName,
@@ -276,7 +279,7 @@ export async function POST(req: NextRequest) {
       const fullName = String(row?.fullName || "").trim();
       if (!code || !fullName) continue;
 
-      const vluInfo = parseVluStudentInfo(code);
+      const vluInfo = parseVluStudentInfo(code, fullName);
       const email = String(row?.email || "").trim().toLowerCase() || vluInfo.defaultEmail;
       const phone = String(row?.phone || "").trim() || null;
       const className = String(row?.className || "").trim() || vluInfo.suggestedClass;

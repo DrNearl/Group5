@@ -28,7 +28,26 @@ const COHORT_MAP: Record<string, { cohort: ParsedVluInfo["cohort"]; label: strin
   "26": { cohort: "K32", label: "Khóa K32" },
 };
 
-export function parseVluStudentInfo(rawBarcode: string): ParsedVluInfo {
+function extractGivenNameSlug(fullName?: string | null): string {
+  const raw = (fullName || "").trim();
+  if (!raw || raw.startsWith("Sinh viên ") || raw.startsWith("Khách ")) return "";
+
+  const normalized = raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+
+  const words = normalized
+    .split(/\s+/)
+    .map((w) => w.replace(/[^a-z0-9]/g, ""))
+    .filter(Boolean);
+
+  return words.length > 0 ? words[words.length - 1] : "";
+}
+
+export function parseVluStudentInfo(rawBarcode: string, fullName?: string | null): ParsedVluInfo {
   const code = (rawBarcode || "").trim();
 
   // Kiểm tra nếu là dạng số sinh viên VLU (từ 7 đến 14 ký tự số)
@@ -39,13 +58,16 @@ export function parseVluStudentInfo(rawBarcode: string): ParsedVluInfo {
     const mapped = COHORT_MAP[prefix];
 
     if (mapped) {
+      const nameSlug = extractGivenNameSlug(fullName);
       return {
         isVluStudent: true,
         cohort: mapped.cohort,
         cohortLabel: mapped.label,
         suggestedClass: `${mapped.cohort}-CNTT`,
         defaultFullName: `Sinh viên ${mapped.cohort} (${code})`,
-        defaultEmail: `${code}@vanlanguni.vn`,
+        defaultEmail: nameSlug
+          ? `${nameSlug}.${code}@vanlanguni.vn`
+          : `${code}@vanlanguni.vn`,
       };
     }
   }

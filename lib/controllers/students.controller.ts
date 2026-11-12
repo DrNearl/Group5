@@ -72,7 +72,7 @@ export async function handleStudentsPost(req: NextRequest) {
     }
 
     const cleanCode = studentCode.trim();
-    const vluParsed = parseVluStudentInfo(cleanCode);
+    const vluParsed = parseVluStudentInfo(cleanCode, fullName);
 
     // Kiểm tra xem MSSV đã tồn tại chưa
     const existing = await prisma.student.findUnique({
@@ -170,7 +170,7 @@ export async function handleStudentsPut(req: NextRequest) {
     }
 
     const cleanCode = studentCode.trim();
-    const vluParsed = parseVluStudentInfo(cleanCode);
+    const vluParsed = parseVluStudentInfo(cleanCode, fullName);
 
     // Kiểm tra xem MSSV có bị trùng với sinh viên khác không
     const duplicate = await prisma.student.findFirst({
