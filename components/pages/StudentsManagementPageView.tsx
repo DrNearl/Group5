@@ -121,6 +121,8 @@ function StudentsManagementContent() {
         headers: {
           "Content-Type": "application/json",
           ...(user?.id ? { "x-vlu-user-id": user.id } : {}),
+          ...(user?.email ? { "x-vlu-user-email": user.email } : {}),
+          ...(user?.username ? { "x-vlu-username": user.username } : {}),
         },
         body: JSON.stringify({
           studentCode,
@@ -305,7 +307,7 @@ function StudentsManagementContent() {
                   <th className="py-3 px-4">STT</th>
                   <th className="py-3 px-4">Sinh viên</th>
                   <th className="py-3 px-4">Khóa & Lớp</th>
-                  <th className="py-3 px-4">Mã vạch thẻ SV</th>
+                  <th className="py-3 px-4">Trạng thái QR</th>
                   <th className="py-3 px-4">Thông tin liên hệ</th>
                   <th className="py-3 px-4 text-center">Số ca trực</th>
                   <th className="py-3 px-4 text-right">Tổng giờ tích lũy</th>
@@ -349,22 +351,16 @@ function StudentsManagementContent() {
                             {sv.className || "DTH-CNTT"}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 font-mono font-semibold text-rose-600">
-                          <div>{sv.studentCode}</div>
-                          <div className="mt-1 flex items-center gap-1 font-sans">
-                            <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 text-[10px] font-medium">
-                              QR v{sv.qrVersion || 1}
-                            </span>
-                            <span
-                              className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                sv.qrSentAt
-                                  ? "bg-emerald-50 text-emerald-700"
-                                  : "bg-amber-50 text-amber-700"
-                              }`}
-                            >
-                              {sv.qrSentAt ? "Đã gửi mail" : "Chưa gửi"}
-                            </span>
-                          </div>
+                        <td className="py-3.5 px-4">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${
+                              sv.qrSentAt
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-amber-50 text-amber-700 border-amber-200"
+                            }`}
+                          >
+                            {sv.qrSentAt ? "Đã gửi QR" : "Chưa gửi QR"}
+                          </span>
                         </td>
                         <td className="py-3.5 px-4 space-y-1">
                           {sv.email && (
@@ -695,6 +691,8 @@ function StudentsManagementContent() {
           <StudentQrModal
             student={qrStudent}
             userId={user?.id}
+            userEmail={user?.email}
+            username={user?.username}
             onClose={() => setQrStudent(null)}
             onUpdated={loadStudents}
           />
@@ -703,6 +701,8 @@ function StudentsManagementContent() {
         {showImportModal && (
           <StudentBulkImportModal
             userId={user?.id}
+            userEmail={user?.email}
+            username={user?.username}
             onClose={() => setShowImportModal(false)}
             onImported={loadStudents}
           />

@@ -34,15 +34,24 @@ interface SavedQrCard {
 
 interface StudentBulkImportModalProps {
   userId?: string;
+  userEmail?: string;
+  username?: string;
   onClose: () => void;
   onImported: () => void;
 }
 
 export default function StudentBulkImportModal({
   userId,
+  userEmail,
+  username,
   onClose,
   onImported,
 }: StudentBulkImportModalProps) {
+  const staffHeaders: Record<string, string> = {
+    ...(userId ? { "x-vlu-user-id": userId } : {}),
+    ...(userEmail ? { "x-vlu-user-email": userEmail } : {}),
+    ...(username ? { "x-vlu-username": username } : {}),
+  };
   const [step, setStep] = useState<"UPLOAD" | "PREVIEW" | "DONE">("UPLOAD");
   const [parsing, setParsing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -94,7 +103,7 @@ export default function StudentBulkImportModal({
 
       const res = await fetch(getAssetPath("/api/students/import"), {
         method: "POST",
-        headers: userId ? { "x-vlu-user-id": userId } : {},
+        headers: staffHeaders,
         body: formData,
       });
       const data = await res.json();
@@ -133,7 +142,7 @@ export default function StudentBulkImportModal({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(userId ? { "x-vlu-user-id": userId } : {}),
+          ...staffHeaders,
         },
         body: JSON.stringify({ action: "save", students: previewList }),
       });
@@ -163,7 +172,7 @@ export default function StudentBulkImportModal({
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              ...(userId ? { "x-vlu-user-id": userId } : {}),
+              ...staffHeaders,
             },
             body: JSON.stringify({
               studentId: sv.id,
@@ -193,7 +202,7 @@ export default function StudentBulkImportModal({
         } else {
           const qrRes = await fetch(
             getAssetPath(`/api/students/qr?studentId=${encodeURIComponent(sv.id)}&ttlDays=${ttlDays}`),
-            { headers: userId ? { "x-vlu-user-id": userId } : {} }
+            { headers: staffHeaders }
           );
           const qrData = await qrRes.json();
           if (qrData.success) {
@@ -239,7 +248,7 @@ export default function StudentBulkImportModal({
           <img src="${c.qrDataUrl}" alt="${c.studentCode}" />
           <div class="name">${c.fullName}</div>
           <div class="code">MSSV: ${c.studentCode}</div>
-          <div class="meta">${c.className} • QR v${c.qrVersion}</div>
+          <div class="meta">${c.className}</div>
         </div>
       `
       )

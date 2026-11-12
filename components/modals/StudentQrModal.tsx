@@ -7,6 +7,8 @@ import { getAssetPath } from "@/lib/asset-path";
 interface StudentQrModalProps {
   student: any;
   userId?: string;
+  userEmail?: string;
+  username?: string;
   onClose: () => void;
   onUpdated: () => void;
 }
@@ -14,6 +16,8 @@ interface StudentQrModalProps {
 export default function StudentQrModal({
   student,
   userId,
+  userEmail,
+  username,
   onClose,
   onUpdated,
 }: StudentQrModalProps) {
@@ -26,9 +30,15 @@ export default function StudentQrModal({
   const [busyAction, setBusyAction] = useState<"SEND_EMAIL" | "REISSUE" | null>(null);
   const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null);
 
+  const staffHeaders: Record<string, string> = {
+    ...(userId ? { "x-vlu-user-id": userId } : {}),
+    ...(userEmail ? { "x-vlu-user-email": userEmail } : {}),
+    ...(username ? { "x-vlu-username": username } : {}),
+  };
+
   const authHeaders: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(userId ? { "x-vlu-user-id": userId } : {}),
+    ...staffHeaders,
   };
 
   const loadQrPreview = async (days: number) => {
@@ -37,7 +47,7 @@ export default function StudentQrModal({
     try {
       const res = await fetch(
         getAssetPath(`/api/students/qr?studentId=${encodeURIComponent(student.id)}&ttlDays=${days}`),
-        { headers: userId ? { "x-vlu-user-id": userId } : {} }
+        { headers: staffHeaders }
       );
       const data = await res.json();
       if (data.success) {
@@ -66,7 +76,7 @@ export default function StudentQrModal({
     if (
       action === "REISSUE" &&
       !confirm(
-        `Thu hồi Thẻ QR hiện tại (v${qrVersion}) và cấp mã mới cho ${student.fullName}? Mã cũ sẽ lập tức mất hiệu lực khi quét!`
+        `Thu hồi Thẻ QR hiện tại và cấp mã mới cho ${student.fullName}? Mã cũ sẽ lập tức mất hiệu lực khi quét!`
       )
     ) {
       return;
@@ -108,7 +118,7 @@ export default function StudentQrModal({
     if (!qrDataUrl) return;
     const link = document.createElement("a");
     link.href = qrDataUrl;
-    link.download = `VLU-QR-${student.studentCode}-v${qrVersion}.png`;
+    link.download = `VLU-QR-${student.studentCode}.png`;
     link.click();
   };
 
@@ -140,7 +150,7 @@ export default function StudentQrModal({
             <div className="text-right shrink-0 space-y-1">
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
                 <ShieldCheck className="h-3 w-3" />
-                Phiên bản v{qrVersion}
+                Đang hoạt động
               </span>
               <div className="text-[10px] text-gray-400">
                 {qrSentAt

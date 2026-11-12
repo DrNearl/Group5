@@ -65,7 +65,7 @@ function buildQrEmailHtml(params: SendPersonalQrParams, imgSrc: string): string 
           <div style="font-size: 15px; font-weight: bold; color: #111827;">${params.fullName}</div>
           <div style="font-size: 13px; font-family: monospace; color: #b91c1c; font-weight: bold; margin-top: 2px;">MSSV: ${params.studentCode}</div>
           <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
-            Lớp: ${params.className || "Đang cập nhật"} • Phiên bản: <strong>v${params.qrVersion}</strong> • Hiệu lực: ${expiryText}
+            Lớp: ${params.className || "Đang cập nhật"} • Hiệu lực: ${expiryText}
           </div>
         </div>
 
@@ -97,7 +97,7 @@ export async function sendPersonalQrEmail(params: SendPersonalQrParams): Promise
 
   const subject = `[VLU CNTT] Thẻ QR Điểm Danh Cá Nhân - ${params.fullName} (${params.studentCode})`;
   const { buffer, base64Raw, dataUrl } = await generateQrImageAssets(params.qrToken);
-  const filename = `VLU_QR_${params.studentCode}_v${params.qrVersion}.png`;
+  const filename = `VLU_QR_${params.studentCode}.png`;
 
   // KÊNH 1: Google Apps Script / HTTP Webhook qua cổng HTTPS 443 (chạy ổn định 100% trên FITLAB)
   const webhookUrl = process.env.EMAIL_WEBHOOK_URL?.trim();
@@ -132,7 +132,7 @@ export async function sendPersonalQrEmail(params: SendPersonalQrParams): Promise
         sent: true,
         configured: true,
         provider: "WEBHOOK_HTTPS",
-        message: `Đã gửi Mã QR (v${params.qrVersion}) tới ${emailTo} qua HTTPS Webhook!`,
+        message: `Đã gửi Mã QR tới ${emailTo} qua HTTPS Webhook!`,
       };
     } catch (err: any) {
       return {
@@ -189,7 +189,7 @@ export async function sendPersonalQrEmail(params: SendPersonalQrParams): Promise
         sent: true,
         configured: true,
         provider: "BREVO_API",
-        message: `Đã gửi Mã QR (v${params.qrVersion}) tới ${emailTo} qua Brevo!`,
+        message: `Đã gửi Mã QR tới ${emailTo} qua Brevo!`,
       };
     } catch (err: any) {
       return {
@@ -241,7 +241,7 @@ export async function sendPersonalQrEmail(params: SendPersonalQrParams): Promise
         sent: true,
         configured: true,
         provider: "RESEND_API",
-        message: `Đã gửi Mã QR (v${params.qrVersion}) tới ${emailTo} qua Resend!`,
+        message: `Đã gửi Mã QR tới ${emailTo} qua Resend!`,
       };
     } catch (err: any) {
       return {
@@ -292,7 +292,7 @@ export async function sendPersonalQrEmail(params: SendPersonalQrParams): Promise
         sent: true,
         configured: true,
         provider: "SMTP",
-        message: `Đã gửi Mã QR (v${params.qrVersion}) tới ${emailTo}!`,
+        message: `Đã gửi Mã QR tới ${emailTo}!`,
       };
     } catch (err: any) {
       return {
