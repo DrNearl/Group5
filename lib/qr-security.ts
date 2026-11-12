@@ -97,3 +97,108 @@ export function verifyQrSessionToken(token: string): {
 
   return { valid: true, payload };
 }
+
+// =========================================================================
+// MÃ QR CÁ NHÂN CHỐNG GIAN LẬN (HMAC-SHA256 + PHIÊN BẢN + HẠN DÙNG)
+// Định dạng gọn nhẹ giúp Webcam bắt nét cực nhanh:
+// VLUQR:<studentCode>.<qrVersion>.<expEpochSec>.<hmac16>
+// =========================================================================
+
+const PERSONAL_QR_SECRET =
+  process.env.QR_JWT_SECRET ||
+  process.env.JWT_SECRET ||
+  "vlu_lab_personal_qr_hmac_secret_2026";
+
+export interface PersonalQrPayload {
+  studentCode: string;
+  qrVersion: number;
+  expiresAtSec: number; // 0 = không giới hạn thời gian
+}
+
+/**
+ * Sinh chuỗi Mã QR cá nhân có chữ ký số chống giả mạo
+ */
+export function generatePersonalQrToken(
+  studentCode: string,
+  qrVersion: number = 1,
+  ttlDays: number = 0
+): { token: string; expiresAtSec: number } {
+  const cleanCode = studentCode.trim();
+  const expSec = ttlDays > 0 ? Math.floor(Date.now() / 1000) + ttlDays * 86400 : 0;
+  const dataToSign = `${cleanCode}.${qrVersion}.${expSec}`;
+
+  const signature = crypto
+    .createHmac("sha256", PERSONAL_QR_SECRET)
+    .update(dataToSign)
+    .digest("hex")
+    .slice(0, 16);
+
+  return {
+    token: `VLUQR:${dataToSign}.${signature}`,
+    expiresAtSec: expSec,
+  };
+}
+
+/**
+ * Xác thực Mã QR cá nhân tại Trạm Quét Camera
+ */
+export function verifyPersonalQrToken(qrText: string): {
+  valid: boolean;
+  payload?: PersonalQrPayload;
+  error?: string;
+} {
+  const raw = (qrText || "").trim();
+  if (!raw.startsWith("VLUQR:")) {
+    return { valid: false, error: "Không phải định dạng Thẻ QR Cá Nhân VLU!" };
+  }
+
+  const body = raw.slice(6); // Bỏ "VLUQR:"
+  const parts = body.split(".");
+  if (parts.length !== 4) {
+    return { valid: false, error: "Cấu trúc Mã QR Cá Nhân không hợp lệ!" };
+  }
+
+  const [studentCode, verStr, expStr, sig] = parts;
+  const qrVersion = Number(verStr);
+  const expiresAtSec = Number(expStr);
+
+  if (!studentCode || !Number.isInteger(qrVersion) || qrVersion < 1 || !Number.isFinite(expiresAtSec)) {
+    return { valid: false, error: "Dữ liệu Mã QR Cá Nhân bị sai định dạng!" };
+  }
+
+  // 1. Kiểm tra chữ ký số HMAC chống tự tạo mã giả
+  const dataToSign = `${studentCode}.${qrVersion}.${expiresAtSec}`;
+  const expectedSig = crypto
+    .createHmac("sha256", PERSONAL_QR_SECRET)
+    .update(dataToSign)
+    .digest("hex")
+    .slice(0, 16);
+
+  if (
+    sig.length !== expectedSig.length ||
+    !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expectedSig))
+  ) {
+    return {
+      valid: false,
+      error: "CẢNH BÁO: Mã QR không hợp lệ hoặc bị làm giả (Chữ ký bảo mật không khớp)!",
+    };
+  }
+
+  // 2. Kiểm tra hạn sử dụng nếu có đặt hạn đợt thực tập
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (expiresAtSec > 0 && nowSec > expiresAtSec) {
+    return {
+      valid: false,
+      error: "Mã QR Cá Nhân này đã hết hạn sử dụng theo đợt thực tập! Vui lòng liên hệ Giảng viên cấp lại.",
+    };
+  }
+
+  return {
+    valid: true,
+    payload: {
+      studentCode,
+      qrVersion,
+      expiresAtSec,
+    },
+  };
+}

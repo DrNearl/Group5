@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { parseVluStudentInfo } from "@/lib/vlu-student-helper";
+import { requireStaffAuth } from "@/lib/auth-server";
+import { generatePersonalQrToken } from "@/lib/qr-security";
+import { sendPersonalQrEmail } from "@/lib/mailer";
 
 // GET: Lấy danh sách toàn bộ Sinh viên trực Lab
 export async function handleStudentsGet(req: NextRequest) {
@@ -32,6 +35,8 @@ export async function handleStudentsGet(req: NextRequest) {
         phone: sv.phone,
         className: sv.className || "DTH-CNTT",
         isActive: sv.isActive,
+        qrVersion: sv.qrVersion,
+        qrSentAt: sv.qrSentAt,
         totalShifts: sv.dutySchedules.length,
         completedShifts: logs.filter((l) => l.checkOutTime !== null).length,
         totalHours: Math.round(totalHours * 10) / 10,
@@ -49,7 +54,15 @@ export async function handleStudentsGet(req: NextRequest) {
 export async function handleStudentsPost(req: NextRequest) {
   try {
     const body = await req.json();
-    const { studentCode, fullName, email, phone = "", className = "" } = body;
+    const {
+      studentCode,
+      fullName,
+      email,
+      phone = "",
+      className = "",
+      sendQrEmail = false,
+      ttlDays = 0,
+    } = body;
 
     if (!studentCode || !fullName) {
       return NextResponse.json(
@@ -73,7 +86,7 @@ export async function handleStudentsPost(req: NextRequest) {
       );
     }
 
-    const student = await prisma.student.create({
+    let student = await prisma.student.create({
       data: {
         studentCode: cleanCode,
         fullName: fullName.trim(),
@@ -84,10 +97,41 @@ export async function handleStudentsPost(req: NextRequest) {
       },
     });
 
+    let emailResult = null;
+    if (sendQrEmail) {
+      const auth = await requireStaffAuth(req);
+      if (auth.authorized) {
+        const { token, expiresAtSec } = generatePersonalQrToken(
+          student.studentCode,
+          student.qrVersion,
+          Math.max(0, Number(ttlDays) || 0)
+        );
+        emailResult = await sendPersonalQrEmail({
+          to: student.email,
+          fullName: student.fullName,
+          studentCode: student.studentCode,
+          className: student.className,
+          qrToken: token,
+          qrVersion: student.qrVersion,
+          expiresAtSec,
+        });
+        if (emailResult.sent) {
+          student = await prisma.student.update({
+            where: { id: student.id },
+            data: { qrSentAt: new Date() },
+          });
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      message: `Đã thêm thành công sinh viên ${student.fullName} (${student.studentCode})!`,
+      message:
+        emailResult?.sent
+          ? `Đã thêm sinh viên ${student.fullName} và gửi Thẻ QR vào ${student.email}!`
+          : `Đã thêm thành công sinh viên ${student.fullName} (${student.studentCode})!`,
       student,
+      emailResult,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
