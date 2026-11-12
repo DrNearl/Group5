@@ -4,31 +4,19 @@ import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import {
   FileSpreadsheet,
   ArrowLeft,
   Clock,
   UserCheck,
-  AlertCircle,
-  TrendingUp,
   Download,
   Search,
   Filter,
-  Users,
   RefreshCw,
   CheckCircle2,
   Printer,
   PlusCircle,
   X,
   Camera,
-  Calendar,
   AlertTriangle,
   Award,
   Eye,
@@ -36,6 +24,34 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { getAssetPath } from "@/lib/asset-path";
+
+function isCrossDayLog(log: any): boolean {
+  if (!log?.checkInTime || !log?.checkOutTime) return false;
+  return new Date(log.checkInTime).toDateString() !== new Date(log.checkOutTime).toDateString();
+}
+
+function LogStatusBadge({ log }: { log: any }) {
+  if (!log?.checkOutTime) {
+    return (
+      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        Đang trực
+      </span>
+    );
+  }
+  if (isCrossDayLog(log)) {
+    return (
+      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+        Qua ngày
+      </span>
+    );
+  }
+  return (
+    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">
+      Hoàn thành
+    </span>
+  );
+}
 
 function DashboardContent() {
   const { user, role } = useAuth();
@@ -140,33 +156,30 @@ function DashboardContent() {
     }
   };
 
-  // XUẤT EXCEL BẢNG CHẤM CÔNG VLU
-  // XUẤT FILE EXCEL (.xlsx) CHUẨN 2 SHEET: TỔNG HỢP GIỜ & NHẬT KÝ CHI TIẾT
+  // XUẤT FILE EXCEL (.xlsx) 2 SHEET: THỐNG KÊ CA TRỰC & NHẬT KÝ RA VÀO
   const handleExportExcel = () => {
     if (!data || !data.allLogs) return;
 
-    // Sheet 1: Tổng hợp giờ trực theo từng sinh viên
     const studentSummaryData = (data.studentStats || []).map((sv: any, idx: number) => ({
       STT: idx + 1,
       "Họ và tên": sv.fullName,
       MSSV: sv.studentCode,
-      "Số ca trực": sv.totalShifts || 0,
-      "Ca hoàn thành": sv.completedShifts || 0,
-      "Tổng số giờ trực (hrs)": sv.totalHours || 0,
+      "Lớp": sv.className || "DTH-CNTT",
+      "Ca sáng": sv.morningShifts || 0,
+      "Ca chiều": sv.afternoonShifts || 0,
+      "Tổng ca trực": sv.totalShifts || 0,
     }));
 
-    // Thêm dòng tổng cộng
-    const totalHoursAllStudents = (data.studentStats || []).reduce((acc: number, s: any) => acc + (s.totalHours || 0), 0);
     studentSummaryData.push({
       STT: "" as any,
       "Họ và tên": "TỔNG CỘNG TOÀN BỘ SINH VIÊN",
       MSSV: "",
-      "Số ca trực": (data.studentStats || []).reduce((acc: number, s: any) => acc + (s.totalShifts || 0), 0),
-      "Ca hoàn thành": (data.studentStats || []).reduce((acc: number, s: any) => acc + (s.completedShifts || 0), 0),
-      "Tổng số giờ trực (hrs)": Math.round(totalHoursAllStudents * 10) / 10,
+      "Lớp": "",
+      "Ca sáng": (data.studentStats || []).reduce((acc: number, s: any) => acc + (s.morningShifts || 0), 0),
+      "Ca chiều": (data.studentStats || []).reduce((acc: number, s: any) => acc + (s.afternoonShifts || 0), 0),
+      "Tổng ca trực": (data.studentStats || []).reduce((acc: number, s: any) => acc + (s.totalShifts || 0), 0),
     });
 
-    // Sheet 2: Nhật ký chi tiết các lượt vào - ra
     const detailedLogsData = data.allLogs.map((log: any, idx: number) => ({
       STT: idx + 1,
       "Họ và tên": log.studentName,
@@ -178,26 +191,24 @@ function DashboardContent() {
       "Giờ ra": log.checkOutTime
         ? new Date(log.checkOutTime).toLocaleTimeString("vi-VN")
         : "--:--",
-      "Thời gian có mặt": log.durationText || "--",
-      "Số giờ (hrs)": log.totalHours || 0,
-      "Trạng thái": log.checkOutTime ? "Đã về" : "Đang có mặt",
+      "Thời lượng": log.durationText && log.durationText !== "--" ? log.durationText : (log.checkOutTime ? "--" : "Đang trực"),
+      "Trạng thái": !log.checkOutTime ? "Đang trực" : isCrossDayLog(log) ? "Qua ngày" : "Hoàn thành",
     }));
 
     const workbook = XLSX.utils.book_new();
 
-    // Thêm Sheet 1
     const wsSummary = XLSX.utils.json_to_sheet(studentSummaryData);
     wsSummary["!cols"] = [
       { wch: 6 },
       { wch: 26 },
       { wch: 18 },
       { wch: 14 },
-      { wch: 16 },
-      { wch: 22 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 14 },
     ];
-    XLSX.utils.book_append_sheet(workbook, wsSummary, "TongHopGio_SinhVien");
+    XLSX.utils.book_append_sheet(workbook, wsSummary, "ThongKeCaTruc");
 
-    // Thêm Sheet 2
     const wsDetails = XLSX.utils.json_to_sheet(detailedLogsData);
     wsDetails["!cols"] = [
       { wch: 6 },
@@ -208,13 +219,12 @@ function DashboardContent() {
       { wch: 14 },
       { wch: 20 },
       { wch: 14 },
-      { wch: 14 },
     ];
-    XLSX.utils.book_append_sheet(workbook, wsDetails, "NhatKy_ChiTiet");
+    XLSX.utils.book_append_sheet(workbook, wsDetails, "NhatKy_RaVao");
 
     XLSX.writeFile(
       workbook,
-      `VLU_BangTongHopGioTruc_${new Date().toISOString().slice(0, 10)}.xlsx`
+      `VLU_ThongKeCaTruc_${new Date().toISOString().slice(0, 10)}.xlsx`
     );
   };
 
@@ -540,7 +550,7 @@ function DashboardContent() {
                       <th className="py-2.5 px-3">Sinh viên</th>
                       <th className="py-2.5 px-3">Giờ vào</th>
                       <th className="py-2.5 px-3">Giờ ra</th>
-                      <th className="py-2.5 px-3">Thời gian</th>
+                      <th className="py-2.5 px-3">Thời lượng</th>
                       <th className="py-2.5 px-3 text-right">Trạng thái</th>
                     </tr>
                   </thead>
@@ -559,19 +569,10 @@ function DashboardContent() {
                             {log.checkOutTime ? new Date(log.checkOutTime).toLocaleTimeString("vi-VN") : <span className="text-gray-400 font-normal">--:--</span>}
                           </td>
                           <td className="py-2.5 px-3 text-gray-800 font-medium text-xs">
-                            {log.durationText || "--"}
+                            {log.durationText && log.durationText !== "--" ? log.durationText : (log.checkOutTime ? "--" : "Đang trực")}
                           </td>
                           <td className="py-2.5 px-3 text-right font-sans">
-                            {log.checkOutTime ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">
-                                Đã về
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                Có mặt
-                              </span>
-                            )}
+                            <LogStatusBadge log={log} />
                           </td>
                         </tr>
                       ))
@@ -593,45 +594,29 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* KHỐI 2: 5 THẺ KPI THỐNG KÊ CHUYÊN SÂU */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {/* 1. Tổng giờ */}
+        {/* KHỐI 2: 3 THẺ KPI TỔNG QUAN */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* 1. Đang có mặt tại Lab */}
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">Tổng giờ tích lũy</div>
-            <div className="text-xl font-bold text-rose-500 font-mono mt-1">
-              {data?.stats?.totalHours || 0} <span className="text-xs text-gray-400 font-normal">hrs</span>
+            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">Đang có mặt tại Lab</div>
+            <div className="text-xl font-bold text-emerald-600 font-mono mt-1">
+              {data?.activeInLab?.length || 0} <span className="text-xs text-gray-400 font-normal">người</span>
             </div>
           </div>
 
-          {/* 2. Tổng sinh viên */}
+          {/* 2. Tổng số ca trực */}
+          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
+            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">Tổng số ca trực</div>
+            <div className="text-xl font-bold text-rose-500 font-mono mt-1">
+              {data?.stats?.totalLogs || 0} <span className="text-xs text-gray-400 font-normal">ca</span>
+            </div>
+          </div>
+
+          {/* 3. Sinh viên tham gia */}
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
             <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">Sinh viên tham gia</div>
             <div className="text-xl font-bold text-gray-800 font-mono mt-1">
               {data?.stats?.totalStudents || 0} <span className="text-xs text-gray-400 font-normal">người</span>
-            </div>
-          </div>
-
-          {/* 3. Lượt quét */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">Tổng lượt quét</div>
-            <div className="text-xl font-bold text-gray-800 font-mono mt-1">
-              {data?.stats?.totalLogs || 0} <span className="text-xs text-gray-400 font-normal">lượt</span>
-            </div>
-          </div>
-
-          {/* 4. TB mỗi ca */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">TB mỗi lượt</div>
-            <div className="text-xl font-bold text-emerald-600 font-mono mt-1">
-              {data?.stats?.avgHours || 0} <span className="text-xs text-gray-400 font-normal">hrs</span>
-            </div>
-          </div>
-
-          {/* 5. Tỷ lệ hoàn thành */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">Hoàn thành ca</div>
-            <div className="text-xl font-bold text-blue-600 font-mono mt-1">
-              {data?.stats?.completionRate || 100}%
             </div>
           </div>
         </div>
@@ -654,67 +639,16 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* KHỐI 3: 2 BIỂU ĐỒ PHÂN TÍCH SỐ LIỆU CHUYÊN SÂU */}
-        <div className="print:hidden grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Biểu đồ 1: Số ca trực theo Sinh viên */}
-          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
-            <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Users className="h-4 w-4 text-rose-500" />
-              Tổng Số Ca Trực Từng Sinh Viên (Ca)
-            </h3>
-            <div className="h-60 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data?.studentStats || []}>
-                  <XAxis dataKey="fullName" stroke="#94a3b8" fontSize={11} />
-                  <YAxis stroke="#94a3b8" fontSize={11} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#ffffff",
-                      borderColor: "#e2e8f0",
-                      borderRadius: "10px",
-                    }}
-                  />
-                  <Bar dataKey="totalShifts" fill="#f43f5e" radius={[6, 6, 0, 0]} name="Số ca trực" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Biểu đồ 2: Phân Bổ Số Người Trực Theo Ngày Làm Việc Trong Tuần */}
-          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
-            <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-blue-600" />
-              Số Người Trực Các Ngày Trong Tuần (Người)
-            </h3>
-            <div className="h-60 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data?.weekdayData || []}>
-                  <XAxis dataKey="day" stroke="#94a3b8" fontSize={11} />
-                  <YAxis stroke="#94a3b8" fontSize={11} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#ffffff",
-                      borderColor: "#e2e8f0",
-                      borderRadius: "10px",
-                    }}
-                  />
-                  <Bar dataKey="peopleCount" fill="#3b82f6" radius={[6, 6, 0, 0]} name="Số người trực" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* KHỐI 4: BẢNG CHẤM CÔNG CHI TIẾT CA SÁNG / CA CHIỀU */}
+        {/* KHỐI 3: THỐNG KÊ CA TRỰC SINH VIÊN */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3">
             <div>
               <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
                 <Award className="h-4 w-4 text-rose-500" />
-                Bảng Chấm Công Chi Tiết Ca Sáng / Ca Chiều
+                Thống Kê Ca Trực Sinh Viên
               </h3>
               <p className="text-[11px] text-gray-400 mt-0.5">
-                Xưởng Thực Tập Khoa CNTT • Thống kê ca sáng (08h00 - 12h00) và ca chiều (13h00 - 17h00)
+                Xưởng Thực Tập Khoa CNTT • Tổng hợp ca Sáng (08:00 - 12:00) và ca Chiều (13:00 - 17:00)
               </p>
             </div>
             <span className="text-[11px] text-gray-500 font-medium">
@@ -737,9 +671,8 @@ function DashboardContent() {
                     Ca Chiều
                     <div className="text-[9px] font-normal lowercase text-gray-400">(13:00 - 17:00)</div>
                   </th>
-                  <th className="py-3 px-4 text-center">Tổng ca hoàn thành</th>
-                  <th className="py-3 px-4 text-right">Quy đổi số giờ</th>
-                  <th className="py-3 px-4 text-right">Lịch sử quẹt thẻ</th>
+                  <th className="py-3 px-4 text-center">Tổng ca trực</th>
+                  <th className="py-3 px-4 text-right">Chi tiết</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 font-mono">
@@ -766,10 +699,7 @@ function DashboardContent() {
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-center font-bold text-gray-900 text-sm">
-                      {sv.completedShifts || 0} <span className="text-gray-400 font-normal text-xs">/ {sv.totalShifts} ca</span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right font-bold text-rose-600 text-sm">
-                      {sv.totalHours} <span className="text-gray-400 font-normal text-[11px]">hrs</span>
+                      {sv.totalShifts || 0} <span className="text-gray-400 font-normal text-xs">ca</span>
                     </td>
                     <td className="py-3.5 px-4 text-right font-sans">
                       <button
@@ -788,13 +718,13 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* KHỐI 5: BẢNG NHẬT KÝ CHI TIẾT CÁC LƯỢT RA - VÀO */}
+        {/* KHỐI 4: BẢNG NHẬT KÝ RA / VÀO PHÒNG LAB */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3">
             <div>
               <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
                 <Clock className="h-4 w-4 text-rose-500" />
-                Nhật Ký Điểm Danh
+                Nhật Ký Ra / Vào Phòng Lab
               </h3>
             </div>
 
@@ -837,8 +767,8 @@ function DashboardContent() {
                   className="bg-transparent text-gray-700 text-xs focus:outline-none cursor-pointer"
                 >
                   <option value="ALL">Mọi trạng thái</option>
-                  <option value="IN_LAB">Đang có mặt</option>
-                  <option value="CHECKED_OUT">Đã về</option>
+                  <option value="IN_LAB">Đang trực</option>
+                  <option value="CHECKED_OUT">Hoàn thành</option>
                 </select>
               </div>
 
@@ -866,7 +796,7 @@ function DashboardContent() {
                   <th className="py-3 px-4">Ngày</th>
                   <th className="py-3 px-4">Giờ vào</th>
                   <th className="py-3 px-4">Giờ ra</th>
-                  <th className="py-3 px-4">Thời gian</th>
+                  <th className="py-3 px-4">Thời lượng</th>
                   <th className="py-3 px-4 text-right">Trạng thái</th>
                 </tr>
               </thead>
@@ -910,19 +840,10 @@ function DashboardContent() {
                           : <span className="text-gray-400 font-normal">--:--</span>}
                       </td>
                       <td className="py-3 px-4 text-gray-800 font-semibold">
-                        {log.durationText || "--"}
+                        {log.durationText && log.durationText !== "--" ? log.durationText : (log.checkOutTime ? "--" : "Đang trực")}
                       </td>
                       <td className="py-3 px-4 text-right font-sans">
-                        {log.checkOutTime ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">
-                            Đã về
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            Đang có mặt
-                          </span>
-                        )}
+                        <LogStatusBadge log={log} />
                       </td>
                     </tr>
                   ))
@@ -1113,7 +1034,7 @@ function DashboardContent() {
                   </span>
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Lớp: <strong className="text-gray-800">{historyStudent.className || "DTH-CNTT"}</strong> • Ca Sáng: <strong className="text-amber-600">{historyStudent.morningShifts || 0} ca</strong> • Ca Chiều: <strong className="text-blue-600">{historyStudent.afternoonShifts || 0} ca</strong> • Tích lũy: <strong className="text-rose-600">{historyStudent.totalHours} hrs</strong>
+                  Lớp: <strong className="text-gray-800">{historyStudent.className || "DTH-CNTT"}</strong> • Ca Sáng: <strong className="text-amber-600">{historyStudent.morningShifts || 0} ca</strong> • Ca Chiều: <strong className="text-blue-600">{historyStudent.afternoonShifts || 0} ca</strong> • Tổng: <strong className="text-rose-600">{historyStudent.totalShifts || 0} ca</strong>
                 </p>
               </div>
             </div>
@@ -1142,7 +1063,7 @@ function DashboardContent() {
                         <th className="py-2.5 px-3">Khung ca</th>
                         <th className="py-2.5 px-3">Giờ vào</th>
                         <th className="py-2.5 px-3">Giờ ra</th>
-                        <th className="py-2.5 px-3">Thời gian</th>
+                        <th className="py-2.5 px-3">Thời lượng</th>
                         <th className="py-2.5 px-3 text-right">Trạng thái</th>
                       </tr>
                     </thead>
@@ -1165,19 +1086,10 @@ function DashboardContent() {
                             {log.checkOutTime ? new Date(log.checkOutTime).toLocaleTimeString("vi-VN") : <span className="text-gray-400 font-normal">--:--</span>}
                           </td>
                           <td className="py-2.5 px-3 text-gray-800 font-medium font-sans">
-                            {log.durationText || "--"}
+                            {log.durationText && log.durationText !== "--" ? log.durationText : (log.checkOutTime ? "--" : "Đang trực")}
                           </td>
                           <td className="py-2.5 px-3 text-right font-sans">
-                            {log.checkOutTime ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">
-                                Đã về
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                Đang trực
-                              </span>
-                            )}
+                            <LogStatusBadge log={log} />
                           </td>
                         </tr>
                       ))}
