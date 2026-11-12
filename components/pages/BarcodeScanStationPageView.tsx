@@ -222,9 +222,9 @@ function ScanStationContent() {
     const cleanBarcode = barcode.trim();
     if (!cleanBarcode) return;
 
-    // Chống quét trùng lặp trong 1.8 giây (đủ để kéo thẻ ra khỏi ống kính camera)
+    // Chống quét trùng lặp trong 3.5 giây (đủ để hạ thẻ/QR ra khỏi ống kính camera mà không dội)
     const nowTime = Date.now();
-    if (lastScannedTimeRef.current[cleanBarcode] && nowTime - lastScannedTimeRef.current[cleanBarcode] < 1800) {
+    if (lastScannedTimeRef.current[cleanBarcode] && nowTime - lastScannedTimeRef.current[cleanBarcode] < 3500) {
       return;
     }
     lastScannedTimeRef.current[cleanBarcode] = nowTime;

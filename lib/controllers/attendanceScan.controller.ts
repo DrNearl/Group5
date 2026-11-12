@@ -23,6 +23,30 @@ const ScheduleStatus = {
   ABSENT: "ABSENT",
 } as const;
 
+const SCAN_COOLDOWN_MS = 20000;
+
+function checkScanCooldown(
+  sinceDate: Date,
+  now: Date,
+  student: { fullName: string; studentCode: string },
+  doneActionLabel: string,
+  nextActionLabel: string
+) {
+  const diffMs = now.getTime() - sinceDate.getTime();
+  if (diffMs >= SCAN_COOLDOWN_MS) return null;
+
+  const remainingSec = Math.ceil((SCAN_COOLDOWN_MS - diffMs) / 1000);
+  return NextResponse.json({
+    success: false,
+    type: "COOLDOWN_WAIT",
+    student: {
+      fullName: student.fullName,
+      studentCode: student.studentCode,
+    },
+    message: `Bạn vừa ${doneActionLabel} lúc ${sinceDate.toLocaleTimeString("vi-VN")}! Vui lòng đợi ${remainingSec} giây trước khi ${nextActionLabel}.`,
+  });
+}
+
 // API Xử lý Điểm danh Check-in / Check-out Tự do vào - ra phòng Lab
 export async function handleAttendanceScan(req: NextRequest) {
   try {
@@ -175,21 +199,9 @@ export async function handleAttendanceScan(req: NextRequest) {
     // -------------------------------------------------------------------------
     if (openLog && openLog.checkInTime) {
       const checkInDate = new Date(openLog.checkInTime);
+      const cooldownRes = checkScanCooldown(checkInDate, now, student, "Check-in", "Check-out");
+      if (cooldownRes) return cooldownRes;
       const diffMs = now.getTime() - checkInDate.getTime();
-
-      // Chống quẹt nhầm Check-out sớm trong vòng 20 giây sau khi Check-in
-      if (diffMs < 20000) {
-        const remainingSec = Math.ceil((20000 - diffMs) / 1000);
-        return NextResponse.json({
-          success: false,
-          type: "COOLDOWN_WAIT",
-          student: {
-            fullName: student.fullName,
-            studentCode: student.studentCode,
-          },
-          message: `Bạn vừa Check-in lúc ${checkInDate.toLocaleTimeString("vi-VN")}! Vui lòng đợi ${remainingSec} giây trước khi Check-out.`,
-        });
-      }
 
       // Tính chính xác Giờ - Phút - Giây có mặt tại phòng Lab
       const totalSeconds = Math.max(1, Math.floor(diffMs / 1000));
@@ -250,6 +262,24 @@ export async function handleAttendanceScan(req: NextRequest) {
     // -------------------------------------------------------------------------
     // TRƯỜNG HỢP B: CHƯA CHECK-IN -> THỰC HIỆN CHECK-IN VÀO PHÒNG LAB
     // -------------------------------------------------------------------------
+    const lastCompletedLog = await prisma.attendanceLog.findFirst({
+      where: {
+        scannedBarcode: resolvedBarcode,
+        checkOutTime: { not: null },
+      },
+      orderBy: { checkOutTime: "desc" },
+    });
+
+    if (lastCompletedLog?.checkOutTime) {
+      const cooldownRes = checkScanCooldown(
+        new Date(lastCompletedLog.checkOutTime),
+        now,
+        student,
+        "Check-out",
+        "Check-in lại"
+      );
+      if (cooldownRes) return cooldownRes;
+    }
     
     // Tạo bản ghi Schedule gắn với lượt điểm danh
     const newSchedule = await prisma.dutySchedule.create({
