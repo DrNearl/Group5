@@ -35,6 +35,8 @@ model Student {
   email       String?  // Email sinh viên Văn Lang (để gửi thông báo ca trực)
   phone       String?
   className   String?  // Lớp chuyên ngành (vd: "23DTH01", "21CNTT02")
+  qrVersion   Int      @default(1) // Phiên bản QR cá nhân (tăng để thu hồi QR cũ nếu bị lộ)
+  qrSentAt    DateTime? // Thời điểm gửi QR qua Email gần nhất
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

@@ -16,11 +16,15 @@ import {
   Pencil,
   AlertTriangle,
   Sparkles,
+  QrCode,
+  FileSpreadsheet,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { parseVluStudentInfo, extractCohort } from "@/lib/vlu-student-helper";
 import { getAssetPath } from "@/lib/asset-path";
+import StudentQrModal from "@/components/modals/StudentQrModal";
+import StudentBulkImportModal from "@/components/modals/StudentBulkImportModal";
 
 function StudentsManagementContent() {
   const { user } = useAuth();
@@ -28,6 +32,9 @@ function StudentsManagementContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCohort, setSelectedCohort] = useState<string>("ALL");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [qrStudent, setQrStudent] = useState<any | null>(null);
+  const [sendQrOnAdd, setSendQrOnAdd] = useState(true);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   // Form states
@@ -111,19 +118,24 @@ function StudentsManagementContent() {
     try {
       const res = await fetch(getAssetPath("/api/students"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(user?.id ? { "x-vlu-user-id": user.id } : {}),
+        },
         body: JSON.stringify({
           studentCode,
           fullName,
           className,
           email,
           phone,
+          sendQrEmail: sendQrOnAdd,
+          ttlDays: 90,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        setActionMessage(`Đã thêm thành công sinh viên ${fullName}!`);
-        setTimeout(() => setActionMessage(null), 4000);
+        setActionMessage(data.message || `Đã thêm thành công sinh viên ${fullName}!`);
+        setTimeout(() => setActionMessage(null), 5000);
         setShowAddModal(false);
         setStudentCode("");
         setFullName("");
@@ -226,7 +238,14 @@ function StudentsManagementContent() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-800 border border-gray-200 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+              Nhập PDF / Excel
+            </button>
             <button
               onClick={() => setShowAddModal(true)}
               className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition"
@@ -331,7 +350,21 @@ function StudentsManagementContent() {
                           </span>
                         </td>
                         <td className="py-3.5 px-4 font-mono font-semibold text-rose-600">
-                          {sv.studentCode}
+                          <div>{sv.studentCode}</div>
+                          <div className="mt-1 flex items-center gap-1 font-sans">
+                            <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 text-[10px] font-medium">
+                              QR v{sv.qrVersion || 1}
+                            </span>
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                sv.qrSentAt
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-amber-50 text-amber-700"
+                              }`}
+                            >
+                              {sv.qrSentAt ? "Đã gửi mail" : "Chưa gửi"}
+                            </span>
+                          </div>
                         </td>
                         <td className="py-3.5 px-4 space-y-1">
                           {sv.email && (
@@ -362,7 +395,14 @@ function StudentsManagementContent() {
                         <td className="py-3.5 px-4 text-right font-mono font-bold text-rose-600 text-sm">
                           {sv.totalHours} <span className="text-[11px] font-normal text-gray-400">hrs</span>
                         </td>
-                        <td className="py-3.5 px-4 text-right space-x-1.5">
+                        <td className="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
+                          <button
+                            onClick={() => setQrStudent(sv)}
+                            className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg border border-rose-200 transition"
+                            title="Xem / Gửi email / Cấp lại Thẻ QR cá nhân"
+                          >
+                            <QrCode className="h-4 w-4" />
+                          </button>
                           <button
                             onClick={() => openEditModal(sv)}
                             className="p-1.5 bg-gray-50 hover:bg-rose-50 text-gray-600 hover:text-rose-600 rounded-lg border border-gray-200 transition"
@@ -495,6 +535,16 @@ function StudentsManagementContent() {
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
                   />
                 </div>
+
+                <label className="flex items-center gap-2 pt-1 text-gray-700 font-medium cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sendQrOnAdd}
+                    onChange={(e) => setSendQrOnAdd(e.target.checked)}
+                    className="rounded border-gray-300 text-rose-600 focus:ring-rose-500"
+                  />
+                  <span>Tự động tạo & gửi Thẻ QR cá nhân vào Email sinh viên</span>
+                </label>
 
                 <div className="flex justify-end gap-2.5 pt-3 border-t border-gray-100">
                   <button
@@ -639,6 +689,23 @@ function StudentsManagementContent() {
               </form>
             </div>
           </div>
+        )}
+
+        {qrStudent && (
+          <StudentQrModal
+            student={qrStudent}
+            userId={user?.id}
+            onClose={() => setQrStudent(null)}
+            onUpdated={loadStudents}
+          />
+        )}
+
+        {showImportModal && (
+          <StudentBulkImportModal
+            userId={user?.id}
+            onClose={() => setShowImportModal(false)}
+            onImported={loadStudents}
+          />
         )}
       </div>
     </div>

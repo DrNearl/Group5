@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { parseVluStudentInfo } from "@/lib/vlu-student-helper";
+import { verifyPersonalQrToken } from "@/lib/qr-security";
 const AttendanceStatus = {
   ON_TIME: "ON_TIME",
   LATE: "LATE",
@@ -56,26 +57,67 @@ export async function handleAttendanceScan(req: NextRequest) {
 
     // =========================================================================
     // 2. ĐIỂM DANH SINH VIÊN (CHECK-IN / CHECK-OUT PHÒNG LAB)
-    // Sinh viên quét thẻ Barcode, không cần tài khoản đăng nhập!
+    // Hỗ trợ Thẻ Sinh Viên (Barcode/MSSV) VÀ Thẻ QR Cá Nhân có chữ ký HMAC (VLUQR:...)
     // =========================================================================
-    
-    // Tìm hoặc tự động tạo hồ sơ Sinh viên nếu chưa có
-    let student = await prisma.student.findUnique({
-      where: { studentCode: cleanBarcode },
-    });
+    const isPersonalQr = cleanBarcode.startsWith("VLUQR:");
+    let resolvedBarcode = cleanBarcode;
+    let student = null;
 
-    if (!student) {
-      // Tự động phân tích niên khóa K27 - K32 hoặc khách ngoài theo MSSV Văn Lang
-      const vluInfo = parseVluStudentInfo(cleanBarcode);
-      student = await prisma.student.create({
-        data: {
-          studentCode: cleanBarcode,
-          fullName: vluInfo.defaultFullName,
-          email: vluInfo.defaultEmail,
-          className: vluInfo.suggestedClass,
-          isActive: true,
-        },
+    if (isPersonalQr) {
+      const qrCheck = verifyPersonalQrToken(cleanBarcode);
+      if (!qrCheck.valid || !qrCheck.payload) {
+        return NextResponse.json(
+          { success: false, message: qrCheck.error || "Mã QR cá nhân không hợp lệ!" },
+          { status: 403 }
+        );
+      }
+
+      student = await prisma.student.findUnique({
+        where: { studentCode: qrCheck.payload.studentCode },
       });
+
+      if (!student) {
+        return NextResponse.json(
+          { success: false, message: "Mã QR không thuộc sinh viên nào trong hệ thống!" },
+          { status: 404 }
+        );
+      }
+      if (!student.isActive) {
+        return NextResponse.json(
+          { success: false, message: "Tài khoản sinh viên này đang bị khóa!" },
+          { status: 403 }
+        );
+      }
+      if (student.qrVersion !== qrCheck.payload.qrVersion) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: `Mã QR (v${qrCheck.payload.qrVersion}) đã bị thu hồi! Vui lòng dùng mã QR mới nhất (v${student.qrVersion}).`,
+          },
+          { status: 403 }
+        );
+      }
+
+      resolvedBarcode = student.studentCode;
+    } else {
+      // Tìm hoặc tự động tạo hồ sơ Sinh viên nếu quét thẻ cứng MSSV lần đầu
+      student = await prisma.student.findUnique({
+        where: { studentCode: cleanBarcode },
+      });
+
+      if (!student) {
+        // Tự động phân tích niên khóa K27 - K32 hoặc khách ngoài theo MSSV Văn Lang
+        const vluInfo = parseVluStudentInfo(cleanBarcode);
+        student = await prisma.student.create({
+          data: {
+            studentCode: cleanBarcode,
+            fullName: vluInfo.defaultFullName,
+            email: vluInfo.defaultEmail,
+            className: vluInfo.suggestedClass,
+            isActive: true,
+          },
+        });
+      }
     }
 
     // Lấy thông tin phòng Lab thực tế
@@ -116,7 +158,7 @@ export async function handleAttendanceScan(req: NextRequest) {
     // KIỂM TRA XEM SINH VIÊN ĐANG CÓ LƯỢT CHECK-IN CHƯA CHECK-OUT KHÔNG
     const openLog = await prisma.attendanceLog.findFirst({
       where: {
-        scannedBarcode: cleanBarcode,
+        scannedBarcode: resolvedBarcode,
         checkOutTime: null,
       },
       include: {
@@ -217,14 +259,14 @@ export async function handleAttendanceScan(req: NextRequest) {
         shiftId: defaultShift.id,
         dutyDate: today,
         scheduleStatus: ScheduleStatus.APPROVED,
-        note: "Điểm danh vào phòng Lab",
+        note: isPersonalQr ? "Điểm danh bằng Thẻ QR cá nhân" : "Điểm danh vào phòng Lab",
       },
     });
 
     const newLog = await prisma.attendanceLog.create({
       data: {
         scheduleId: newSchedule.id,
-        scannedBarcode: cleanBarcode,
+        scannedBarcode: resolvedBarcode,
         checkInTime: now,
         scanMethod: scanMethod === "WEBCAM" ? ScanMethod.WEBCAM : ScanMethod.USB_SCANNER,
         checkInSnapshot: snapshotBase64,
