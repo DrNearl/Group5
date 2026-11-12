@@ -1,4 +1,3 @@
-import nodemailer from "nodemailer";
 import QRCode from "qrcode";
 
 export interface SendPersonalQrParams {
@@ -14,7 +13,7 @@ export interface SendPersonalQrParams {
 export interface SendEmailResult {
   sent: boolean;
   configured: boolean;
-  provider?: "WEBHOOK_HTTPS" | "BREVO_API" | "RESEND_API" | "SMTP";
+  provider?: "BREVO_API";
   message: string;
 }
 
@@ -42,11 +41,38 @@ export async function generateQrImageAssets(qrToken: string): Promise<{
   return { buffer, base64Raw, dataUrl };
 }
 
-function buildQrEmailHtml(params: SendPersonalQrParams, imgSrc: string): string {
+/**
+ * Dựng mã QR bằng bảng HTML nhỏ để hiển thị sắc nét ngay trong Outlook Web / Gmail
+ * mà không bị trình duyệt mail chặn như ảnh base64 data URL.
+ */
+function buildHtmlQrTable(qrToken: string): string {
+  const qr = QRCode.create(qrToken, { errorCorrectionLevel: "M" });
+  const size = qr.modules.size;
+  const rows: string[] = [];
+
+  for (let r = 0; r < size; r++) {
+    const cells: string[] = [];
+    for (let c = 0; c < size; c++) {
+      const dark = qr.modules.get(r, c);
+      cells.push(
+        `<td style="width:5px;height:5px;padding:0;margin:0;background:${
+          dark ? "#111827" : "#ffffff"
+        };"></td>`
+      );
+    }
+    rows.push(`<tr>${cells.join("")}</tr>`);
+  }
+
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 12px;border-collapse:collapse;border:10px solid #ffffff;background:#ffffff;border-radius:8px;"><tbody>${rows.join("")}</tbody></table>`;
+}
+
+function buildQrEmailHtml(params: SendPersonalQrParams): string {
   const expiryText =
     params.expiresAtSec && params.expiresAtSec > 0
       ? new Date(params.expiresAtSec * 1000).toLocaleDateString("vi-VN")
       : "Theo thời gian phân công ca trực";
+
+  const qrTableHtml = buildHtmlQrTable(params.qrToken);
 
   return `
     <div style="font-family: Arial, Helvetica, sans-serif; max-width: 560px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden;">
@@ -57,11 +83,11 @@ function buildQrEmailHtml(params: SendPersonalQrParams, imgSrc: string): string 
       <div style="padding: 24px; color: #1f2937;">
         <p style="margin: 0 0 12px; font-size: 14px;">Chào <strong>${params.fullName}</strong>,</p>
         <p style="margin: 0 0 18px; font-size: 13px; color: #4b5563; line-height: 1.5;">
-          Hệ thống Xưởng Thực tập Khoa CNTT cấp cho bạn Mã QR cá nhân định danh điện tử để sử dụng Check-in / Check-out tại Camera Trạm quét.
+          Hệ thống Xưởng Thực tập Khoa CNTT cấp cho bạn Mã QR cá nhân định danh điện tử để sử dụng Check-in / Check-out tại Camera Trạm quét (hoặc lưu tệp ảnh đính kèm bên dưới về điện thoại).
         </p>
 
         <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 18px;">
-          <img src="${imgSrc}" alt="Mã QR Cá Nhân VLU" width="240" height="240" style="display: block; margin: 0 auto 12px; border-radius: 8px; border: 1px solid #e5e7eb;" />
+          ${qrTableHtml}
           <div style="font-size: 15px; font-weight: bold; color: #111827;">${params.fullName}</div>
           <div style="font-size: 13px; font-family: monospace; color: #b91c1c; font-weight: bold; margin-top: 2px;">MSSV: ${params.studentCode}</div>
           <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
@@ -81,9 +107,7 @@ function buildQrEmailHtml(params: SendPersonalQrParams, imgSrc: string): string 
 }
 
 /**
- * Gửi email chứa Mã QR cá nhân.
- * Tự động ưu tiên kênh HTTPS (443) để chạy xuyên tường lửa FITLAB Cloud,
- * hỗ trợ fallback sang SMTP truyền thống trên máy cá nhân.
+ * Gửi email chứa Mã QR cá nhân qua Brevo HTTP API v3 (cổng HTTPS 443, chạy ổn định trên FITLAB).
  */
 export async function sendPersonalQrEmail(params: SendPersonalQrParams): Promise<SendEmailResult> {
   const emailTo = (params.to || "").trim();
@@ -95,220 +119,61 @@ export async function sendPersonalQrEmail(params: SendPersonalQrParams): Promise
     };
   }
 
-  const subject = `[VLU CNTT] Thẻ QR Điểm Danh Cá Nhân - ${params.fullName} (${params.studentCode})`;
-  const { buffer, base64Raw, dataUrl } = await generateQrImageAssets(params.qrToken);
-  const filename = `VLU_QR_${params.studentCode}.png`;
-
-  // KÊNH 1: Google Apps Script / HTTP Webhook qua cổng HTTPS 443 (chạy ổn định 100% trên FITLAB)
-  const webhookUrl = process.env.EMAIL_WEBHOOK_URL?.trim();
-  if (webhookUrl) {
-    try {
-      const html = buildQrEmailHtml(params, "cid:vlu-qr-card");
-      const res = await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: emailTo,
-          subject,
-          html,
-          qrBase64: base64Raw,
-          filename,
-          studentCode: params.studentCode,
-          fullName: params.fullName,
-        }),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        return {
-          sent: false,
-          configured: true,
-          provider: "WEBHOOK_HTTPS",
-          message: `Webhook lỗi HTTP ${res.status}: ${text.slice(0, 120)}`,
-        };
-      }
-
-      return {
-        sent: true,
-        configured: true,
-        provider: "WEBHOOK_HTTPS",
-        message: `Đã gửi Mã QR tới ${emailTo} qua HTTPS Webhook!`,
-      };
-    } catch (err: any) {
-      return {
-        sent: false,
-        configured: true,
-        provider: "WEBHOOK_HTTPS",
-        message: `Lỗi kết nối Webhook gửi mail: ${err.message}`,
-      };
-    }
-  }
-
-  // KÊNH 2: Brevo HTTP API qua cổng HTTPS 443 (Free 300 mail/ngày, không cần domain riêng)
   const brevoKey = process.env.BREVO_API_KEY?.trim();
-  if (brevoKey) {
-    const brevoSender = process.env.BREVO_SENDER_EMAIL?.trim() || process.env.SMTP_USER?.trim();
-    if (!brevoSender || !brevoSender.includes("@")) {
-      return {
-        sent: false,
-        configured: true,
-        provider: "BREVO_API",
-        message: "Thiếu BREVO_SENDER_EMAIL (email người gửi đã xác minh trên Brevo)!",
-      };
-    }
-
-    try {
-      const htmlContent = buildQrEmailHtml(params, dataUrl);
-      const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-        method: "POST",
-        headers: {
-          "api-key": brevoKey,
-          "Content-Type": "application/json",
-          accept: "application/json",
-        },
-        body: JSON.stringify({
-          sender: { name: "VLU Lab Khoa CNTT", email: brevoSender },
-          to: [{ email: emailTo, name: params.fullName }],
-          subject,
-          htmlContent,
-          attachment: [{ name: filename, content: base64Raw }],
-        }),
-      });
-
-      const resData = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        return {
-          sent: false,
-          configured: true,
-          provider: "BREVO_API",
-          message: `Brevo API lỗi: ${resData?.message || res.status}`,
-        };
-      }
-
-      return {
-        sent: true,
-        configured: true,
-        provider: "BREVO_API",
-        message: `Đã gửi Mã QR tới ${emailTo} qua Brevo!`,
-      };
-    } catch (err: any) {
-      return {
-        sent: false,
-        configured: true,
-        provider: "BREVO_API",
-        message: `Lỗi kết nối Brevo API: ${err.message}`,
-      };
-    }
+  const brevoSender = process.env.BREVO_SENDER_EMAIL?.trim();
+  if (!brevoKey || !brevoSender || !brevoSender.includes("@")) {
+    return {
+      sent: false,
+      configured: false,
+      message:
+        "Chưa cấu hình BREVO_API_KEY và BREVO_SENDER_EMAIL trong file .env. Bạn vẫn có thể tải ảnh PNG hoặc in A4 tại đây.",
+    };
   }
 
-  // KÊNH 3: Resend API qua cổng HTTPS 443 (chạy ổn định trên FITLAB)
-  const resendKey = process.env.RESEND_API_KEY?.trim();
-  if (resendKey) {
-    try {
-      const fromEmail = process.env.RESEND_FROM || "VLU Lab <onboarding@resend.dev>";
-      const html = buildQrEmailHtml(params, dataUrl);
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resendKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: fromEmail,
-          to: [emailTo],
-          subject,
-          html,
-          attachments: [
-            {
-              filename,
-              content: base64Raw,
-            },
-          ],
-        }),
-      });
+  const subject = `[VLU CNTT] Thẻ QR Điểm Danh Cá Nhân - ${params.fullName} (${params.studentCode})`;
+  const filename = `VLU_QR_${params.studentCode}.png`;
+  const { base64Raw } = await generateQrImageAssets(params.qrToken);
+  const htmlContent = buildQrEmailHtml(params);
 
-      const resData = await res.json();
-      if (!res.ok) {
-        return {
-          sent: false,
-          configured: true,
-          provider: "RESEND_API",
-          message: `Resend API lỗi: ${resData?.message || res.status}`,
-        };
-      }
-
-      return {
-        sent: true,
-        configured: true,
-        provider: "RESEND_API",
-        message: `Đã gửi Mã QR tới ${emailTo} qua Resend!`,
-      };
-    } catch (err: any) {
-      return {
-        sent: false,
-        configured: true,
-        provider: "RESEND_API",
-        message: `Lỗi Resend API: ${err.message}`,
-      };
-    }
-  }
-
-  // KÊNH 3: SMTP truyền thống (Gmail App Password trên máy local không bị chặn cổng 465/587)
-  const smtpUser = process.env.SMTP_USER?.trim();
-  const smtpPass = process.env.SMTP_PASS?.trim();
-  if (smtpUser && smtpPass) {
-    try {
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || "smtp.gmail.com",
-        port: Number(process.env.SMTP_PORT || 465),
-        secure: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) === 465 : true,
-        auth: {
-          user: smtpUser,
-          pass: smtpPass,
-        },
-        connectionTimeout: 8000,
-      });
-
-      const html = buildQrEmailHtml(params, "cid:vlu-qr-card");
-      await transporter.sendMail({
-        from: `"VLU Lab Khoa CNTT" <${smtpUser}>`,
-        to: emailTo,
+  try {
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "api-key": brevoKey,
+        "Content-Type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: "VLU Lab Khoa CNTT", email: brevoSender },
+        to: [{ email: emailTo, name: params.fullName }],
         subject,
-        html,
-        attachments: [
-          {
-            filename,
-            content: buffer,
-            cid: "vlu-qr-card",
-          },
-          {
-            filename,
-            content: buffer,
-          },
-        ],
-      });
+        htmlContent,
+        attachment: [{ name: filename, content: base64Raw }],
+      }),
+    });
 
-      return {
-        sent: true,
-        configured: true,
-        provider: "SMTP",
-        message: `Đã gửi Mã QR tới ${emailTo}!`,
-      };
-    } catch (err: any) {
+    const resData = await res.json().catch(() => ({}));
+    if (!res.ok) {
       return {
         sent: false,
         configured: true,
-        provider: "SMTP",
-        message: `Lỗi gửi SMTP (${err.code || err.message}). Lưu ý: Nếu đang chạy trên FITLAB, cổng SMTP 465/587 bị tường lửa chặn, hãy dùng EMAIL_WEBHOOK_URL qua HTTPS 443!`,
+        provider: "BREVO_API",
+        message: `Brevo API lỗi (${res.status}): ${resData?.message || "Kiểm tra lại BREVO_API_KEY / BREVO_SENDER_EMAIL"}`,
       };
     }
-  }
 
-  // CHƯA CẤU HÌNH KÊNH NÀO
-  return {
-    sent: false,
-    configured: false,
-    message:
-      "Chưa cấu hình biến môi trường gửi Email (EMAIL_WEBHOOK_URL, BREVO_API_KEY, RESEND_API_KEY hoặc SMTP_USER). Bạn vẫn có thể tải trực tiếp ảnh QR hoặc in A4 tại đây.",
-  };
+    return {
+      sent: true,
+      configured: true,
+      provider: "BREVO_API",
+      message: `Đã gửi Mã QR tới ${emailTo} qua Brevo!`,
+    };
+  } catch (err: any) {
+    return {
+      sent: false,
+      configured: true,
+      provider: "BREVO_API",
+      message: `Lỗi kết nối Brevo API: ${err.message}`,
+    };
+  }
 }
