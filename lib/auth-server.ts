@@ -20,12 +20,16 @@ export async function requireStaffAuth(req: NextRequest): Promise<
 > {
   try {
     let userId: string | null = null;
+    let sessionUsername: string | null = null;
+    let sessionEmail: string | null = null;
     const rawCookie = req.cookies.get("vlu_user_session")?.value;
 
     if (rawCookie) {
       try {
         const parsed = JSON.parse(decodeURIComponent(rawCookie));
-        if (parsed?.id) userId = String(parsed.id);
+        if (parsed?.id) userId = String(parsed.id).trim();
+        if (parsed?.username) sessionUsername = String(parsed.username).trim().toLowerCase();
+        if (parsed?.email) sessionEmail = String(parsed.email).trim().toLowerCase();
       } catch {
         // Bỏ qua nếu cookie lỗi định dạng để kiểm tra tiếp header
       }
@@ -35,8 +39,16 @@ export async function requireStaffAuth(req: NextRequest): Promise<
       const headerId = req.headers.get("x-vlu-user-id");
       if (headerId) userId = headerId.trim();
     }
+    if (!sessionUsername) {
+      const headerUsername = req.headers.get("x-vlu-username");
+      if (headerUsername) sessionUsername = headerUsername.trim().toLowerCase();
+    }
+    if (!sessionEmail) {
+      const headerEmail = req.headers.get("x-vlu-user-email");
+      if (headerEmail) sessionEmail = headerEmail.trim().toLowerCase();
+    }
 
-    if (!userId) {
+    if (!userId && !sessionUsername && !sessionEmail) {
       return {
         authorized: false,
         status: 401,
@@ -44,17 +56,30 @@ export async function requireStaffAuth(req: NextRequest): Promise<
       };
     }
 
-    const dbUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        username: true,
-        fullName: true,
-        email: true,
-        role: true,
-        isActive: true,
-      },
-    });
+    const selectFields = {
+      id: true,
+      username: true,
+      fullName: true,
+      email: true,
+      role: true,
+      isActive: true,
+    };
+
+    let dbUser = userId
+      ? await prisma.user.findUnique({ where: { id: userId }, select: selectFields })
+      : null;
+
+    // Fallback theo username/email trong trường hợp DB vừa reset/seed lại làm đổi UUID của session cũ
+    if (!dbUser && (sessionUsername || sessionEmail)) {
+      const orFilters: Array<{ username?: string; email?: string }> = [];
+      if (sessionUsername) orFilters.push({ username: sessionUsername });
+      if (sessionEmail) orFilters.push({ email: sessionEmail });
+
+      dbUser = await prisma.user.findFirst({
+        where: { OR: orFilters },
+        select: selectFields,
+      });
+    }
 
     if (!dbUser || !dbUser.isActive) {
       return {
