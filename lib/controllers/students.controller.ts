@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getUniqueAttendanceHours } from "@/lib/attendance-hours";
 import { getStudentDisplayName } from "@/lib/student-display";
 import { getValidStudentCode } from "@/lib/studentCode";
+import { getStudentProfileStatus } from "@/lib/student-profile";
 
 async function getSessionUser(req: NextRequest) {
   try {
@@ -19,9 +20,15 @@ async function getSessionUser(req: NextRequest) {
 function formatStudent(sv: any) {
   const logs = sv.dutySchedules.map((s: any) => s.attendanceLog).filter(Boolean);
   const displayName = getStudentDisplayName(sv.fullName);
+  const profile = {
+    fullName: displayName === "Chưa có tên" ? null : displayName,
+    email: sv.email,
+    phone: sv.phone,
+    className: sv.className,
+  };
   return {
-    id: sv.id, studentCode: sv.studentCode, fullName: displayName === "Chưa có tên" ? null : displayName, email: sv.email,
-    phone: sv.phone, className: sv.className, profileStatus: sv.profileStatus,
+    id: sv.id, studentCode: sv.studentCode, fullName: profile.fullName, email: sv.email,
+    phone: sv.phone, className: sv.className, profileStatus: getStudentProfileStatus(profile),
     source: sv.source, firstSeenAt: sv.firstSeenAt, isActive: sv.isActive,
     deactivatedAt: sv.deactivatedAt, reactivatedAt: sv.reactivatedAt,
     totalShifts: sv.dutySchedules.length,
@@ -42,11 +49,17 @@ export async function handleStudentsGet(req: NextRequest) {
       orderBy: [{ profileStatus: "asc" }, { createdAt: "desc" }],
       include: { dutySchedules: { include: { shift: true, labRoom: true, attendanceLog: true } } },
     });
-    const [activeCount, inactiveCount, pendingCount] = await Promise.all([
+    const [activeCount, inactiveCount, studentsForProfileCount] = await Promise.all([
       prisma.student.count({ where: { isActive: true } }),
       prisma.student.count({ where: { isActive: false } }),
-      prisma.student.count({ where: { profileStatus: "PENDING" } }),
+      prisma.student.findMany({
+        where: { isActive: true },
+        select: { fullName: true, email: true, phone: true, className: true },
+      }),
     ]);
+    const pendingCount = studentsForProfileCount.filter(
+      (student) => getStudentProfileStatus(student) === "PENDING"
+    ).length;
     // The student directory must remain available while a running dev server is
     // holding an older generated Prisma client without the RejectedScan delegate.
     const rejectedScanDelegate = (prisma as any).rejectedScan;
@@ -85,19 +98,29 @@ export async function handleStudentsPost(req: NextRequest) {
     if (existing?.isActive === false) {
       return NextResponse.json({ success: false, code: "INACTIVE_STUDENT", studentId: existing.id, message: `MSSV ${studentCode} đã có hồ sơ bị ngừng hoạt động.` }, { status: 409 });
     }
-    if (existing?.profileStatus === "PENDING") {
+    if (existing && getStudentProfileStatus(existing) === "PENDING") {
+      const profile = { fullName, email, phone, className };
+      const profileStatus = getStudentProfileStatus(profile);
       const student = await prisma.student.update({
         where: { id: existing.id },
-        data: { fullName, email: email || null, phone: phone || null, className: className || null, profileStatus: "VERIFIED" },
+        data: { fullName, email: email || null, phone: phone || null, className: className || null, profileStatus },
       });
-      return NextResponse.json({ success: true, message: `Đã cập nhật hồ sơ sinh viên ${student.fullName} (${student.studentCode})!`, student });
+      const message = profileStatus === "VERIFIED"
+        ? `Đã cập nhật và xác minh hồ sơ sinh viên ${student.fullName} (${student.studentCode})!`
+        : `Đã cập nhật hồ sơ sinh viên ${student.studentCode}. Hồ sơ chưa xác minh.`;
+      return NextResponse.json({ success: true, message, student });
     }
     if (existing) return NextResponse.json({ success: false, message: `Sinh viên với MSSV ${studentCode} đã tồn tại trong danh sách!` }, { status: 409 });
 
+    const profile = { fullName, email, phone, className };
+    const profileStatus = getStudentProfileStatus(profile);
     const student = await prisma.student.create({
-      data: { studentCode, fullName, email: email || null, phone: phone || null, className: className || null, profileStatus: "VERIFIED", source: "MANUAL", isActive: true },
+      data: { studentCode, fullName, email: email || null, phone: phone || null, className: className || null, profileStatus, source: "MANUAL", isActive: true },
     });
-    return NextResponse.json({ success: true, message: `Đã thêm thành công sinh viên ${student.fullName} (${student.studentCode})!`, student });
+    const message = profileStatus === "VERIFIED"
+      ? `Đã thêm và xác minh sinh viên ${student.fullName} (${student.studentCode})!`
+      : `Đã thêm sinh viên ${student.studentCode}. Hồ sơ chưa xác minh.`;
+    return NextResponse.json({ success: true, message, student });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
@@ -116,15 +139,27 @@ export async function handleStudentsPatch(req: NextRequest) {
     if (body.restore && sessionUser.role !== "ADMIN") return NextResponse.json({ success: false, message: "Chỉ quản trị viên mới có thể khôi phục hồ sơ." }, { status: 403 });
     const studentBeforeUpdate = await prisma.student.findUnique({ where: { id } });
     if (!studentBeforeUpdate) return NextResponse.json({ success: false, message: "Không tìm thấy sinh viên." }, { status: 404 });
+    const profile = {
+      fullName: typeof body.fullName === "string" ? body.fullName.trim() || null : studentBeforeUpdate.fullName,
+      className: typeof body.className === "string" ? body.className.trim() || null : studentBeforeUpdate.className,
+      email: typeof body.email === "string" ? body.email.trim().toLowerCase() || null : studentBeforeUpdate.email,
+      phone: typeof body.phone === "string" ? body.phone.trim() || null : studentBeforeUpdate.phone,
+    };
+    const profileStatus = getStudentProfileStatus(profile);
     const student = await prisma.student.update({ where: { id }, data: {
       ...(body.restore ? { isActive: true, reactivatedAt: new Date(), deactivatedAt: null } : {}),
-      ...(typeof body.fullName === "string" ? { fullName: body.fullName.trim() || null } : {}),
-      ...(typeof body.className === "string" ? { className: body.className.trim() || null } : {}),
-      ...(typeof body.email === "string" ? { email: body.email.trim().toLowerCase() || null } : {}),
-      ...(typeof body.phone === "string" ? { phone: body.phone.trim() || null } : {}),
-      ...((body.verifyProfile || body.updateProfile) ? { profileStatus: "VERIFIED" } : {}),
+      ...(typeof body.fullName === "string" ? { fullName: profile.fullName } : {}),
+      ...(typeof body.className === "string" ? { className: profile.className } : {}),
+      ...(typeof body.email === "string" ? { email: profile.email } : {}),
+      ...(typeof body.phone === "string" ? { phone: profile.phone } : {}),
+      profileStatus,
     } });
-    return NextResponse.json({ success: true, message: body.restore ? `Đã khôi phục hồ sơ ${student.studentCode}.` : `Đã cập nhật hồ sơ ${student.studentCode}.`, student });
+    const message = body.restore
+      ? `Đã khôi phục hồ sơ ${student.studentCode}${profileStatus === "PENDING" ? ", hồ sơ chưa xác minh." : "."}`
+      : profileStatus === "VERIFIED"
+        ? `Đã cập nhật và xác minh hồ sơ ${student.studentCode}.`
+        : `Đã cập nhật hồ sơ ${student.studentCode}. Hồ sơ chưa xác minh.`;
+    return NextResponse.json({ success: true, message, student });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }

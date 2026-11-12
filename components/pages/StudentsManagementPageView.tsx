@@ -191,7 +191,7 @@ function StudentsManagementContent() {
   };
 
   const filteredStudents = students
-    .filter((sv) => statusFilter === "ALL" || sv.profileStatus === statusFilter)
+    .filter((sv) => statusFilter === "ALL" || (sv.isActive && sv.profileStatus === statusFilter))
     .filter((sv) => activityFilter === "ALL" || (activityFilter === "ACTIVE" ? sv.isActive : !sv.isActive))
     .filter(
       (sv) =>
@@ -363,11 +363,20 @@ function StudentsManagementContent() {
                       <td className={`py-3.5 px-4 text-right font-mono font-bold text-gray-700 text-sm ${sv.isActive ? "" : "opacity-60"}`}>
                         {sv.totalHours} <span className="text-[11px] font-normal text-gray-400">hrs</span>
                       </td>
-                      <td className="py-3.5 px-4 space-y-1">
-                        {sv.profileStatus === "PENDING" && <span className="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">Chưa xác minh</span>}
-                        {!sv.isActive && <div><span className="inline-flex whitespace-nowrap rounded-full border border-gray-300 bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-700">Đã ngừng hoạt động</span>{sv.deactivatedAt && <div className="mt-1 whitespace-nowrap text-[10px] text-gray-500">Ngừng từ {new Date(sv.deactivatedAt).toLocaleDateString("vi-VN")}</div>}</div>}
-                        {sv.studentCodeInvalid && <span className="inline-flex whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700">MSSV không hợp lệ</span>}
-                        {sv.isActive && sv.profileStatus !== "PENDING" && !sv.studentCodeInvalid && <span className="text-gray-400">—</span>}
+                      <td className="min-w-[150px] py-3.5 px-4 align-top">
+                        <div className="flex flex-col items-start gap-1">
+                          {!sv.isActive ? (
+                            <>
+                              <span className="inline-flex whitespace-nowrap rounded-full border border-gray-300 bg-gray-100 px-2 py-1 text-[10px] font-semibold leading-none text-gray-700">Đã ngừng hoạt động</span>
+                              {sv.deactivatedAt && <span className="whitespace-nowrap text-[10px] text-gray-500">Ngừng từ {new Date(sv.deactivatedAt).toLocaleDateString("vi-VN")}</span>}
+                            </>
+                          ) : sv.profileStatus === "PENDING" ? (
+                            <span className="inline-flex whitespace-nowrap rounded-full border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] font-semibold leading-none text-amber-800">Chưa xác minh</span>
+                          ) : (
+                            <span className="inline-flex whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold leading-none text-emerald-800">Đã xác minh</span>
+                          )}
+                          {sv.studentCodeInvalid && <span className="inline-flex whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-semibold leading-none text-red-700">MSSV không hợp lệ</span>}
+                        </div>
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex justify-end gap-1 whitespace-nowrap">
@@ -445,9 +454,10 @@ function StudentsManagementContent() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-gray-700 font-semibold mb-1">Lớp chuyên ngành</label>
+                    <label className="block text-gray-700 font-semibold mb-1">Lớp chuyên ngành *</label>
                     <input
                       type="text"
+                      required
                       placeholder="vd: 23DTH01"
                       value={className}
                       onChange={(e) => setClassName(e.target.value)}
@@ -455,9 +465,10 @@ function StudentsManagementContent() {
                     />
                   </div>
                   <div>
-                    <label className="block text-gray-700 font-semibold mb-1">Số điện thoại</label>
+                    <label className="block text-gray-700 font-semibold mb-1">Số điện thoại *</label>
                     <input
                       type="tel"
+                      required
                       placeholder="vd: 0912345678"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
@@ -467,9 +478,10 @@ function StudentsManagementContent() {
                 </div>
 
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-1">Email Văn Lang</label>
+                  <label className="block text-gray-700 font-semibold mb-1">Email Văn Lang *</label>
                   <input
                     type="email"
+                    required
                     placeholder="vd: duc.2373401010100@vanlanguni.vn"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -552,5 +564,3 @@ export default function StudentsManagementPageView() {
     </ProtectedRoute>
   );
 }
-
-

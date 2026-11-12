@@ -35,7 +35,7 @@ model Student {
   email         String? // Email sinh viên Văn Lang (để gửi thông báo ca trực)
   phone         String?
   className     String? // Lớp chuyên ngành (vd: "23DTH01", "21CNTT02")
-  profileStatus String    @default("VERIFIED") // PENDING, VERIFIED
+  profileStatus String    @default("PENDING") // PENDING, VERIFIED
   source        String    @default("MANUAL") // MANUAL, SCAN_AUTO, IMPORT
   firstSeenAt   DateTime?
   isActive      Boolean   @default(true)
