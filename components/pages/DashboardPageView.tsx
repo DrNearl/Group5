@@ -22,6 +22,7 @@ import {
   Eye,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { useLanguage } from "@/lib/language-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { getAssetPath } from "@/lib/asset-path";
 
@@ -55,6 +56,7 @@ function LogStatusBadge({ log }: { log: any }) {
 
 function DashboardContent() {
   const { user, role } = useAuth();
+  const { t } = useLanguage();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -299,10 +301,10 @@ function DashboardContent() {
             <div>
               <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <FileSpreadsheet className="h-6 w-6 text-rose-500" />
-                BẢNG QUẢN LÝ ĐIỂM DANH
+                {t.dashboard.title}
               </h1>
               <p className="text-xs text-gray-500">
-                Khoa Công nghệ Thông tin • Giám sát ra vào phòng Lab
+                {t.dashboard.subtitle}
               </p>
             </div>
           </div>
@@ -313,7 +315,7 @@ function DashboardContent() {
               className="px-3.5 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
             >
               <PlusCircle className="h-4 w-4" />
-              <span>Điểm danh thủ công</span>
+              <span>{t.dashboard.manualBtn}</span>
             </button>
 
             <button
@@ -322,7 +324,7 @@ function DashboardContent() {
               title="In Báo Cáo A4 Chuẩn Khoa"
             >
               <Printer className="h-4 w-4 text-gray-500" />
-              <span>In A4</span>
+              <span>{t.dashboard.printBtn}</span>
             </button>
 
             <button
@@ -330,7 +332,7 @@ function DashboardContent() {
               className="px-3 py-2 bg-white border border-gray-200 hover:bg-gray-100 text-emerald-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
             >
               <Download className="h-4 w-4 text-emerald-600" />
-              <span>Xuất Excel</span>
+              <span>{t.dashboard.exportBtn}</span>
             </button>
 
             <button
@@ -441,11 +443,10 @@ function DashboardContent() {
                 </h3>
                 {latestLog && (
                   <span
-                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase inline-flex items-center gap-1 ${
-                      latestLog.checkOutTime
-                        ? "bg-rose-50 text-rose-700 border border-rose-200"
-                        : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                    }`}
+                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase inline-flex items-center gap-1 ${latestLog.checkOutTime
+                      ? "bg-rose-50 text-rose-700 border border-rose-200"
+                      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      }`}
                   >
                     {latestLog.checkOutTime ? "ĐÃ CHECK-OUT" : "ĐÃ CHECK-IN"}
                   </span>
@@ -537,7 +538,7 @@ function DashboardContent() {
                 <table className="w-full text-left text-xs text-gray-700">
                   <thead className="bg-gray-50 text-gray-400 uppercase text-[10px] font-semibold tracking-wider sticky top-0 border-b border-gray-100 z-10">
                     <tr>
-                      <th className="py-2.5 px-3">Sinh viên</th>
+                      <th className="py-2.5 px-3">Họ và tên</th>
                       <th className="py-2.5 px-3">Giờ vào</th>
                       <th className="py-2.5 px-3">Giờ ra</th>
                       <th className="py-2.5 px-3">Thời lượng</th>
@@ -588,25 +589,25 @@ function DashboardContent() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {/* 1. Đang có mặt tại Lab */}
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">Đang có mặt tại Lab</div>
+            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">{t.dashboard.kpiPresent}</div>
             <div className="text-xl font-bold text-emerald-600 font-mono mt-1">
-              {data?.activeInLab?.length || 0} <span className="text-xs text-gray-400 font-normal">người</span>
+              {data?.activeInLab?.length || 0} <span className="text-xs text-gray-400 font-normal">{t.dashboard.peopleUnit}</span>
             </div>
           </div>
 
           {/* 2. Tổng lượt điểm danh */}
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">Tổng lượt điểm danh</div>
+            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">{t.dashboard.kpiTotal}</div>
             <div className="text-xl font-bold text-rose-500 font-mono mt-1">
-              {data?.stats?.totalLogs || 0} <span className="text-xs text-gray-400 font-normal">lượt</span>
+              {data?.stats?.totalLogs || 0} <span className="text-xs text-gray-400 font-normal">{t.dashboard.turnsUnit}</span>
             </div>
           </div>
 
           {/* 3. Sinh viên tham gia */}
           <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">Sinh viên tham gia</div>
+            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">{t.dashboard.kpiStudents}</div>
             <div className="text-xl font-bold text-gray-800 font-mono mt-1">
-              {data?.stats?.totalStudents || 0} <span className="text-xs text-gray-400 font-normal">người</span>
+              {data?.stats?.totalStudents || 0} <span className="text-xs text-gray-400 font-normal">{t.dashboard.peopleUnit}</span>
             </div>
           </div>
         </div>
@@ -635,10 +636,10 @@ function DashboardContent() {
             <div>
               <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
                 <Award className="h-4 w-4 text-rose-500" />
-                Danh Sách Sinh Viên Phòng Lab
+                {t.dashboard.studentsTableTitle}
               </h3>
               <p className="text-[11px] text-gray-400 mt-0.5">
-                Phòng Lab Khoa CNTT • Tổng hợp lượt ra vào theo từng sinh viên
+                {t.dashboard.studentsTableSubtitle}
               </p>
             </div>
             <span className="text-[11px] text-gray-500 font-medium">
@@ -651,7 +652,7 @@ function DashboardContent() {
               <thead className="bg-gray-50 text-gray-400 uppercase text-[10px] font-semibold tracking-wider border-b border-gray-100">
                 <tr>
                   <th className="py-3 px-4">STT</th>
-                  <th className="py-3 px-4">Sinh viên</th>
+                  <th className="py-3 px-4">Họ và Tên</th>
                   <th className="py-3 px-4">Lớp</th>
                   <th className="py-3 px-4 text-center">Tổng lượt</th>
                   <th className="py-3 px-4 text-right">Chi tiết</th>
@@ -696,7 +697,7 @@ function DashboardContent() {
             <div>
               <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
                 <Clock className="h-4 w-4 text-rose-500" />
-                Nhật Ký Ra / Vào Phòng Lab
+                {t.dashboard.logsTableTitle}
               </h3>
             </div>
 
@@ -763,7 +764,7 @@ function DashboardContent() {
               <thead className="bg-gray-50 text-gray-400 uppercase text-[10px] font-semibold tracking-wider border-b border-gray-100">
                 <tr>
                   <th className="py-3 px-4">STT</th>
-                  <th className="py-3 px-4">Sinh viên</th>
+                  <th className="py-3 px-4">Họ và Tên</th>
                   <th className="py-3 px-4">Ảnh</th>
                   <th className="py-3 px-4">Ngày</th>
                   <th className="py-3 px-4">Giờ vào</th>

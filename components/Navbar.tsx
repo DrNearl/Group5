@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { useLanguage } from "@/lib/language-context";
 import { getAssetPath } from "@/lib/asset-path";
 import {
   LogOut,
@@ -11,6 +12,7 @@ import {
 
 export default function Navbar() {
   const { user, role, logout } = useAuth();
+  const { t } = useLanguage();
 
   return (
     <nav className="sticky top-0 z-40 border-b border-gray-200 bg-white px-4 py-2.5 font-sans sm:px-6">
@@ -43,9 +45,9 @@ export default function Navbar() {
               {/* Nút Đăng xuất */}
               <button
                 onClick={() => logout()}
-                aria-label="Đăng xuất khỏi hệ thống"
+                aria-label={t.nav.signOut}
                 className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-transparent text-gray-600 transition-colors duration-150 hover:border-red-200 hover:bg-red-50 hover:text-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700"
-                title="Đăng xuất khỏi hệ thống"
+                title={t.nav.signOut}
               >
                 <LogOut className="h-4 w-4" />
               </button>
@@ -56,7 +58,7 @@ export default function Navbar() {
               className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-red-700 px-4 py-2 text-sm font-semibold text-white transition-colors duration-150 hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2"
             >
               <LogIn className="h-3.5 w-3.5" />
-              <span>Đăng nhập</span>
+              <span>{t.nav.signIn}</span>
             </Link>
           )}
         </div>
