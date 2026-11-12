@@ -8,6 +8,7 @@ import { soundFX } from "@/lib/audio";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/language-context";
 import { getAssetPath } from "@/lib/asset-path";
+import VluLogo from "@/components/VluLogo";
 import {
   Camera,
   ShieldAlert,
@@ -479,11 +480,7 @@ function ScanStationContent() {
               <ArrowLeft className="h-4 w-4" />
             </Link>
           )}
-          <img
-            src={getAssetPath("/vlu-logo.png")}
-            alt="Đại học Văn Lang"
-            className="h-9 sm:h-10 w-auto object-contain"
-          />
+          <VluLogo className="h-9 sm:h-10 w-auto object-contain" />
         </div>
 
         {/* CHÍNH GIỮA: CON CHIM LẠC VÀNG ĐỒNG TÂM TUYỆT ĐỐI (KHÔNG BỊ CHÈN ĐÈ LÊN ĐỒNG HỒ & LOGO) */}

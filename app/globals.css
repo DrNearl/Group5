@@ -56,3 +56,15 @@ body {
     filter: invert(1) hue-rotate(180deg);
   }
 }
+
+.vlu-logo-dark {
+  display: none;
+}
+
+html[data-theme="dark"] .vlu-logo-light {
+  display: none;
+}
+
+html[data-theme="dark"] .vlu-logo-dark {
+  display: block;
+}
