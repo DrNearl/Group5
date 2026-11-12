@@ -55,10 +55,4 @@ body {
   html[data-theme="dark"] canvas {
     filter: invert(1) hue-rotate(180deg);
   }
-
-  html[data-theme="dark"] img[src*="vlu-logo"] {
-    border-radius: 8px;
-    padding: 2px 4px;
-    background: #000000;
-  }
 }
