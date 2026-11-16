@@ -1,13 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { soundFX } from "@/lib/audio";
 import {
   QrCode,
   Clock,
-  ArrowLeft,
   Volume2,
   VolumeX,
   Laptop,
@@ -48,11 +46,6 @@ function QrStationContent() {
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const lastLogIdRef = useRef<string | null>(null);
-
-  const handleExitClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    router.push("/");
-  };
 
   const handleVerifyPin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,13 +172,6 @@ function QrStationContent() {
       {/* 1. TOP HEADER (LIGHT MODE - SẮC NÉT & KHOA HỌC) */}
       <header className="border-b border-gray-200 bg-white/95 backdrop-blur-md px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 shadow-sm sticky top-0 z-30">
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleExitClick}
-            className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
-            title="Thoát khỏi màn hình trạm"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
           <div
             className="h-9 w-9 rounded-xl bg-gradient-to-tr from-red-600 to-orange-500 flex items-center justify-center shadow-sm text-white flex-shrink-0"
             title="Trạm Dynamic QR Code"

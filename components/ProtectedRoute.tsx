@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth, UserRole } from "@/lib/auth-context";
-import { ShieldAlert, ArrowLeft, RefreshCw, LogIn } from "lucide-react";
+import { ShieldAlert, RefreshCw, LogIn } from "lucide-react";
 import Link from "next/link";
 
 interface ProtectedRouteProps {
@@ -65,13 +65,6 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
           </div>
 
           <div className="pt-2 flex flex-col gap-2.5">
-            <Link
-              href="/"
-              className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-sm"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Quay về Trang Chủ
-            </Link>
             <Link
               href="/login"
               className="w-full py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition"

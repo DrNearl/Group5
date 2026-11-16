@@ -1,11 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import Link from "next/link";
 import * as XLSX from "xlsx";
 import {
   FileSpreadsheet,
-  ArrowLeft,
   Clock,
   UserCheck,
   Download,
@@ -348,13 +346,6 @@ function DashboardContent() {
         {/* HEADER BẢNG QUẢN LÝ (Ẩn khi in ấn) */}
         <header className="print:hidden flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-5">
           <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="p-2.5 rounded-xl bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 shadow-xs transition"
-              title="Về Trạm Quét Laptop"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
             <div>
               <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <FileSpreadsheet className="h-6 w-6 text-rose-500" />
