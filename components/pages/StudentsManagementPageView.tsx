@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   Users,
@@ -34,6 +35,7 @@ function StudentsManagementContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCohort, setSelectedCohort] = useState<string>("ALL");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [modalRoot, setModalRoot] = useState<HTMLElement | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [qrStudent, setQrStudent] = useState<any | null>(null);
   const [sendQrOnAdd, setSendQrOnAdd] = useState(true);
@@ -112,6 +114,10 @@ function StudentsManagementContent() {
 
   useEffect(() => {
     loadStudents();
+  }, []);
+
+  useEffect(() => {
+    setModalRoot(document.body);
   }, []);
 
   const handleAddStudent = async (e: React.FormEvent) => {
@@ -424,7 +430,7 @@ function StudentsManagementContent() {
         </div>
 
         {/* MODAL THÊM SINH VIÊN MỚI */}
-        {showAddModal && (
+        {showAddModal && modalRoot && createPortal(
           <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 relative animate-in fade-in zoom-in-95">
               <button
@@ -542,7 +548,8 @@ function StudentsManagementContent() {
                 </div>
               </form>
             </div>
-          </div>
+          </div>,
+          modalRoot
         )}
 
         {/* MODAL CHỈNH SỬA SINH VIÊN */}
