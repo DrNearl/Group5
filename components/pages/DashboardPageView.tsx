@@ -31,6 +31,21 @@ function isCrossDayLog(log: any): boolean {
   return new Date(log.checkInTime).toDateString() !== new Date(log.checkOutTime).toDateString();
 }
 
+function getLocalDateKey(value: string | Date): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getAttendanceDateKey(log: any): string {
+  // Nhật ký cần lọc theo ngày quét thực tế; dutyDate có thể bị lệch ngày do UTC.
+  return getLocalDateKey(log?.checkInTime || log?.dutyDate);
+}
+
 function LogStatusBadge({ log }: { log: any }) {
   if (!log?.checkOutTime) {
     return (
@@ -164,7 +179,7 @@ function DashboardContent() {
 
     const studentSummaryData = (data.studentStats || []).map((sv: any, idx: number) => ({
       STT: idx + 1,
-      "Họ và tên": sv.fullName,
+      "Họ và tên": sv.fullName || "Chưa có tên",
       MSSV: sv.studentCode,
       "Lớp": sv.className || "DTH-CNTT",
       "Tổng lượt vào/ra": sv.totalShifts || 0,
@@ -235,19 +250,18 @@ function DashboardContent() {
   const filteredLogs = useMemo(() => {
     if (!data?.allLogs) return [];
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
+    const todayStr = getLocalDateKey(now);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
     const currentMonth = todayStr.slice(0, 7);
 
     return data.allLogs.filter((log: any) => {
-
-
       // 2. Preset thời gian
-      const logDate = new Date(log.dutyDate);
-      const logDateStr = log.dutyDate ? String(log.dutyDate).slice(0, 10) : "";
+      const attendanceDate = log.checkInTime || log.dutyDate;
+      const logDate = attendanceDate ? new Date(attendanceDate) : null;
+      const logDateStr = getAttendanceDateKey(log);
 
       if (datePreset === "TODAY" && logDateStr !== todayStr) return false;
-      if (datePreset === "7DAYS" && logDate < sevenDaysAgo) return false;
+      if (datePreset === "7DAYS" && (!logDate || logDate < sevenDaysAgo)) return false;
       if (datePreset === "MONTH" && !logDateStr.startsWith(currentMonth)) return false;
 
       // 3. Trạng thái
@@ -258,7 +272,7 @@ function DashboardContent() {
       if (searchTerm.trim()) {
         const term = searchTerm.toLowerCase();
         const matches =
-          log.studentName.toLowerCase().includes(term) ||
+          (log.studentName || "").toLowerCase().includes(term) ||
           log.studentCode.includes(term) ||
           log.labName.toLowerCase().includes(term);
         if (!matches) return false;
@@ -277,10 +291,9 @@ function DashboardContent() {
   // Danh sách các lượt quét trong ngày hôm nay
   const todayLogs = useMemo(() => {
     if (!data?.allLogs) return [];
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getLocalDateKey(new Date());
     return data.allLogs.filter((log: any) => {
-      const logDateStr = log.dutyDate ? String(log.dutyDate).slice(0, 10) : "";
-      return logDateStr === todayStr;
+      return getAttendanceDateKey(log) === todayStr;
     });
   }, [data]);
 
@@ -412,7 +425,7 @@ function DashboardContent() {
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <div className="font-bold text-gray-900 text-xs truncate">{sv.studentName}</div>
+                    <div className="font-bold text-gray-900 text-xs truncate">{sv.studentName || "Chưa có tên"}</div>
                     <div className="text-[11px] text-gray-500 font-mono">{sv.studentCode}</div>
                     <div className="mt-1 text-[11px] text-emerald-800 font-semibold flex items-center gap-1">
                       <Clock className="h-3 w-3" />
@@ -474,7 +487,7 @@ function DashboardContent() {
                   {/* Thông tin SV */}
                   <div className="flex-1 w-full space-y-2 text-xs">
                     <div>
-                      <h4 className="text-sm font-bold text-gray-900">{latestLog.studentName}</h4>
+                      <h4 className="text-sm font-bold text-gray-900">{latestLog.studentName || "Chưa có tên"}</h4>
                       <div className="text-gray-500 font-mono mt-0.5">
                         MSSV: <span className="text-rose-600 font-bold">{latestLog.studentCode}</span>
                       </div>
@@ -550,7 +563,7 @@ function DashboardContent() {
                       todayLogs.map((log: any) => (
                         <tr key={log.id} className="hover:bg-rose-50/20 transition">
                           <td className="py-2.5 px-3 font-sans">
-                            <div className="font-bold text-gray-900 text-xs">{log.studentName}</div>
+                            <div className="font-bold text-gray-900 text-xs">{log.studentName || "Chưa có tên"}</div>
                             <div className="text-[11px] text-gray-400 font-mono">{log.studentCode}</div>
                           </td>
                           <td className="py-2.5 px-3 text-emerald-700 font-bold text-xs">
@@ -663,7 +676,7 @@ function DashboardContent() {
                   <tr key={sv.id} className="hover:bg-gray-50/80 transition">
                     <td className="py-3.5 px-4 text-gray-400">{idx + 1}</td>
                     <td className="py-3.5 px-4 font-sans">
-                      <div className="font-bold text-gray-900">{sv.fullName}</div>
+                      <div className="font-bold text-gray-900">{sv.fullName || "Chưa có tên"}</div>
                       <div className="text-[11px] text-gray-400 font-mono">{sv.studentCode}</div>
                     </td>
                     <td className="py-3.5 px-4 font-sans">
@@ -779,7 +792,7 @@ function DashboardContent() {
                     <tr key={log.id} className="hover:bg-gray-50/80 transition">
                       <td className="py-3 px-4 text-gray-400">{idx + 1}</td>
                       <td className="py-3 px-4 font-sans">
-                        <div className="font-bold text-gray-900">{log.studentName}</div>
+                        <div className="font-bold text-gray-900">{log.studentName || "Chưa có tên"}</div>
                         <div className="text-[11px] text-gray-400 font-mono">{log.studentCode}</div>
                       </td>
                       <td className="py-3 px-4 font-sans">
