@@ -26,7 +26,6 @@ import {
   LogOut,
   Volume2,
   VolumeX,
-  ArrowLeft,
   LayoutDashboard,
   Cpu,
   Crosshair,
@@ -472,15 +471,6 @@ function ScanStationContent() {
 
         {/* GÓC TRÁI: LOGO KHIÊN ĐỎ VLU */}
         <div className="flex items-center gap-3 relative z-10">
-          {pathname !== "/" && (
-            <Link
-              href="/"
-              className="p-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-600 transition"
-              title={t.home.backHome}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          )}
           <VluLogo className="h-9 sm:h-10 w-auto object-contain" />
         </div>
 

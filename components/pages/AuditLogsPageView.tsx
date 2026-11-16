@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, Filter, History, RefreshCw, Search } from "lucide-react";
+import { Filter, History, RefreshCw, Search } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { getAssetPath } from "@/lib/asset-path";
 import { useLanguage } from "@/lib/language-context";
@@ -121,13 +120,6 @@ function AuditLogsContent() {
       <div className="max-w-7xl mx-auto space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-5">
           <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard"
-              className="p-2.5 rounded-xl bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 shadow-xs transition"
-              title="Về Giám Sát Phòng Lab"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
             <div>
               <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <History className="h-6 w-6 text-rose-500" />
