@@ -28,7 +28,7 @@ sequenceDiagram
     actor Trạm as Màn hình Trạm Lab (TV/PC)
     actor SV as Sinh viên (Smartphone)
     participant Server as Next.js API Server
-    participant DB as Cơ sở dữ liệu (MySQL / Prisma)
+    participant DB as Cơ sở dữ liệu (SQLite / Prisma)
 
     loop Mỗi 15 giây
         Trạm->>Server: GET /api/qr/session (Yêu cầu mã phiên mới)
@@ -74,7 +74,7 @@ sequenceDiagram
      - `GET /api/qr/session`: Cấp phát token mã QR động.
      - `POST /api/qr/verify`: Xác thực token và xử lý điểm danh (Check-in/Check-out).
      - `GET /api/qr/live-feed`: Cung cấp danh sách sinh viên vừa quét theo thời gian thực.
-   * **Prisma ORM & MySQL:** Tận dụng bảng `AttendanceLog`, `LabRoom`, `User` hiện có, đảm bảo đồng bộ 100% dữ liệu với máy quét Barcode.
+   * **Prisma ORM & SQLite:** Tận dụng bảng `AttendanceLog`, `LabRoom`, `User` hiện có, đảm bảo đồng bộ 100% dữ liệu với máy quét Barcode.
 
 ---
 

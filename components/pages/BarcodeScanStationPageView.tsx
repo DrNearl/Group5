@@ -6,7 +6,9 @@ import { usePathname } from "next/navigation";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { soundFX } from "@/lib/audio";
 import { useAuth } from "@/lib/auth-context";
+import { useLanguage } from "@/lib/language-context";
 import { getAssetPath } from "@/lib/asset-path";
+import VluLogo from "@/components/VluLogo";
 import {
   Camera,
   ShieldAlert,
@@ -108,6 +110,7 @@ function stopVideoStreams(container: HTMLElement | null, storedStream: MediaStre
 function ScanStationContent() {
   const pathname = usePathname();
   const { user, role, logout } = useAuth();
+  const { t, lang } = useLanguage();
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
   const [showBigOverlay, setShowBigOverlay] = useState<boolean>(false);
@@ -158,7 +161,7 @@ function ScanStationContent() {
         })
       );
       setCurrentDate(
-        now.toLocaleDateString("vi-VN", {
+        now.toLocaleDateString(lang === "en" ? "en-US" : "vi-VN", {
           weekday: "long",
           year: "numeric",
           month: "long",
@@ -169,7 +172,7 @@ function ScanStationContent() {
     updateTime();
     const timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [lang]);
 
   // 2. Tải danh sách Logs gần đây (tự động đồng bộ mỗi 5s)
   const fetchStationData = useCallback(async () => {
@@ -223,9 +226,9 @@ function ScanStationContent() {
     const cleanBarcode = barcode.trim();
     if (!cleanBarcode) return;
 
-    // Chống quét trùng lặp trong 1.8 giây (đủ để kéo thẻ ra khỏi ống kính camera)
+    // Chống quét trùng lặp trong 3.5 giây (đủ để hạ thẻ/QR ra khỏi ống kính camera mà không dội)
     const nowTime = Date.now();
-    if (lastScannedTimeRef.current[cleanBarcode] && nowTime - lastScannedTimeRef.current[cleanBarcode] < 1800) {
+    if (lastScannedTimeRef.current[cleanBarcode] && nowTime - lastScannedTimeRef.current[cleanBarcode] < 3500) {
       return;
     }
     lastScannedTimeRef.current[cleanBarcode] = nowTime;
@@ -473,16 +476,12 @@ function ScanStationContent() {
             <Link
               href="/"
               className="p-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-600 transition"
-              title="Quay lại Trang Chủ"
+              title={t.home.backHome}
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
           )}
-          <img
-            src={getAssetPath("/vlu-logo.png")}
-            alt="Đại học Văn Lang"
-            className="h-9 sm:h-10 w-auto object-contain"
-          />
+          <VluLogo className="h-9 sm:h-10 w-auto object-contain" />
         </div>
 
         {/* CHÍNH GIỮA: CON CHIM LẠC VÀNG ĐỒNG TÂM TUYỆT ĐỐI (KHÔNG BỊ CHÈN ĐÈ LÊN ĐỒNG HỒ & LOGO) */}
@@ -543,11 +542,11 @@ function ScanStationContent() {
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-sm shadow-rose-200 transition"
                 >
                   <LayoutDashboard className="h-3.5 w-3.5" />
-                  <span>Bảng Quản Lý</span>
+                  <span>{t.home.dashboardBtn}</span>
                 </Link>
                 <button
                   onClick={() => logout()}
-                  title="Đăng xuất"
+                  title={t.home.logoutTitle}
                   className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"
                 >
                   <LogOut className="h-4 w-4" />
@@ -559,7 +558,7 @@ function ScanStationContent() {
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold shadow-sm shadow-rose-200 transition"
               >
                 <LogIn className="h-3.5 w-3.5" />
-                <span>Đăng nhập Quản lý</span>
+                <span>{t.home.loginBtn}</span>
               </Link>
             )}
           </div>
@@ -668,7 +667,7 @@ function ScanStationContent() {
               {/* DUY NHẤT CHỮ: ● SẴN SÀNG */}
               <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 flex items-center gap-2 text-xs font-semibold shadow-md z-20">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-emerald-400">Sẵn sàng</span>
+                <span className="text-emerald-400">{t.home.ready}</span>
               </div>
             </div>
           </div>

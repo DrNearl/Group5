@@ -1,10 +1,20 @@
-// Audio Feedback using Web Audio API (Zero external assets needed - High-fidelity synthesis)
+// Audio Feedback: ưu tiên file custom trong /public/sounds/, tự động fallback Web Audio API nếu chưa có file
+import { getAssetPath } from "./asset-path";
 
 class SoundFX {
   private ctx: AudioContext | null = null;
 
+  private isSoundEnabled() {
+    if (typeof window === "undefined") return false;
+    try {
+      return localStorage.getItem("vlu_sound") !== "off";
+    } catch {
+      return true;
+    }
+  }
+
   private getContext() {
-    if (typeof window === "undefined") return null;
+    if (!this.isSoundEnabled()) return null;
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) {
@@ -17,61 +27,34 @@ class SoundFX {
     return this.ctx;
   }
 
-  // 1. Tiếng Chime Check-in (Âm thanh đón tiếp công nghệ cao, thăng hoa - G5 -> C6 -> E6)
-  playCheckIn() {
-    const ctx = this.getContext();
-    if (!ctx) return;
+  private playCustomOrFallback(path: string, fallback: () => void) {
+    if (!this.isSoundEnabled()) return;
     try {
-      const now = ctx.currentTime;
-      // Hợp âm 3 nốt vuốt lên thanh lịch như quét thẻ Metro / Apple Pay
-      const notes = [
-        { freq: 783.99, delay: 0.0, dur: 0.18 }, // G5
-        { freq: 1046.5, delay: 0.08, dur: 0.22 }, // C6
-        { freq: 1318.51, delay: 0.16, dur: 0.35 }, // E6
-      ];
-
-      notes.forEach(({ freq, delay, dur }) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(freq, now + delay);
-
-        gain.gain.setValueAtTime(0.22, now + delay);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + dur);
-
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.start(now + delay);
-        osc.stop(now + delay + dur);
-      });
-    } catch (e) {
-      console.warn("CheckIn audio error", e);
+      const audio = new Audio(getAssetPath(path));
+      audio.volume = 0.85;
+      audio.play().catch(() => fallback());
+    } catch {
+      fallback();
     }
   }
 
-  // 2. Tiếng Chime Check-out (Âm thanh hoàn thành phiên làm việc - E6 -> C6 -> G5)
-  playCheckOut() {
+  private playToneSequence(
+    notes: Array<{ freq: number; delay: number; dur: number }>,
+    peakGain: number,
+    waveType: OscillatorType = "sine"
+  ) {
     const ctx = this.getContext();
     if (!ctx) return;
     try {
       const now = ctx.currentTime;
-      // Âm thanh trầm ấm, kết thúc hoàn tất
-      const notes = [
-        { freq: 1318.51, delay: 0.0, dur: 0.18 }, // E6
-        { freq: 1046.5, delay: 0.09, dur: 0.22 }, // C6
-        { freq: 880.0, delay: 0.18, dur: 0.38 }, // A5
-      ];
-
       notes.forEach(({ freq, delay, dur }) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
 
-        osc.type = "sine";
+        osc.type = waveType;
         osc.frequency.setValueAtTime(freq, now + delay);
 
-        gain.gain.setValueAtTime(0.25, now + delay);
+        gain.gain.setValueAtTime(peakGain, now + delay);
         gain.gain.exponentialRampToValueAtTime(0.001, now + delay + dur);
 
         osc.connect(gain);
@@ -81,8 +64,36 @@ class SoundFX {
         osc.stop(now + delay + dur);
       });
     } catch (e) {
-      console.warn("CheckOut audio error", e);
+      console.warn("Audio tone error", e);
     }
+  }
+
+  // 1. Âm thanh Check-in: dùng /sounds/checkin.mp3 nếu có, không thì phát chime mặc định
+  playCheckIn() {
+    this.playCustomOrFallback("/sounds/checkin.mp3", () =>
+      this.playToneSequence(
+        [
+          { freq: 783.99, delay: 0.0, dur: 0.18 },
+          { freq: 1046.5, delay: 0.08, dur: 0.22 },
+          { freq: 1318.51, delay: 0.16, dur: 0.35 },
+        ],
+        0.22
+      )
+    );
+  }
+
+  // 2. Âm thanh Check-out: dùng /sounds/checkout.mp3 nếu có, không thì phát chime mặc định
+  playCheckOut() {
+    this.playCustomOrFallback("/sounds/checkout.mp3", () =>
+      this.playToneSequence(
+        [
+          { freq: 1318.51, delay: 0.0, dur: 0.18 },
+          { freq: 1046.5, delay: 0.09, dur: 0.22 },
+          { freq: 880.0, delay: 0.18, dur: 0.38 },
+        ],
+        0.25
+      )
+    );
   }
 
   // Tiếng Beep đơn giản (Fallback chung)
@@ -90,29 +101,18 @@ class SoundFX {
     this.playCheckIn();
   }
 
-  // Tiếng Cảnh báo Gian lận / Lỗi thao tác
+  // Tiếng Cảnh báo Gian lận / Lỗi thao tác: dùng /sounds/error.mp3 nếu có, fallback 2 nốt trầm gọn
   playWarning() {
-    const ctx = this.getContext();
-    if (!ctx) return;
-    try {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(320, ctx.currentTime);
-      osc.frequency.setValueAtTime(200, ctx.currentTime + 0.12);
-
-      gain.gain.setValueAtTime(0.28, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.28);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start();
-      osc.stop(ctx.currentTime + 0.28);
-    } catch (e) {
-      console.warn("Audio play error", e);
-    }
+    this.playCustomOrFallback("/sounds/error.mp3", () =>
+      this.playToneSequence(
+        [
+          { freq: 440.0, delay: 0.0, dur: 0.12 },
+          { freq: 311.13, delay: 0.13, dur: 0.22 },
+        ],
+        0.24,
+        "triangle"
+      )
+    );
   }
 
   // Tiếng Phát hiện Thiết bị Lab (EQ-)

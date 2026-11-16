@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
-import { getValidStudentCode } from "@/lib/studentCode";
+import { recordAuditLog } from "@/lib/audit";
 
 export async function handleUsersGet(req: NextRequest) {
   try {
@@ -38,15 +38,13 @@ export async function handleUsersPost(req: NextRequest) {
         { status: 400 }
       );
     }
-    const normalizedStudentCode = getValidStudentCode(studentCode);
-    if (!normalizedStudentCode) return NextResponse.json({ success: false, message: "MSSV phải gồm đúng 13 chữ số." }, { status: 400 });
 
     const safeRole = "LECTURER";
     const userPassword = (password && password.trim().length > 0) ? password.trim() : "123456";
 
     const user = await prisma.user.create({
       data: {
-        username: normalizedStudentCode,
+        username: studentCode.trim(),
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
         passwordHash: await hashPassword(userPassword),
@@ -63,6 +61,13 @@ export async function handleUsersPost(req: NextRequest) {
         role: true,
         isActive: true,
       },
+    });
+
+    await recordAuditLog({
+      req,
+      action: "USER_CREATE",
+      target: `${user.fullName} (${user.username})`,
+      detail: `Tạo tài khoản mới • Vai trò: ${user.role}`,
     });
 
     return NextResponse.json({ success: true, user });
@@ -100,6 +105,13 @@ export async function handleUsersDelete(req: NextRequest) {
 
     await prisma.user.delete({
       where: { id },
+    });
+
+    await recordAuditLog({
+      req,
+      action: "USER_DELETE",
+      target: `${existingUser.fullName} (${existingUser.username})`,
+      detail: `Xóa tài khoản (${existingUser.role})`,
     });
 
     return NextResponse.json({ success: true, message: "Đã xóa người dùng thành công!" });

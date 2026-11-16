@@ -93,7 +93,7 @@ export async function handleQrVerify(req: NextRequest) {
           {
             success: false,
             code: "DEVICE_ALREADY_USED_FOR_ANOTHER_STUDENT",
-            message: `Thiết bị này đã được sử dụng để điểm danh cho sinh viên khác (${deviceUsedLog.student.fullName} - MSSV: ${deviceUsedLog.student.studentCode}) trong hôm nay. Mỗi điện thoại chỉ được dùng cho 1 sinh viên, không thể điểm danh hộ!`,
+            message: `Thiết bị này đã được sử dụng để điểm danh cho sinh viên khác (${deviceUsedLog.student.fullName || "Chưa có tên"} - MSSV: ${deviceUsedLog.student.studentCode}) trong hôm nay. Mỗi điện thoại chỉ được dùng cho 1 sinh viên, không thể điểm danh hộ!`,
           },
           { status: 403 }
         );
@@ -194,7 +194,7 @@ export async function handleQrVerify(req: NextRequest) {
         message: `Check-out thành công lúc ${now.toLocaleTimeString("vi-VN")}! Tổng thời gian có mặt: ${durationText}.`,
         data: {
           logId: updatedLog.id,
-          studentName: student.fullName,
+          studentName: student.fullName || "Chưa có tên",
           studentCode: student.studentCode,
           labName: targetLab.labName,
           checkInTime: checkInDate.toISOString(),
@@ -241,7 +241,7 @@ export async function handleQrVerify(req: NextRequest) {
       message: `Check-in thành công lúc ${now.toLocaleTimeString("vi-VN")}! Chúc bạn ca trực hiệu quả.`,
       data: {
         logId: newLog.id,
-        studentName: student.fullName,
+        studentName: student.fullName || "Chưa có tên",
         studentCode: student.studentCode,
         labName: targetLab.labName,
         checkInTime: now.toISOString(),
