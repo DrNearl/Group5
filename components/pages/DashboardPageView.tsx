@@ -21,7 +21,6 @@ import {
   Award,
   Eye,
 } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/language-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { getAssetPath } from "@/lib/asset-path";
@@ -70,13 +69,13 @@ function LogStatusBadge({ log }: { log: any }) {
 }
 
 function DashboardContent() {
-  const { user, role } = useAuth();
   const { t } = useLanguage();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [datePreset, setDatePreset] = useState<"ALL" | "TODAY" | "7DAYS" | "MONTH">("ALL");
+  const [datePreset, setDatePreset] = useState<"ALL" | "TODAY" | "7DAYS" | "MONTH">("TODAY");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   // Modal điểm danh thủ công
@@ -98,11 +97,11 @@ function DashboardContent() {
     try {
       const res = await fetch(getAssetPath("/api/dashboard"));
       const json = await res.json();
-      if (json.success) {
-        setData(json);
-      }
-    } catch (e) {
-      console.error(e);
+      if (!res.ok || !json.success) throw new Error("Dashboard refresh failed");
+      setData(json);
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -280,7 +279,7 @@ function DashboardContent() {
 
       return true;
     });
-  }, [data, role, user, datePreset, statusFilter, searchTerm]);
+  }, [data, datePreset, statusFilter, searchTerm]);
 
   // Lượt quét thẻ mới nhất
   const latestLog = useMemo(() => {
@@ -296,6 +295,25 @@ function DashboardContent() {
       return getAttendanceDateKey(log) === todayStr;
     });
   }, [data]);
+
+  const todayStudentCount = useMemo(
+    () => new Set(todayLogs.map((log: any) => log.studentCode).filter(Boolean)).size,
+    [todayLogs]
+  );
+
+  const needsAttentionCount = useMemo(() => {
+    const todayStr = getLocalDateKey(new Date());
+    return (data?.activeInLab || []).filter((student: any) =>
+      student.isStale || getLocalDateKey(student.checkInTime) !== todayStr
+    ).length;
+  }, [data]);
+
+  const isLabOpen = (() => {
+    const now = new Date();
+    const day = now.getDay();
+    const time = now.getHours() * 60 + now.getMinutes();
+    return day >= 1 && day <= 6 && ((time >= 8 * 60 && time < 12 * 60) || (time >= 13 * 60 && time < 17 * 60));
+  })();
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans p-4 sm:p-6">
@@ -319,6 +337,16 @@ function DashboardContent() {
               <p className="text-xs text-gray-500">
                 {t.dashboard.subtitle}
               </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-gray-700">
+                  <Clock className="h-3.5 w-3.5 text-gray-500" />
+                  <span>{t.dashboard.openHoursLabel} {t.dashboard.openDays} · {t.dashboard.morningEvening}</span>
+                </span>
+                <span className={"inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold " + (isLabOpen ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-700")}>
+                  <span className={"h-2 w-2 rounded-full " + (isLabOpen ? "bg-emerald-500" : "bg-gray-500")} />
+                  {isLabOpen ? t.dashboard.openNow : t.dashboard.closedNow}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -373,276 +401,170 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* KHỐI 1: GIÁM SÁT REALTIME - ĐANG CÓ MẶT TẠI XƯỞNG THỰC TẬP */}
-        <div className="print:hidden bg-white rounded-2xl border border-gray-200 p-5 shadow-xs space-y-3">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-            <div className="flex items-center gap-2.5">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-              </span>
-              <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                Sinh viên đang có mặt (Live)
-                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono text-xs font-bold">
-                  {data?.activeInLab?.length || 0} người
-                </span>
-              </h2>
-            </div>
-          </div>
-
-          {(!data?.activeInLab || data.activeInLab.length === 0) ? (
-            <div className="py-6 text-center text-xs text-gray-400">
-              Hiện tại chưa có sinh viên nào trong phòng Lab.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
-              {data.activeInLab.map((sv: any) => (
-                <div
-                  key={sv.id}
-                  className={`rounded-xl border p-3.5 flex items-center gap-3 shadow-2xs transition ${sv.isStale
-                    ? "border-amber-300 bg-amber-50/50"
-                    : "border-emerald-200 bg-emerald-50/30"
-                    }`}
-                >
-                  {sv.snapshot ? (
-                    <button
-                      onClick={() => setPreviewImage(sv.snapshot)}
-                      className="relative group shrink-0"
-                      title="Xem ảnh camera"
-                    >
-                      <img
-                        src={sv.snapshot}
-                        alt="Ảnh vào"
-                        className="h-11 w-11 rounded-lg object-cover border border-emerald-300 group-hover:opacity-80 transition"
-                      />
-                      <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 rounded-lg text-white text-[9px]">
-                        Xem
-                      </span>
-                    </button>
-                  ) : (
-                    <div className="h-11 w-11 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">
-                      {sv.studentName.slice(0, 2).toUpperCase()}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="font-bold text-gray-900 text-xs truncate">{sv.studentName || "Chưa có tên"}</div>
-                    <div className="text-[11px] text-gray-500 font-mono">{sv.studentCode}</div>
-                    <div className="mt-1 text-[11px] text-emerald-800 font-semibold flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      Vào: {new Date(sv.checkInTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} • {sv.duration}
-                    </div>
-                    {sv.isStale && (
-                      <div className="mt-1 text-[10px] text-amber-700 font-bold flex items-center gap-1">
-                        <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
-                        <span>Quá 5h (Có thể quên quẹt về)</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* KHỐI CHUYỂN TỪ TRANG CHỦ: KẾT QUẢ QUÉT GẦN NHẤT & NHẬT KÝ HÔM NAY */}
-        <div className="print:hidden grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* CỘT TRÁI (5 CỘT): KẾT QUẢ LƯỢT QUÉT GẦN NHẤT */}
-          <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-200 p-5 shadow-xs flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-3.5">
-                <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
-                  <UserCheck className="h-4 w-4 text-rose-500" />
-                  Kết Quả Quét Gần Nhất
-                </h3>
-                {latestLog && (
-                  <span
-                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase inline-flex items-center gap-1 ${latestLog.checkOutTime
-                      ? "bg-rose-50 text-rose-700 border border-rose-200"
-                      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                      }`}
-                  >
-                    {latestLog.checkOutTime ? "ĐÃ CHECK-OUT" : "ĐÃ CHECK-IN"}
-                  </span>
-                )}
+        {/* KPI SUMMARY */}
+        <section aria-label="Attendance summary" className="print:hidden grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: t.dashboard.presentCount, value: data?.activeInLab?.length || 0, tone: "text-emerald-700", live: true },
+            { label: t.dashboard.todayLogsCount, value: todayLogs.length, tone: "text-gray-900" },
+            { label: t.dashboard.todayStudentsCount, value: todayStudentCount, tone: "text-gray-900" },
+            { label: t.dashboard.needsAttention, value: needsAttentionCount, tone: needsAttentionCount > 0 ? "text-amber-700" : "text-gray-700" },
+          ].map((kpi) => (
+            <div key={kpi.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-xs">
+              <div className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                {kpi.live && <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.12)]" />}
+                <span>{kpi.label}</span>
+                {!kpi.live && <span className="text-gray-500">· {t.dashboard.todayLabel}</span>}
               </div>
-
-              {latestLog ? (
-                <div className="flex flex-col sm:flex-row gap-4 items-center">
-                  {/* Snapshot Image */}
-                  <div className="w-24 h-24 rounded-xl bg-gray-50 border border-gray-200 overflow-hidden shrink-0 relative">
-                    {latestLog.snapshot ? (
-                      <img
-                        src={latestLog.snapshot}
-                        alt="Ảnh quét"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                        <Camera className="h-6 w-6 mb-1 text-gray-300" />
-                        <span className="text-[10px]">No Photo</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Thông tin SV */}
-                  <div className="flex-1 w-full space-y-2 text-xs">
-                    <div>
-                      <h4 className="text-sm font-bold text-gray-900">{latestLog.studentName || "Chưa có tên"}</h4>
-                      <div className="text-gray-500 font-mono mt-0.5">
-                        MSSV: <span className="text-rose-600 font-bold">{latestLog.studentCode}</span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-                      <div className="bg-gray-50 p-2 rounded-lg border border-gray-100">
-                        <span className="text-gray-400 block text-[10px]">Giờ vào</span>
-                        <span className="text-emerald-700 font-mono font-bold text-xs">
-                          {latestLog.checkInTime ? new Date(latestLog.checkInTime).toLocaleTimeString("vi-VN") : "--:--"}
-                        </span>
-                      </div>
-                      <div className="bg-gray-50 p-2 rounded-lg border border-gray-100">
-                        <span className="text-gray-400 block text-[10px]">Giờ ra</span>
-                        <span className="text-rose-600 font-mono font-bold text-xs">
-                          {latestLog.checkOutTime ? new Date(latestLog.checkOutTime).toLocaleTimeString("vi-VN") : "--:--"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {latestLog.durationText && latestLog.durationText !== "--" && (
-                      <div className="text-[11px] font-mono bg-rose-50/60 p-2 rounded-lg border border-rose-100 flex items-center justify-between text-rose-800">
-                        <span className="text-gray-500">Thời gian có mặt:</span>
-                        <span className="font-bold">{latestLog.durationText}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+              {loading && !data ? (
+                <div className="mt-2 h-7 w-16 animate-pulse rounded bg-gray-100" />
               ) : (
-                <div className="py-8 text-center text-xs text-gray-400">
-                  Chưa có lượt quét thẻ nào được ghi nhận.
-                </div>
+                <div className={"mt-1 font-mono text-2xl font-bold " + kpi.tone}>{kpi.value}</div>
               )}
             </div>
-          </div>
+          ))}
+        </section>
 
-          {/* CỘT PHẢI (7 CỘT): BẢNG NHẬT KÝ HÔM NAY */}
-          <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-200 p-5 shadow-xs flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-3.5">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-emerald-600" />
-                    Nhật Ký Quét Thẻ Hôm Nay
-                  </h3>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-mono">
-                    {todayLogs.length} lượt
+        {loadError && (
+          <div role="status" className="print:hidden rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            {t.dashboard.loadError}
+          </div>
+        )}
+
+        {/* LIVE ATTENDANCE AND LATEST SCAN */}
+        <section className="print:hidden grid grid-cols-1 gap-4 lg:grid-cols-12">
+          <div className="lg:col-span-7 rounded-2xl border border-gray-200 bg-white p-4 shadow-xs sm:p-5">
+            {!data && loading ? (
+              <div className="space-y-3">
+                <div className="h-4 w-48 animate-pulse rounded bg-gray-100" />
+                <div className="h-20 animate-pulse rounded-xl bg-gray-50" />
+              </div>
+            ) : (data?.activeInLab?.length || 0) === 0 ? (
+              <div className="flex min-h-8 items-center gap-2 text-sm text-gray-600">
+                <UserCheck className="h-4 w-4 shrink-0 text-gray-500" />
+                <span>{t.dashboard.liveEmpty}</span>
+              </div>
+            ) : (
+              <>
+                <div className="mb-3 flex items-center gap-2 border-b border-gray-100 pb-3">
+                  <span className="relative flex h-2.5 w-2.5 shrink-0">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
                   </span>
+                  <h2 className="text-sm font-bold text-gray-900">{t.dashboard.liveTitle}</h2>
                 </div>
-                <button
-                  onClick={() => loadDashboard()}
-                  className="text-xs text-gray-400 hover:text-rose-500 p-1 rounded-lg hover:bg-gray-50 transition flex items-center gap-1"
-                  title="Làm mới"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin text-rose-500" : ""}`} />
-                  <span className="text-[11px]">Làm mới</span>
-                </button>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {data.activeInLab.map((sv: any) => (
+                    <div
+                      key={sv.id}
+                      className={"flex items-center gap-3 rounded-xl border p-3.5 transition " + (sv.isStale ? "border-amber-300 bg-amber-50/50" : "border-emerald-200 bg-emerald-50/30")}
+                    >
+                      {sv.snapshot ? (
+                        <button onClick={() => setPreviewImage(sv.snapshot)} className="relative shrink-0 group" title={t.dashboard.previewPhoto}>
+                          <img src={sv.snapshot} alt={t.dashboard.checkInPhoto} className="h-11 w-11 rounded-lg border border-emerald-300 object-cover transition group-hover:opacity-80" />
+                          <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40 text-xs text-white opacity-0 group-hover:opacity-100">{t.dashboard.viewPhoto}</span>
+                        </button>
+                      ) : (
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-100 text-xs font-bold text-emerald-700">
+                          {(sv.studentName || "?").slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-bold text-gray-900">{sv.studentName || t.dashboard.unnamedStudent}</div>
+                        <div className="font-mono text-xs text-gray-600">{sv.studentCode}</div>
+                        <div className="mt-1 flex items-center gap-1 text-xs font-semibold text-emerald-800">
+                          <Clock className="h-3.5 w-3.5" />
+                          <span>{t.dashboard.checkInTime}: {new Date(sv.checkInTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} · {sv.duration}</span>
+                        </div>
+                        {sv.isStale && (
+                          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800">
+                              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                              {t.dashboard.liveStale}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleForceCheckout(sv.id, sv.studentName || sv.studentCode)}
+                              className="rounded-md border border-amber-300 bg-white px-2 py-1 text-xs font-semibold text-amber-800 transition hover:bg-amber-100"
+                            >
+                              {t.dashboard.forceCheckout}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="lg:col-span-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-xs sm:p-5">
+            <div className="mb-3 flex items-center justify-between gap-2 border-b border-gray-100 pb-3">
+              <h2 className="flex items-center gap-2 text-sm font-bold text-gray-800">
+                <UserCheck className="h-4 w-4 text-rose-500" />
+                {t.dashboard.latestTitle}
+              </h2>
+              {latestLog && (
+                <span className={"inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold " + (latestLog.checkOutTime ? "border-gray-200 bg-gray-100 text-gray-700" : "border-emerald-200 bg-emerald-50 text-emerald-700")}>
+                  {latestLog.checkOutTime ? t.dashboard.latestCheckedOut : t.dashboard.latestCheckedIn}
+                </span>
+              )}
+            </div>
+
+            {!data && loading ? (
+              <div className="flex gap-4">
+                <div className="h-24 w-24 animate-pulse rounded-xl bg-gray-100" />
+                <div className="flex-1 space-y-3 py-2">
+                  <div className="h-4 w-2/3 animate-pulse rounded bg-gray-100" />
+                  <div className="h-4 w-1/2 animate-pulse rounded bg-gray-100" />
+                </div>
               </div>
-
-              <div className="overflow-x-auto max-h-[220px] overflow-y-auto rounded-xl border border-gray-100">
-                <table className="w-full text-left text-xs text-gray-700">
-                  <thead className="bg-gray-50 text-gray-400 uppercase text-[10px] font-semibold tracking-wider sticky top-0 border-b border-gray-100 z-10">
-                    <tr>
-                      <th className="py-2.5 px-3">Họ và tên</th>
-                      <th className="py-2.5 px-3">Giờ vào</th>
-                      <th className="py-2.5 px-3">Giờ ra</th>
-                      <th className="py-2.5 px-3">Thời lượng</th>
-                      <th className="py-2.5 px-3 text-right">Trạng thái</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50 font-mono">
-                    {todayLogs.length > 0 ? (
-                      todayLogs.map((log: any) => (
-                        <tr key={log.id} className="hover:bg-rose-50/20 transition">
-                          <td className="py-2.5 px-3 font-sans">
-                            <div className="font-bold text-gray-900 text-xs">{log.studentName || "Chưa có tên"}</div>
-                            <div className="text-[11px] text-gray-400 font-mono">{log.studentCode}</div>
-                          </td>
-                          <td className="py-2.5 px-3 text-emerald-700 font-bold text-xs">
-                            {log.checkInTime ? new Date(log.checkInTime).toLocaleTimeString("vi-VN") : "--:--"}
-                          </td>
-                          <td className="py-2.5 px-3 text-rose-600 font-bold text-xs">
-                            {log.checkOutTime ? new Date(log.checkOutTime).toLocaleTimeString("vi-VN") : <span className="text-gray-400 font-normal">--:--</span>}
-                          </td>
-                          <td className="py-2.5 px-3 text-gray-800 font-medium text-xs">
-                            {log.durationText && log.durationText !== "--" ? log.durationText : (log.checkOutTime ? "--" : "Đang trực")}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-sans">
-                            <LogStatusBadge log={log} />
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={5} className="py-8 text-center text-gray-400 font-sans text-xs">
-                          Chưa có lượt quét nào trong ngày hôm nay
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+            ) : latestLog ? (
+              <div className="flex flex-col items-center gap-4 sm:flex-row">
+                <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+                  {latestLog.snapshot ? (
+                    <button type="button" onClick={() => setPreviewImage(latestLog.snapshot)} className="h-full w-full" title={t.dashboard.viewPhoto}>
+                      <img src={latestLog.snapshot} alt={t.dashboard.scanPhoto} className="h-full w-full object-cover" />
+                    </button>
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center text-gray-500">
+                      <Camera className="mb-1 h-6 w-6" />
+                      <span className="text-xs">{t.dashboard.noPhoto}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="w-full min-w-0 flex-1 space-y-2 text-xs">
+                  <div>
+                    <h3 className="truncate text-sm font-bold text-gray-900">{latestLog.studentName || t.dashboard.unnamedStudent}</h3>
+                    <div className="mt-0.5 font-mono text-gray-600">MSSV: <span className="font-bold text-gray-800">{latestLog.studentCode}</span></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg border border-gray-100 bg-gray-50 p-2">
+                      <span className="block text-xs text-gray-600">{t.dashboard.checkInTime}</span>
+                      <span className="font-mono text-sm font-bold text-emerald-700">
+                        {latestLog.checkInTime ? new Date(latestLog.checkInTime).toLocaleTimeString("vi-VN") : "--:--"}
+                      </span>
+                    </div>
+                    <div className="rounded-lg border border-gray-100 bg-gray-50 p-2">
+                      <span className="block text-xs text-gray-600">{t.dashboard.checkOutTime}</span>
+                      <span className="font-mono text-sm font-bold text-gray-700">
+                        {latestLog.checkOutTime ? new Date(latestLog.checkOutTime).toLocaleTimeString("vi-VN") : "--:--"}
+                      </span>
+                    </div>
+                  </div>
+                  {latestLog.durationText && latestLog.durationText !== "--" && (
+                    <div className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50 p-2 text-xs text-gray-700">
+                      <span>{t.dashboard.duration}:</span>
+                      <span className="font-mono font-bold">{latestLog.durationText}</span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-
-            <div className="pt-2.5 mt-2 border-t border-gray-100 text-right">
-              <span className="text-[11px] text-gray-400">Xem tất cả lịch sử tại bảng chi tiết bên dưới</span>
-            </div>
+            ) : (
+              <div className="flex min-h-24 items-center justify-center text-sm text-gray-600">{t.dashboard.latestEmpty}</div>
+            )}
           </div>
-        </div>
-
-        {/* KHỐI 2: 3 THẺ KPI TỔNG QUAN */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {/* 1. Đang có mặt tại Lab */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">{t.dashboard.kpiPresent}</div>
-            <div className="text-xl font-bold text-emerald-600 font-mono mt-1">
-              {data?.activeInLab?.length || 0} <span className="text-xs text-gray-400 font-normal">{t.dashboard.peopleUnit}</span>
-            </div>
-          </div>
-
-          {/* 2. Tổng lượt điểm danh */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">{t.dashboard.kpiTotal}</div>
-            <div className="text-xl font-bold text-rose-500 font-mono mt-1">
-              {data?.stats?.totalLogs || 0} <span className="text-xs text-gray-400 font-normal">{t.dashboard.turnsUnit}</span>
-            </div>
-          </div>
-
-          {/* 3. Sinh viên tham gia */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-            <div className="text-[11px] font-semibold text-gray-500 uppercase truncate">{t.dashboard.kpiStudents}</div>
-            <div className="text-xl font-bold text-gray-800 font-mono mt-1">
-              {data?.stats?.totalStudents || 0} <span className="text-xs text-gray-400 font-normal">{t.dashboard.peopleUnit}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* THÔNG TIN GIỜ MỞ CỬA PHÒNG LAB KHOA CNTT */}
-        <div className="print:hidden bg-gradient-to-r from-red-50/70 via-white to-amber-50/60 rounded-2xl border border-red-100 p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs shadow-xs">
-          <div className="flex items-center gap-2.5">
-            <span className="px-2 py-0.5 bg-red-600 text-white rounded-md font-bold text-[11px] tracking-wide">VLU</span>
-            <span className="font-bold text-gray-800">Phòng Lab - Khoa Công Nghệ Thông Tin:</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-4 text-gray-600">
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-              <span>Giờ mở cửa: <strong>Từ Thứ 2 – Thứ 7</strong></span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-              <span><strong>Sáng: 08:00 – 12:00</strong> | <strong>Chiều: 13:00 – 17:00</strong></span>
-            </div>
-          </div>
-        </div>
-
+        </section>
         {/* KHỐI 3: DANH SÁCH SINH VIÊN PHÒNG LAB */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3">
