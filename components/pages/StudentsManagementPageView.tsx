@@ -490,18 +490,6 @@ function StudentsManagementContent() {
                       <option value="DTH-CNTT">Đại học Công nghệ Thông tin</option>
                       <option value="KHACH-VLANGLAI">Khách vãng lai / Khác</option>
                     </datalist>
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {["24DTH01", "23DTH01", "22DTH01", "DTH-CNTT"].map((c) => (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => setClassName(c)}
-                          className="px-1.5 py-0.5 rounded bg-gray-100 hover:bg-rose-50 hover:text-rose-600 text-[10px] text-gray-600 border border-gray-200 transition cursor-pointer"
-                        >
-                          {c}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                   <div>
                     <label className="block text-gray-700 font-semibold mb-1">Số điện thoại</label>
