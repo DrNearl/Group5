@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import * as XLSX from "xlsx";
 import {
   FileSpreadsheet,
@@ -19,6 +19,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
+import { useAuth } from "@/lib/auth-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { getAssetPath } from "@/lib/asset-path";
 import { LAB_TIMEZONE, getLabDateKey } from "@/lib/attendance-rules";
@@ -58,9 +59,39 @@ function formatLabDateTime(value: string | Date): string {
   return `${formatLabDate(date).slice(0, 5)} ${formatLabTime(date)}`;
 }
 
+function labDateTimeInputToIso(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value);
+  if (!match) throw new Error("Giờ ra không đúng định dạng.");
+  const [, year, month, day, hour, minute, second = "0"] = match;
+  const wallClockAsUtc = Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second));
+  const zoneParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: LAB_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(wallClockAsUtc));
+  const zoneValues = Object.fromEntries(zoneParts.map(({ type, value: partValue }) => [type, partValue]));
+  const zoneTimeAsUtc = Date.UTC(
+    Number(zoneValues.year), Number(zoneValues.month) - 1, Number(zoneValues.day),
+    Number(zoneValues.hour), Number(zoneValues.minute), Number(zoneValues.second)
+  );
+  return new Date(wallClockAsUtc - (zoneTimeAsUtc - wallClockAsUtc)).toISOString();
+}
+
+function getAdjustmentMax(checkInTime: string | Date): Date {
+  const labDateKey = getLabDateKey(new Date(checkInTime));
+  const endOfLabDay = new Date(labDateTimeInputToIso(`${labDateKey}T23:59:59`));
+  return new Date(Math.min(Date.now(), endOfLabDay.getTime()));
+}
+
 function getLogStatusLabel(log: any, t: any): string {
   if (log?.attendanceStatus === "MISSING_CHECKOUT") return t.dashboard.missingCheckout;
   if (!log?.checkOutTime) return t.dashboard.inLab;
+  if (log?.attendanceStatus === "ADJUSTED") return t.dashboard.adjusted;
   if (!log?.isValidSession) return t.dashboard.needsReview;
   return t.dashboard.completed;
 }
@@ -75,6 +106,19 @@ function getLogDurationLabel(log: any): string {
 function getLogCheckOutLabel(log: any): string {
   if (log?.attendanceStatus === "MISSING_CHECKOUT" || !log?.checkOutTime) return "—";
   return isCrossDayLog(log) ? formatLabDateTime(log.checkOutTime) : formatLabTime(log.checkOutTime);
+}
+
+function CheckOutTimeDisplay({ log }: { log: any }) {
+  if (log?.attendanceStatus === "MISSING_CHECKOUT" || !log?.checkOutTime) return <span>—</span>;
+  if (isCrossDayLog(log)) {
+    return (
+      <span className="inline-flex flex-col gap-0.5">
+        <span className="font-sans text-[10px] font-medium text-amber-700">{formatLabDate(log.checkOutTime).slice(0, 5)}</span>
+        <span>{formatLabTime(log.checkOutTime)}</span>
+      </span>
+    );
+  }
+  return <span>{formatLabTime(log.checkOutTime)}</span>;
 }
 
 function getLogDurationHint(log: any, t: any): string | undefined {
@@ -99,7 +143,7 @@ function getStudentDisplayName(student: any, fallbackName?: string): string {
   const name = student?.fullName || fallbackName || "";
   const studentCode = String(student?.studentCode || "");
   return studentCode && name.includes(studentCode)
-    ? name.replace(studentCode, "").trim()
+    ? name.replace(studentCode, "").replace(/\(\s*\)/g, "").replace(/\s{2,}/g, " ").trim()
     : name;
 }
 
@@ -108,6 +152,13 @@ function hasIncompleteProfile(student: any): boolean {
     student?.profileStatus !== "VERIFIED" ||
     student?.source === "SCAN_AUTO" ||
     /^Sinh viên K\d+\b/i.test(String(student?.fullName || ""))
+  );
+}
+
+function needsCheckoutCorrection(log: any): boolean {
+  return (
+    log?.attendanceStatus === "MISSING_CHECKOUT" ||
+    Boolean(log?.checkOutTime && !log?.isValidSession)
   );
 }
 
@@ -143,6 +194,13 @@ function LogStatusBadge({ log }: { log: any }) {
       </span>
     );
   }
+  if (log?.attendanceStatus === "ADJUSTED" && log?.isValidSession) {
+    return (
+      <span className="inline-flex whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+        {t.dashboard.adjusted}
+      </span>
+    );
+  }
   if (!log?.isValidSession) {
     return (
       <span className="inline-flex whitespace-nowrap rounded-full border border-amber-200 bg-amber-50/70 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
@@ -159,6 +217,8 @@ function LogStatusBadge({ log }: { log: any }) {
 
 function DashboardContent() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -179,6 +239,12 @@ function DashboardContent() {
   const [manualOutTime, setManualOutTime] = useState("12:00");
   const [manualNote, setManualNote] = useState("Quên thẻ sinh viên");
   const [manualSubmitting, setManualSubmitting] = useState(false);
+  const [adjustmentLog, setAdjustmentLog] = useState<any | null>(null);
+  const [adjustmentCheckOutTime, setAdjustmentCheckOutTime] = useState("");
+  const [adjustmentReason, setAdjustmentReason] = useState("");
+  const [adjustmentError, setAdjustmentError] = useState("");
+  const [adjustmentSubmitting, setAdjustmentSubmitting] = useState(false);
+  const adjustmentTimeInputRef = useRef<HTMLInputElement>(null);
 
   // Modal phóng to ảnh Snapshot
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -259,6 +325,67 @@ function DashboardContent() {
       alert("Lỗi kết nối: " + err.message);
     } finally {
       setManualSubmitting(false);
+    }
+  };
+
+  const openAdjustmentModal = (log: any) => {
+    setAdjustmentLog(log);
+    setAdjustmentCheckOutTime("");
+    setAdjustmentReason("");
+    setAdjustmentError("");
+  };
+
+  const openAdjustmentTimePicker = () => {
+    const input = adjustmentTimeInputRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
+    if (!input) return;
+    if (input.showPicker) input.showPicker();
+    else {
+      input.focus();
+      input.click();
+    }
+  };
+
+  const handleAttendanceAdjustmentSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!adjustmentLog) return;
+    if (!adjustmentCheckOutTime) {
+      setAdjustmentError(t.dashboard.adjustmentTimeRequired);
+      return;
+    }
+    const reasonLength = adjustmentReason.trim().length;
+    if (reasonLength < 5) {
+      setAdjustmentError(t.dashboard.adjustmentReasonTooShort);
+      return;
+    }
+    if (reasonLength > 300) {
+      setAdjustmentError(t.dashboard.adjustmentReasonTooLong);
+      return;
+    }
+
+    setAdjustmentSubmitting(true);
+    setAdjustmentError("");
+    try {
+      const res = await fetch(getAssetPath(`/api/attendance/logs/${encodeURIComponent(adjustmentLog.id)}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          checkOutTime: labDateTimeInputToIso(`${getLabDateKey(new Date(adjustmentLog.checkInTime))}T${adjustmentCheckOutTime}`),
+          reason: adjustmentReason.trim(),
+        }),
+      });
+      const response = await res.json();
+      if (!res.ok || !response.success) {
+        throw new Error(response.message || t.dashboard.adjustmentFailed);
+      }
+
+      setAdjustmentLog(null);
+      setActionMessage(response.message || t.dashboard.adjustmentSuccess);
+      setTimeout(() => setActionMessage(null), 4000);
+      await loadDashboard();
+    } catch (error: any) {
+      setAdjustmentError(error.message || t.dashboard.adjustmentFailed);
+    } finally {
+      setAdjustmentSubmitting(false);
     }
   };
 
@@ -345,9 +472,11 @@ function DashboardContent() {
       const logDate = attendanceDate ? new Date(attendanceDate) : null;
       const logDateStr = getAttendanceDateKey(log);
 
-      if (datePreset === "TODAY" && logDateStr !== todayStr) return false;
-      if (datePreset === "7DAYS" && (!logDate || logDate < sevenDaysAgo)) return false;
-      if (datePreset === "MONTH" && !logDateStr.startsWith(currentMonth)) return false;
+      if (activeTab === "logs") {
+        if (datePreset === "TODAY" && logDateStr !== todayStr) return false;
+        if (datePreset === "7DAYS" && (!logDate || logDate < sevenDaysAgo)) return false;
+        if (datePreset === "MONTH" && !logDateStr.startsWith(currentMonth)) return false;
+      }
 
       // Các bộ lọc trạng thái và sinh viên chỉ áp dụng trong tab Nhật ký.
       if (activeTab === "logs") {
@@ -429,7 +558,7 @@ function DashboardContent() {
         totalShifts: summary.logs.length,
         totalHours: summary.logs.reduce((total: number, log: any) =>
           total + (log.isValidSession ? Number(log.totalHours) || 0 : 0), 0),
-        missingCheckoutCount: summary.logs.filter((log: any) => log.attendanceStatus === "MISSING_CHECKOUT").length,
+        checkoutCorrectionCount: summary.logs.filter(needsCheckoutCorrection).length,
         latestLog,
         isInLab: activeStudentCodes.has(summary.studentCode),
       };
@@ -451,12 +580,15 @@ function DashboardContent() {
     return day >= 1 && day <= 6 && ((time >= 8 * 60 && time < 12 * 60) || (time >= 13 * 60 && time < 17 * 60));
   })();
 
-  const selectedPeriodLabel = {
-    TODAY: t.dashboard.today,
-    "7DAYS": t.dashboard.days7,
-    MONTH: t.dashboard.month,
-    ALL: t.dashboard.all,
-  }[datePreset];
+  const adjustmentLabDate = adjustmentLog?.checkInTime
+    ? getLabDateKey(new Date(adjustmentLog.checkInTime))
+    : "";
+  const adjustmentMinTime = adjustmentLog?.checkInTime
+    ? formatLabTime(new Date(Math.ceil(new Date(adjustmentLog.checkInTime).getTime() / 1000) * 1000))
+    : undefined;
+  const adjustmentMaxTime = adjustmentLog?.checkInTime
+    ? formatLabTime(getAdjustmentMax(adjustmentLog.checkInTime))
+    : undefined;
 
   const changeStudentSort = (key: "visits" | "hours") => {
     setStudentSort((current) => ({
@@ -750,12 +882,14 @@ function DashboardContent() {
 
           <div className="print:hidden space-y-3 py-3">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-50 p-1 text-xs">
-                <button type="button" onClick={() => setDatePreset("TODAY")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "TODAY" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.today}</button>
-                <button type="button" onClick={() => setDatePreset("7DAYS")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "7DAYS" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.days7}</button>
-                <button type="button" onClick={() => setDatePreset("MONTH")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "MONTH" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.month}</button>
-                <button type="button" onClick={() => setDatePreset("ALL")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "ALL" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.all}</button>
-              </div>
+              {activeTab === "logs" && (
+                <div className="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-50 p-1 text-xs">
+                  <button type="button" onClick={() => setDatePreset("TODAY")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "TODAY" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.today}</button>
+                  <button type="button" onClick={() => setDatePreset("7DAYS")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "7DAYS" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.days7}</button>
+                  <button type="button" onClick={() => setDatePreset("MONTH")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "MONTH" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.month}</button>
+                  <button type="button" onClick={() => setDatePreset("ALL")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "ALL" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.all}</button>
+                </div>
+              )}
 
               <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
@@ -841,9 +975,18 @@ function DashboardContent() {
                         </td>
                         <td className="whitespace-nowrap px-3 py-3 text-gray-700">{formatLabDate(log.checkInTime || log.dutyDate)}</td>
                         <td className="whitespace-nowrap px-3 py-3 font-mono font-semibold text-emerald-700">{log.checkInTime ? formatLabTime(log.checkInTime) : "—"}</td>
-                        <td className="whitespace-nowrap px-3 py-3 font-mono font-semibold text-gray-700">{getLogCheckOutLabel(log)}</td>
+                        <td className="whitespace-nowrap px-3 py-3 font-mono font-semibold text-gray-700"><CheckOutTimeDisplay log={log} /></td>
                         <td title={getLogDurationHint(log, t)} className="whitespace-nowrap px-3 py-3 font-medium text-gray-800">{getLogDurationLabel(log)}</td>
-                        <td className="w-36 whitespace-nowrap px-3 py-3 text-center"><LogStatusBadge log={log} /></td>
+                        <td className="w-36 whitespace-nowrap px-3 py-3 text-center">
+                          <div className="inline-flex flex-col items-center gap-2">
+                            <LogStatusBadge log={log} />
+                            {isAdmin && log.checkInTime && (log.attendanceStatus === "MISSING_CHECKOUT" || (log.checkOutTime && !log.isValidSession)) && (
+                              <button type="button" onClick={() => openAdjustmentModal(log)} className="whitespace-nowrap rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-semibold text-rose-700 hover:bg-rose-100 hover:text-rose-900">
+                                {t.dashboard.adjustCheckout}
+                              </button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     )) : (
                       <tr><td colSpan={8} className="px-3 py-10 text-center text-sm text-gray-600">{t.dashboard.noFilteredLogs}</td></tr>
@@ -873,7 +1016,7 @@ function DashboardContent() {
                       <th className="px-3 py-3">{t.dashboard.classColumn}</th>
                       <th className="whitespace-nowrap px-3 py-3 text-center">
                         <button type="button" onClick={() => changeStudentSort("visits")} className="font-semibold hover:text-gray-900">
-                          {t.dashboard.visitsInPeriod} · {selectedPeriodLabel} <span aria-hidden="true">{studentSort.key === "visits" ? (studentSort.direction === "desc" ? "↓" : "↑") : "↕"}</span>
+                          {t.dashboard.visitsInPeriod} <span aria-hidden="true">{studentSort.key === "visits" ? (studentSort.direction === "desc" ? "↓" : "↑") : "↕"}</span>
                         </button>
                       </th>
                       <th className="whitespace-nowrap px-3 py-3 text-center">
@@ -925,8 +1068,8 @@ function DashboardContent() {
                             )}
                           </td>
                           <td className="px-3 py-3 text-center">
-                            {student.missingCheckoutCount > 0 ? (
-                              <span className="inline-flex whitespace-nowrap rounded-full border border-amber-300 bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900">{student.missingCheckoutCount}</span>
+                            {student.checkoutCorrectionCount > 0 ? (
+                              <span className="inline-flex whitespace-nowrap rounded-full border border-amber-300 bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900">{student.checkoutCorrectionCount}</span>
                             ) : <span className="text-gray-500">0</span>}
                           </td>
                         </tr>
@@ -950,7 +1093,7 @@ function DashboardContent() {
                                       <tr key={log.id}>
                                         <td className="whitespace-nowrap px-3 py-2">{formatLabDate(log.checkInTime || log.dutyDate)}</td>
                                         <td className="whitespace-nowrap px-3 py-2 font-mono">{log.checkInTime ? formatLabTime(log.checkInTime) : "—"}</td>
-                                        <td className="whitespace-nowrap px-3 py-2 font-mono">{getLogCheckOutLabel(log)}</td>
+                                        <td className="whitespace-nowrap px-3 py-2 font-mono"><CheckOutTimeDisplay log={log} /></td>
                                         <td title={getLogDurationHint(log, t)} className="whitespace-nowrap px-3 py-2">{getLogDurationLabel(log)}</td>
                                         <td className="whitespace-nowrap px-3 py-2"><LogStatusBadge log={log} /></td>
                                       </tr>
@@ -1035,7 +1178,7 @@ function DashboardContent() {
                         <td className="px-2 py-1.5 font-mono">{log.studentCode}</td>
                         <td className="px-2 py-1.5">{formatLabDate(log.checkInTime || log.dutyDate)}</td>
                         <td className="px-2 py-1.5">{log.checkInTime ? formatLabTime(log.checkInTime) : "—"}</td>
-                        <td className="px-2 py-1.5">{getLogCheckOutLabel(log)}</td>
+                        <td className="px-2 py-1.5"><CheckOutTimeDisplay log={log} /></td>
                         <td title={getLogDurationHint(log, t)} className="px-2 py-1.5">{getLogDurationLabel(log)}</td>
                         <td className="whitespace-nowrap px-2 py-1.5"><LogStatusBadge log={log} /></td>
                       </tr>
@@ -1170,6 +1313,90 @@ function DashboardContent() {
                   className="px-4 py-2 bg-rose-500 hover:bg-rose-600 disabled:opacity-40 text-white rounded-lg font-semibold transition"
                 >
                   {manualSubmitting ? "Đang lưu..." : "Xác nhận điểm danh"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {adjustmentLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs animate-in fade-in">
+          <div className="relative max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setAdjustmentLog(null)}
+              aria-label={t.dashboard.close}
+              className="absolute right-3 top-3 text-gray-400 hover:text-gray-700"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="mb-4 border-b border-gray-100 pb-3">
+              <h3 className="text-base font-bold text-gray-900">{t.dashboard.adjustCheckoutTitle}</h3>
+              <div className="mt-3 grid gap-3 rounded-xl bg-gray-50 p-3 text-xs sm:grid-cols-2">
+                <div>
+                  <div className="text-[11px] font-medium text-gray-500">{t.dashboard.studentNameColumn}</div>
+                  <div className="mt-1 font-semibold text-gray-900">{getStudentDisplayName({ studentCode: adjustmentLog.studentCode }, adjustmentLog.studentName) || t.dashboard.unnamedStudent}</div>
+                  <div className="mt-1 font-mono text-gray-600">{adjustmentLog.studentCode}</div>
+                </div>
+                <div>
+                  <div className="text-[11px] font-medium text-gray-500">{t.dashboard.checkInTime}</div>
+                  <div className="mt-1 font-mono font-semibold text-gray-800">
+                    {adjustmentLog.checkInTime
+                      ? `${formatLabDate(adjustmentLog.checkInTime)} ${formatLabTime(adjustmentLog.checkInTime)}`
+                      : "—"}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <form noValidate onSubmit={handleAttendanceAdjustmentSubmit} className="space-y-4 text-xs">
+              <div className="space-y-2 rounded-xl border border-gray-200 p-3">
+                <label htmlFor="adjust-checkout-time" className="block font-semibold text-gray-800">{t.dashboard.checkOutTime} *</label>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="inline-flex flex-col gap-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5">
+                    <span className="text-[10px] font-medium text-gray-500">{t.dashboard.adjustmentLabDate}</span>
+                    <span className="font-mono text-xs text-gray-700">{adjustmentLabDate.split("-").reverse().join("/")}</span>
+                  </span>
+                  <input
+                    id="adjust-checkout-time"
+                    ref={adjustmentTimeInputRef}
+                    type="time"
+                    step={1}
+                    min={adjustmentMinTime}
+                    max={adjustmentMaxTime}
+                    value={adjustmentCheckOutTime}
+                    onChange={(event) => { setAdjustmentCheckOutTime(event.target.value); setAdjustmentError(""); }}
+                    className="min-w-48 flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-sm text-gray-800 focus:border-rose-400 focus:outline-none"
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button type="button" onClick={openAdjustmentTimePicker} className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50">
+                    <Clock className="h-3.5 w-3.5" />
+                    {t.dashboard.chooseTime}
+                  </button>
+                </div>
+                <p className="text-[11px] leading-5 text-gray-500">{t.dashboard.adjustmentTimeHint}</p>
+              </div>
+              <div className="space-y-2 rounded-xl border border-gray-200 p-3">
+                <label htmlFor="adjust-checkout-reason" className="block font-semibold text-gray-800">{t.dashboard.adjustmentReason} *</label>
+                <textarea
+                  id="adjust-checkout-reason"
+                  maxLength={300}
+                  rows={3}
+                  value={adjustmentReason}
+                  onChange={(event) => { setAdjustmentReason(event.target.value); setAdjustmentError(""); }}
+                  placeholder={t.dashboard.adjustmentReasonPlaceholder}
+                  className="w-full resize-y rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-800 placeholder-gray-500 focus:border-rose-400 focus:outline-none"
+                />
+                <div className="text-right text-[11px] text-gray-500">{adjustmentReason.trim().length}/300</div>
+              </div>
+              {adjustmentError && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">{adjustmentError}</div>}
+              <div className="flex justify-end gap-2 border-t border-gray-100 pt-2">
+                <button type="button" onClick={() => setAdjustmentLog(null)} className="rounded-lg bg-gray-100 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-200">
+                  {t.dashboard.cancelAdjustment}
+                </button>
+                <button type="submit" disabled={adjustmentSubmitting} className="rounded-lg bg-rose-500 px-4 py-2 font-semibold text-white transition hover:bg-rose-600 disabled:opacity-40">
+                  {adjustmentSubmitting ? t.dashboard.savingAdjustment : t.dashboard.saveAdjustment}
                 </button>
               </div>
             </form>
