@@ -7,6 +7,7 @@ export type AuditAction =
   | "QR_SEND_EMAIL"
   | "MANUAL_ATTENDANCE"
   | "FORCE_CHECKOUT"
+  | "AUTO_CLOSE_SESSION"
   | "STUDENT_CREATE"
   | "STUDENT_UPDATE"
   | "STUDENT_DELETE"

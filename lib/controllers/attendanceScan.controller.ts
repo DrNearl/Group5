@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { recordAuditLog } from "@/lib/audit";
 import { parseVluStudentInfo } from "@/lib/vlu-student-helper";
 import { verifyPersonalQrToken } from "@/lib/qr-security";
 import {
@@ -11,6 +12,7 @@ import {
   MIN_SECONDS_BEFORE_CHECKOUT,
   MIN_SECONDS_BEFORE_RECHECKIN,
 } from "@/lib/attendance-rules";
+import { closeAsMissingCheckout } from "@/lib/attendance-maintenance";
 const AttendanceStatus = {
   ON_TIME: "ON_TIME",
   LATE: "LATE",
@@ -31,17 +33,6 @@ const ScheduleStatus = {
   COMPLETED: "COMPLETED",
   ABSENT: "ABSENT",
 } as const;
-
-async function closeAsMissingCheckout(logId: string) {
-  await prisma.attendanceLog.update({
-    where: { id: logId },
-    data: {
-      attendanceStatus: AttendanceStatus.MISSING_CHECKOUT,
-      checkOutTime: null,
-      totalHours: 0,
-    },
-  });
-}
 
 function checkScanCooldown(
   sinceDate: Date,
@@ -504,12 +495,35 @@ export async function handleManualCheckout(req: NextRequest) {
       include: { dutySchedule: { include: { student: true } } },
     });
 
-    if (!log || log.checkOutTime) {
+    if (!log) {
       return NextResponse.json({ success: false, message: "Không tìm thấy lượt trực hoặc đã check-out rồi!" }, { status: 404 });
     }
 
     const now = new Date();
+    if (log.attendanceStatus === AttendanceStatus.MISSING_CHECKOUT) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Lượt này đã được đánh dấu Quên check-out, hãy dùng chức năng Sửa giờ ra",
+        },
+        { status: 409 }
+      );
+    }
+    if (log.checkOutTime) {
+      return NextResponse.json({ success: false, message: "Không tìm thấy lượt trực hoặc đã check-out rồi!" }, { status: 404 });
+    }
+
     const checkIn = new Date(log.checkInTime || now);
+    if (
+      !log.checkInTime ||
+      classifyOpenSession(checkIn, now) !== "VALID"
+    ) {
+      return NextResponse.json(
+        { success: false, message: "Chỉ có thể force-checkout lượt đang mở và còn hợp lệ." },
+        { status: 409 }
+      );
+    }
+
     const diffMs = Math.max(1000, now.getTime() - checkIn.getTime());
     const totalHours = Math.round((diffMs / 3600000) * 100) / 100;
 
@@ -525,6 +539,13 @@ export async function handleManualCheckout(req: NextRequest) {
     await prisma.dutySchedule.update({
       where: { id: log.scheduleId },
       data: { scheduleStatus: ScheduleStatus.COMPLETED },
+    });
+
+    await recordAuditLog({
+      req,
+      action: "FORCE_CHECKOUT",
+      target: `${log.dutySchedule.student.fullName || "Chưa có tên"} (${log.dutySchedule.student.studentCode})`,
+      detail: `Force-checkout lúc ${now.toLocaleString("vi-VN")}`,
     });
 
     return NextResponse.json({

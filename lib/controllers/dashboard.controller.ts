@@ -1,9 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { recordAuditLog } from "@/lib/audit";
+import {
+  getLabDateKey,
+  MAX_SESSION_HOURS,
+  SHORT_VISIT_MINUTES,
+} from "@/lib/attendance-rules";
+import { closeStaleOpenSessions } from "@/lib/attendance-maintenance";
+
+function isValidSession(log: {
+  checkInTime: Date | null;
+  checkOutTime: Date | null;
+  attendanceStatus: string;
+}): boolean {
+  if (
+    !log.checkInTime ||
+    !log.checkOutTime ||
+    log.attendanceStatus === "MISSING_CHECKOUT"
+  ) {
+    return false;
+  }
+
+  const checkInTime = new Date(log.checkInTime);
+  const checkOutTime = new Date(log.checkOutTime);
+  const durationMs = checkOutTime.getTime() - checkInTime.getTime();
+
+  return (
+    durationMs >= 0 &&
+    durationMs <= MAX_SESSION_HOURS * 60 * 60 * 1000 &&
+    getLabDateKey(checkInTime) === getLabDateKey(checkOutTime)
+  );
+}
 
 export async function handleDashboardGet(req: NextRequest) {
   try {
+    try {
+      const cleanupResult = await closeStaleOpenSessions(new Date());
+      if (cleanupResult.closedCount > 0) {
+        await recordAuditLog({
+          action: "AUTO_CLOSE_SESSION",
+          target: `Tự đóng ${cleanupResult.closedCount} lượt tồn đọng`,
+          detail: `MSSV: ${cleanupResult.studentCodes.join(", ")}`,
+        });
+      }
+    } catch (cleanupError) {
+      console.error("Lỗi tự đóng lượt tồn đọng khi tải dashboard:", cleanupError);
+    }
+
     const [totalSchedules, attendanceLogs, students, incidents, labs] = await Promise.all([
       prisma.dutySchedule.count(),
       prisma.attendanceLog.findMany({
@@ -40,14 +83,16 @@ export async function handleDashboardGet(req: NextRequest) {
     // Thống kê tổng hợp
     const onTimeCount = attendanceLogs.filter((l) => l.attendanceStatus === "ON_TIME").length;
     const lateCount = attendanceLogs.filter((l) => l.attendanceStatus === "LATE").length;
-    const totalHoursAll = attendanceLogs.reduce((acc, l) => acc + (l.totalHours || 0), 0);
+    const validAttendanceLogs = attendanceLogs.filter(isValidSession);
+    const totalHoursAll = validAttendanceLogs.reduce((acc, l) => acc + (l.totalHours || 0), 0);
 
     // Thống kê theo từng sinh viên: chi tiết Ca Sáng, Ca Chiều & chuyên cần
     const studentStats = students.map((sv) => {
       const logs = sv.dutySchedules
         .map((s) => s.attendanceLog)
         .filter((l): l is NonNullable<typeof l> => l !== null);
-      const totalHours = logs.reduce((acc, l) => acc + (l.totalHours || 0), 0);
+      const validLogs = logs.filter(isValidSession);
+      const totalHours = validLogs.reduce((acc, l) => acc + (l.totalHours || 0), 0);
       const onTime = logs.filter((l) => l.attendanceStatus === "ON_TIME").length;
       const late = logs.filter((l) => l.attendanceStatus === "LATE").length;
       const roundedHours = Math.round(totalHours * 10) / 10;
@@ -74,7 +119,7 @@ export async function handleDashboardGet(req: NextRequest) {
         ? new Date(lastLog.checkInTime).toLocaleDateString("vi-VN")
         : null;
 
-      const completedCount = logs.filter((l) => l.checkOutTime !== null).length;
+      const completedCount = validLogs.length;
 
       return {
         id: sv.id,
@@ -128,7 +173,7 @@ export async function handleDashboardGet(req: NextRequest) {
       const d = new Date(l.checkInTime);
       const dayIndex = d.getDay();
       const dayName = weekdayNames[dayIndex];
-      const hrs = l.totalHours > 0 ? l.totalHours : 0;
+      const hrs = isValidSession(l) && l.totalHours > 0 ? l.totalHours : 0;
       const studentId = l.dutySchedule?.student?.id || l.dutySchedule?.student?.studentCode || "";
 
       if (weekdayAttendees[dayName] !== undefined) {
@@ -159,7 +204,12 @@ export async function handleDashboardGet(req: NextRequest) {
 
     // Danh sách sinh viên đang có mặt trong phòng Lab (Live)
     const activeInLab = attendanceLogs
-      .filter((l) => l.checkInTime && !l.checkOutTime)
+      .filter(
+        (l) =>
+          l.checkInTime &&
+          !l.checkOutTime &&
+          l.attendanceStatus !== "MISSING_CHECKOUT"
+      )
       .map((l) => {
         const checkIn = new Date(l.checkInTime!);
         const elapsedSec = Math.max(1, Math.floor((Date.now() - checkIn.getTime()) / 1000));
@@ -181,7 +231,7 @@ export async function handleDashboardGet(req: NextRequest) {
         };
       });
 
-    const completedLogs = attendanceLogs.filter((l) => l.checkInTime && l.checkOutTime);
+    const completedLogs = validAttendanceLogs;
     const avgHours = completedLogs.length > 0
       ? Math.round((totalHoursAll / completedLogs.length) * 10) / 10
       : 0;
@@ -199,6 +249,9 @@ export async function handleDashboardGet(req: NextRequest) {
         onTimeCount,
         lateCount,
         totalHours: Math.round(totalHoursAll * 10) / 10,
+        missingCheckoutCount: attendanceLogs.filter(
+          (l) => l.attendanceStatus === "MISSING_CHECKOUT"
+        ).length,
         avgHours,
         completionRate,
         staleCount,
@@ -234,6 +287,13 @@ export async function handleDashboardGet(req: NextRequest) {
           checkOutTime: l.checkOutTime,
           attendanceStatus: l.attendanceStatus,
           totalHours: l.totalHours,
+          isValidSession: isValidSession(l),
+          isShortVisit: Boolean(
+            l.checkInTime &&
+            l.checkOutTime &&
+            new Date(l.checkOutTime).getTime() - new Date(l.checkInTime).getTime() <
+              SHORT_VISIT_MINUTES * 60 * 1000
+          ),
           durationText: durationText,
           scanMethod: l.scanMethod,
           snapshot: l.checkInSnapshot,
