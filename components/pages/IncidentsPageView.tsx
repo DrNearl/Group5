@@ -1,10 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import {
   AlertTriangle,
-  ArrowLeft,
   CheckCircle2,
   Clock,
   Laptop,
@@ -88,13 +86,6 @@ function IncidentsContent() {
         {/* HEADER */}
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-5">
           <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="p-2.5 rounded-xl bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 shadow-sm transition"
-              title="Về Trang Chủ"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
             <div>
               <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <AlertTriangle className="h-6 w-6 text-rose-600" />

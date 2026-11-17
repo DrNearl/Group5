@@ -2,8 +2,7 @@
 
 import React, { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { AlertTriangle, ArrowLeft, Building2, Eye, EyeOff, KeyRound, Lock, RefreshCw, UserRound } from "lucide-react";
+import { AlertTriangle, Building2, Eye, EyeOff, KeyRound, Lock, RefreshCw, UserRound } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/language-context";
 
@@ -41,14 +40,6 @@ function LoginFormContent() {
 
   return (
     <main className="relative grid min-h-screen place-items-center bg-gray-50 px-4 py-8 font-sans text-slate-900">
-        <Link
-          href="/"
-          className="absolute left-4 top-4 inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-1 sm:left-6 sm:top-6"
-        >
-          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-          {t.login.backHome}
-        </Link>
-
         <section className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
           <header className="mb-6 space-y-3 text-center">
             <div className="mx-auto inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-900">

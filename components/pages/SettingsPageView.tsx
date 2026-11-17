@@ -1,9 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
 import {
-  ArrowLeft,
   CheckCircle2,
   Globe,
   Moon,
@@ -56,12 +54,6 @@ function SettingsContent() {
     <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans p-4 sm:p-6">
       <div className="max-w-3xl mx-auto space-y-5">
         <header className="flex items-center gap-3 border-b border-gray-200 pb-5">
-          <Link
-            href="/dashboard"
-            className="p-2.5 rounded-xl bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 shadow-xs transition"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Settings className="h-6 w-6 text-rose-500" />
             {t.settings.title}

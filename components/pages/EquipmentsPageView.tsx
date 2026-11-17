@@ -11,10 +11,8 @@ import {
   Wrench,
   Search,
   Filter,
-  ArrowLeft,
   Barcode,
 } from "lucide-react";
-import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 function EquipmentsContent() {
@@ -87,13 +85,6 @@ function EquipmentsContent() {
       {/* THANH HEADER ĐIỀU HƯỚNG (Ẩn khi in ấn) */}
       <header className="print:hidden border-b border-gray-200 bg-white/95 backdrop-blur-md px-6 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-30 shadow-sm">
         <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
-            title="Về Trang Chủ"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
           <div>
             <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <Barcode className="h-6 w-6 text-red-600" />
