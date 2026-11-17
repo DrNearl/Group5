@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyQrSessionToken } from "@/lib/qr-security";
 import { getValidStudentCode } from "@/lib/studentCode";
+import {
+  classifyOpenSession,
+  formatCooldownWait,
+  formatLabTime,
+  formatLabTimeAndDate,
+  getCooldownRemainingSeconds,
+  MIN_SECONDS_BEFORE_CHECKOUT,
+  MIN_SECONDS_BEFORE_RECHECKIN,
+} from "@/lib/attendance-rules";
 const AttendanceStatus = {
   ON_TIME: "ON_TIME",
   LATE: "LATE",
@@ -24,6 +33,17 @@ const ScheduleStatus = {
 } as const;
 
 export const dynamic = "force-dynamic";
+
+async function closeAsMissingCheckout(logId: string) {
+  await prisma.attendanceLog.update({
+    where: { id: logId },
+    data: {
+      attendanceStatus: AttendanceStatus.MISSING_CHECKOUT,
+      checkOutTime: null,
+      totalHours: 0,
+    },
+  });
+}
 
 export async function handleQrVerify(req: NextRequest) {
   try {
@@ -142,6 +162,7 @@ export async function handleQrVerify(req: NextRequest) {
       where: {
         scannedBarcode: cleanStudentCode,
         checkOutTime: null,
+        attendanceStatus: { not: AttendanceStatus.MISSING_CHECKOUT },
       },
       include: {
         dutySchedule: {
@@ -154,61 +175,124 @@ export async function handleQrVerify(req: NextRequest) {
     // -------------------------------------------------------------------------
     // TRƯỜNG HỢP A: ĐÃ CHECK-IN TRƯỚC ĐÓ -> BÂY GIỜ THỰC HIỆN CHECK-OUT
     // -------------------------------------------------------------------------
+    let previousSessionClosed: { logId: string; checkInTime: string } | null = null;
     if (openLog && openLog.checkInTime) {
       const checkInDate = new Date(openLog.checkInTime);
-      const diffMs = now.getTime() - checkInDate.getTime();
-
-      // Tính chính xác thời gian có mặt
-      const totalSeconds = Math.max(1, Math.floor(diffMs / 1000));
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-
-      let durationText = `${seconds} giây`;
-      if (hours > 0) {
-        durationText = `${hours} giờ ${minutes} phút ${seconds} giây`;
-      } else if (minutes > 0) {
-        durationText = `${minutes} phút ${seconds} giây`;
+      const sessionState = classifyOpenSession(checkInDate, now);
+      if (sessionState === "VALID") {
+        const remainingSec = getCooldownRemainingSeconds(
+          checkInDate,
+          now,
+          MIN_SECONDS_BEFORE_CHECKOUT
+        );
+        if (remainingSec > 0) {
+          return NextResponse.json({
+            success: false,
+            type: "COOLDOWN_WAIT",
+            student: {
+              fullName: student.fullName,
+              studentCode: student.studentCode,
+            },
+            message: `Bạn vừa Check-in lúc ${checkInDate.toLocaleTimeString("vi-VN")}! Vui lòng đợi ${formatCooldownWait(remainingSec)} trước khi Check-out.`,
+          });
+        }
       }
 
-      const totalHours = Math.round((diffMs / 3600000) * 100) / 100;
-
-      const updatedLog = await prisma.attendanceLog.update({
-        where: { id: openLog.id },
-        data: {
-          checkOutTime: now,
-          totalHours,
-          attendanceStatus: AttendanceStatus.ON_TIME,
-        },
-      });
-
-      await prisma.dutySchedule.update({
-        where: { id: openLog.scheduleId },
-        data: { scheduleStatus: ScheduleStatus.COMPLETED },
-      });
-
-      return NextResponse.json({
-        success: true,
-        action: "CHECK_OUT",
-        status: AttendanceStatus.ON_TIME,
-        message: `Check-out thành công lúc ${now.toLocaleTimeString("vi-VN")}! Tổng thời gian có mặt: ${durationText}.`,
-        data: {
-          logId: updatedLog.id,
-          studentName: student.fullName || "Chưa có tên",
-          studentCode: student.studentCode,
-          labName: targetLab.labName,
+      if (sessionState !== "VALID") {
+        await closeAsMissingCheckout(openLog.id);
+        previousSessionClosed = {
+          logId: openLog.id,
           checkInTime: checkInDate.toISOString(),
-          checkOutTime: now.toISOString(),
-          totalHours,
-          durationText,
-          scanMethod: "DYNAMIC_QR",
-        },
-      });
+        };
+      }
+
+      if (sessionState === "VALID") {
+        const diffMs = now.getTime() - checkInDate.getTime();
+
+        // Tính chính xác thời gian có mặt
+        const totalSeconds = Math.max(1, Math.floor(diffMs / 1000));
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        let durationText = `${seconds} giây`;
+        if (hours > 0) {
+          durationText = `${hours} giờ ${minutes} phút ${seconds} giây`;
+        } else if (minutes > 0) {
+          durationText = `${minutes} phút ${seconds} giây`;
+        }
+
+        const totalHours = Math.round((diffMs / 3600000) * 100) / 100;
+
+        const checkoutStatus =
+          openLog.attendanceStatus === AttendanceStatus.LATE
+            ? AttendanceStatus.LATE
+            : AttendanceStatus.ON_TIME;
+        const updatedLog = await prisma.attendanceLog.update({
+          where: { id: openLog.id },
+          data: {
+            checkOutTime: now,
+            totalHours,
+            attendanceStatus: checkoutStatus,
+          },
+        });
+
+        await prisma.dutySchedule.update({
+          where: { id: openLog.scheduleId },
+          data: { scheduleStatus: ScheduleStatus.COMPLETED },
+        });
+
+        return NextResponse.json({
+          success: true,
+          action: "CHECK_OUT",
+          status: checkoutStatus,
+          message: `Check-out thành công lúc ${now.toLocaleTimeString("vi-VN")}! Tổng thời gian có mặt: ${durationText}.`,
+          data: {
+            logId: updatedLog.id,
+            studentName: student.fullName,
+            studentCode: student.studentCode,
+            labName: targetLab.labName,
+            checkInTime: checkInDate.toISOString(),
+            checkOutTime: now.toISOString(),
+            totalHours,
+            durationText,
+            scanMethod: "DYNAMIC_QR",
+          },
+        });
+      }
     }
 
     // -------------------------------------------------------------------------
     // TRƯỜNG HỢP B: CHƯA CHECK-IN -> THỰC HIỆN CHECK-IN VÀO PHÒNG LAB
     // -------------------------------------------------------------------------
+    const lastCompletedLog = await prisma.attendanceLog.findFirst({
+      where: {
+        scannedBarcode: cleanStudentCode,
+        checkOutTime: { not: null },
+      },
+      orderBy: { checkOutTime: "desc" },
+    });
+
+    if (!previousSessionClosed && lastCompletedLog?.checkOutTime) {
+      const lastCheckOut = new Date(lastCompletedLog.checkOutTime);
+      const remainingSec = getCooldownRemainingSeconds(
+        lastCheckOut,
+        now,
+        MIN_SECONDS_BEFORE_RECHECKIN
+      );
+      if (remainingSec > 0) {
+        return NextResponse.json({
+          success: false,
+          type: "COOLDOWN_WAIT",
+          student: {
+            fullName: student.fullName,
+            studentCode: student.studentCode,
+          },
+          message: `Bạn vừa Check-out lúc ${lastCheckOut.toLocaleTimeString("vi-VN")}! Vui lòng đợi ${formatCooldownWait(remainingSec)} trước khi Check-in lại.`,
+        });
+      }
+    }
+
     const deviceTag = deviceId ? `[Device: ${deviceId}]` : "";
     const fullNote = `Điểm danh QR di động ${deviceTag} ${clientNote ? `(${clientNote})` : ""}`.trim();
 
@@ -238,7 +322,9 @@ export async function handleQrVerify(req: NextRequest) {
       success: true,
       action: "CHECK_IN",
       status: AttendanceStatus.ON_TIME,
-      message: `Check-in thành công lúc ${now.toLocaleTimeString("vi-VN")}! Chúc bạn ca trực hiệu quả.`,
+      message: previousSessionClosed
+        ? `Check-in thành công lúc ${now.toLocaleTimeString("vi-VN")}! Lượt vào lúc ${formatLabTimeAndDate(new Date(previousSessionClosed.checkInTime))} chưa check-out nên đã được đánh dấu 'Quên check-out'. Check-in mới lúc ${formatLabTime(now)}.`
+        : `Check-in thành công lúc ${now.toLocaleTimeString("vi-VN")}! Chúc bạn ca trực hiệu quả.`,
       data: {
         logId: newLog.id,
         studentName: student.fullName || "Chưa có tên",
@@ -248,6 +334,7 @@ export async function handleQrVerify(req: NextRequest) {
         checkOutTime: null,
         durationText: "Vừa mới vào phòng Lab",
         scanMethod: "DYNAMIC_QR",
+        ...(previousSessionClosed ? { previousSessionClosed } : {}),
       },
     });
   } catch (error: any) {
