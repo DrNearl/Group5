@@ -16,7 +16,7 @@ import {
   X,
   Camera,
   AlertTriangle,
-  Eye,
+  ChevronDown,
 } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -86,6 +86,31 @@ function getLogDurationHint(log: any, t: any): string | undefined {
   return t.dashboard.invalidSessionDurationHint;
 }
 
+function formatTotalHours(hours: number, t: any): string {
+  const totalMinutes = Math.round(hours * 60);
+  const wholeHours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (wholeHours === 0) return `${minutes} ${t.dashboard.minutesUnit}`;
+  if (minutes === 0) return `${wholeHours} ${t.dashboard.hoursUnit}`;
+  return `${wholeHours} ${t.dashboard.hoursUnit} ${minutes} ${t.dashboard.minutesUnit}`;
+}
+
+function getStudentDisplayName(student: any, fallbackName?: string): string {
+  const name = student?.fullName || fallbackName || "";
+  const studentCode = String(student?.studentCode || "");
+  return studentCode && name.includes(studentCode)
+    ? name.replace(studentCode, "").trim()
+    : name;
+}
+
+function hasIncompleteProfile(student: any): boolean {
+  return (
+    student?.profileStatus !== "VERIFIED" ||
+    student?.source === "SCAN_AUTO" ||
+    /^Sinh viên K\d+\b/i.test(String(student?.fullName || ""))
+  );
+}
+
 function getLocalDateKey(value: string | Date): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -142,6 +167,8 @@ function DashboardContent() {
   const [datePreset, setDatePreset] = useState<"ALL" | "TODAY" | "7DAYS" | "MONTH">("TODAY");
   const [activeTab, setActiveTab] = useState<"logs" | "students">("logs");
   const [studentFilter, setStudentFilter] = useState<string | null>(null);
+  const [expandedStudentCode, setExpandedStudentCode] = useState<string | null>(null);
+  const [studentSort, setStudentSort] = useState<{ key: "recent" | "visits" | "hours"; direction: "asc" | "desc" }>({ key: "recent", direction: "desc" });
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   // Modal điểm danh thủ công
@@ -322,12 +349,13 @@ function DashboardContent() {
       if (datePreset === "7DAYS" && (!logDate || logDate < sevenDaysAgo)) return false;
       if (datePreset === "MONTH" && !logDateStr.startsWith(currentMonth)) return false;
 
-      // 3. Trạng thái
-      if (statusFilter === "IN_LAB" && log.checkOutTime) return false;
-      if (statusFilter === "CHECKED_OUT" && !log.checkOutTime) return false;
-      if (statusFilter === "MISSING_CHECKOUT" && log.attendanceStatus !== "MISSING_CHECKOUT") return false;
-
-      if (studentFilter && log.studentCode !== studentFilter) return false;
+      // Các bộ lọc trạng thái và sinh viên chỉ áp dụng trong tab Nhật ký.
+      if (activeTab === "logs") {
+        if (statusFilter === "IN_LAB" && log.checkOutTime) return false;
+        if (statusFilter === "CHECKED_OUT" && !log.checkOutTime) return false;
+        if (statusFilter === "MISSING_CHECKOUT" && log.attendanceStatus !== "MISSING_CHECKOUT") return false;
+        if (studentFilter && log.studentCode !== studentFilter) return false;
+      }
 
       // 4. Tìm kiếm từ khóa
       if (searchTerm.trim()) {
@@ -341,7 +369,7 @@ function DashboardContent() {
 
       return true;
     });
-  }, [data, datePreset, statusFilter, searchTerm, studentFilter]);
+  }, [data, datePreset, statusFilter, searchTerm, studentFilter, activeTab]);
 
   // Lượt quét thẻ mới nhất
   const latestLog = useMemo(() => {
@@ -364,43 +392,57 @@ function DashboardContent() {
   );
 
   const filteredStudentStats = useMemo(() => {
-    const counts = new Map<string, { count: number; name: string }>();
-    const studentLogs = (data?.allLogs || []).filter((log: any) => {
-      if (statusFilter === "IN_LAB" && log.checkOutTime) return false;
-      if (statusFilter === "CHECKED_OUT" && !log.checkOutTime) return false;
-      if (studentFilter && log.studentCode !== studentFilter) return false;
-
-      const term = searchTerm.trim().toLowerCase();
-      if (!term) return true;
-      return (
-        (log.studentName || "").toLowerCase().includes(term) ||
-        String(log.studentCode || "").toLowerCase().includes(term) ||
-        String(log.labName || "").toLowerCase().includes(term)
-      );
-    });
-
-    studentLogs.forEach((log: any) => {
-      const code = String(log.studentCode || "");
-      if (!code) return;
-      const current = counts.get(code);
-      counts.set(code, { count: (current?.count || 0) + 1, name: current?.name || log.studentName || "" });
-    });
-
+    const studentsByCode = new Map<string, any>();
     const studentByCode = new Map<string, any>(
       (data?.studentStats || []).map((student: any) => [String(student.studentCode), student])
     );
 
-    return Array.from(counts.entries()).map(([studentCode, summary]) => {
-      const student = studentByCode.get(studentCode);
-      return {
-        id: student?.id || studentCode,
+    filteredLogs.forEach((log: any) => {
+      const studentCode = String(log.studentCode || "");
+      if (!studentCode) return;
+      const summary = studentsByCode.get(studentCode) || {
+        id: studentByCode.get(studentCode)?.id || studentCode,
         studentCode,
-        fullName: student?.fullName || summary.name,
-        className: student?.className || "DTH-CNTT",
-        totalShifts: summary.count,
+        logs: [],
+      };
+      summary.logs.push(log);
+      studentsByCode.set(studentCode, summary);
+    });
+
+    const activeStudentCodes = new Set(
+      (data?.activeInLab || []).map((student: any) => String(student.studentCode))
+    );
+
+    const rows = Array.from(studentsByCode.values()).map((summary: any) => {
+      const student = studentByCode.get(summary.studentCode) || {};
+      const sortedLogs = [...summary.logs].sort(
+        (a: any, b: any) => new Date(b.checkInTime || b.dutyDate).getTime() - new Date(a.checkInTime || a.dutyDate).getTime()
+      );
+      const latestLog = sortedLogs[0];
+      return {
+        ...summary,
+        logs: sortedLogs,
+        fullName: getStudentDisplayName(student, latestLog?.studentName),
+        className: student.className || "DTH-CNTT",
+        profileStatus: student.profileStatus,
+        source: student.source,
+        totalShifts: summary.logs.length,
+        totalHours: summary.logs.reduce((total: number, log: any) =>
+          total + (log.isValidSession ? Number(log.totalHours) || 0 : 0), 0),
+        missingCheckoutCount: summary.logs.filter((log: any) => log.attendanceStatus === "MISSING_CHECKOUT").length,
+        latestLog,
+        isInLab: activeStudentCodes.has(summary.studentCode),
       };
     });
-  }, [data, statusFilter, searchTerm, studentFilter]);
+
+    return rows.sort((a: any, b: any) => {
+      let difference = 0;
+      if (studentSort.key === "visits") difference = a.totalShifts - b.totalShifts;
+      else if (studentSort.key === "hours") difference = a.totalHours - b.totalHours;
+      else difference = new Date(a.latestLog?.checkInTime || a.latestLog?.dutyDate || 0).getTime() - new Date(b.latestLog?.checkInTime || b.latestLog?.dutyDate || 0).getTime();
+      return studentSort.direction === "desc" ? -difference : difference;
+    });
+  }, [data, filteredLogs, studentSort]);
 
   const isLabOpen = (() => {
     const now = new Date();
@@ -408,6 +450,20 @@ function DashboardContent() {
     const time = now.getHours() * 60 + now.getMinutes();
     return day >= 1 && day <= 6 && ((time >= 8 * 60 && time < 12 * 60) || (time >= 13 * 60 && time < 17 * 60));
   })();
+
+  const selectedPeriodLabel = {
+    TODAY: t.dashboard.today,
+    "7DAYS": t.dashboard.days7,
+    MONTH: t.dashboard.month,
+    ALL: t.dashboard.all,
+  }[datePreset];
+
+  const changeStudentSort = (key: "visits" | "hours") => {
+    setStudentSort((current) => ({
+      key,
+      direction: current.key === key && current.direction === "desc" ? "asc" : "desc",
+    }));
+  };
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-gray-900 font-sans p-4 sm:p-6">
@@ -694,14 +750,12 @@ function DashboardContent() {
 
           <div className="print:hidden space-y-3 py-3">
             <div className="flex flex-wrap items-center gap-2">
-              {activeTab === "logs" && (
-                <div className="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-50 p-1 text-xs">
-                  <button type="button" onClick={() => setDatePreset("TODAY")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "TODAY" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.today}</button>
-                  <button type="button" onClick={() => setDatePreset("7DAYS")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "7DAYS" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.days7}</button>
-                  <button type="button" onClick={() => setDatePreset("MONTH")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "MONTH" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.month}</button>
-                  <button type="button" onClick={() => setDatePreset("ALL")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "ALL" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.all}</button>
-                </div>
-              )}
+              <div className="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-50 p-1 text-xs">
+                <button type="button" onClick={() => setDatePreset("TODAY")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "TODAY" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.today}</button>
+                <button type="button" onClick={() => setDatePreset("7DAYS")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "7DAYS" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.days7}</button>
+                <button type="button" onClick={() => setDatePreset("MONTH")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "MONTH" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.month}</button>
+                <button type="button" onClick={() => setDatePreset("ALL")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "ALL" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.all}</button>
+              </div>
 
               <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
@@ -714,27 +768,36 @@ function DashboardContent() {
                 />
               </div>
 
-              <div className="relative">
-                <Filter className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                <select
-                  aria-label={t.dashboard.allStatuses}
-                  value={statusFilter}
-                  onChange={(event) => setStatusFilter(event.target.value)}
-                  className="h-9 min-w-40 appearance-none rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-8 text-xs text-gray-800 focus:border-rose-400 focus:outline-none"
-                >
-                  <option value="ALL">{t.dashboard.allStatuses}</option>
-                  <option value="IN_LAB">{t.dashboard.inLab}</option>
-                  <option value="CHECKED_OUT">{t.dashboard.completed}</option>
-                  <option value="MISSING_CHECKOUT">{t.dashboard.missingCheckout}</option>
-                </select>
-              </div>
+              {activeTab === "logs" && (
+                <div className="relative">
+                  <Filter className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                  <select
+                    aria-label={t.dashboard.allStatuses}
+                    value={statusFilter}
+                    onChange={(event) => setStatusFilter(event.target.value)}
+                    className="h-9 min-w-40 appearance-none rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-8 text-xs text-gray-800 focus:border-rose-400 focus:outline-none"
+                  >
+                    <option value="ALL">{t.dashboard.allStatuses}</option>
+                    <option value="IN_LAB">{t.dashboard.inLab}</option>
+                    <option value="CHECKED_OUT">{t.dashboard.completed}</option>
+                    <option value="MISSING_CHECKOUT">{t.dashboard.missingCheckout}</option>
+                  </select>
+                </div>
+              )}
             </div>
 
-            {studentFilter && (
+            {activeTab === "logs" && studentFilter && (
               <div className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-gray-800">
-                <span>{t.dashboard.selectedStudentFilter}: <strong>{studentFilter}</strong></span>
+                <span>{t.dashboard.selectedStudentFilter}: <strong>{getStudentDisplayName(data?.studentStats?.find((student: any) => student.studentCode === studentFilter), data?.allLogs?.find((log: any) => log.studentCode === studentFilter)?.studentName)} ({studentFilter})</strong></span>
                 <button type="button" onClick={() => setStudentFilter(null)} className="font-semibold text-rose-700 underline underline-offset-2">
                   {t.dashboard.clearStudentFilter}
+                </button>
+                <button type="button" onClick={() => {
+                  setExpandedStudentCode(studentFilter);
+                  setStudentFilter(null);
+                  setActiveTab("students");
+                }} className="font-semibold text-rose-700 underline underline-offset-2">
+                  {t.dashboard.backToSummary}
                 </button>
               </div>
             )}
@@ -802,52 +865,119 @@ function DashboardContent() {
               </div>
             ) : (
               <div className="overflow-x-auto rounded-xl border border-gray-100">
-                <table className="w-full min-w-[620px] text-left text-xs text-gray-700">
+                <table className="w-full min-w-[980px] text-left text-xs text-gray-700">
                   <thead className="border-b border-gray-200 bg-gray-50 text-[11px] font-semibold uppercase tracking-wide text-gray-600">
                     <tr>
                       <th className="px-3 py-3">{t.dashboard.rowNumber}</th>
                       <th className="px-3 py-3">{t.dashboard.studentNameColumn}</th>
                       <th className="px-3 py-3">{t.dashboard.classColumn}</th>
-                      <th className="px-3 py-3 text-center">{t.dashboard.totalShifts}</th>
-                      <th className="px-3 py-3 text-right">{t.dashboard.detailsColumn}</th>
+                      <th className="whitespace-nowrap px-3 py-3 text-center">
+                        <button type="button" onClick={() => changeStudentSort("visits")} className="font-semibold hover:text-gray-900">
+                          {t.dashboard.visitsInPeriod} · {selectedPeriodLabel} <span aria-hidden="true">{studentSort.key === "visits" ? (studentSort.direction === "desc" ? "↓" : "↑") : "↕"}</span>
+                        </button>
+                      </th>
+                      <th className="whitespace-nowrap px-3 py-3 text-center">
+                        <button type="button" onClick={() => changeStudentSort("hours")} className="font-semibold hover:text-gray-900">
+                          {t.dashboard.validHours} <span aria-hidden="true">{studentSort.key === "hours" ? (studentSort.direction === "desc" ? "↓" : "↑") : "↕"}</span>
+                        </button>
+                      </th>
+                      <th className="whitespace-nowrap px-3 py-3">{t.dashboard.latestCheckIn}</th>
+                      <th className="whitespace-nowrap px-3 py-3 text-center">{t.dashboard.currentStatus}</th>
+                      <th className="whitespace-nowrap px-3 py-3 text-center">{t.dashboard.missingCheckout}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {filteredStudentStats.length > 0 ? filteredStudentStats.map((student: any, index: number) => (
-                      <tr key={student.id} className="hover:bg-gray-50/80">
-                        <td className="px-3 py-3 text-gray-600">{index + 1}</td>
-                        <td className="px-3 py-3">
-                          <div className="font-semibold text-gray-900">{student.fullName || t.dashboard.unnamedStudent}</div>
-                          <div className="font-mono text-xs text-gray-600">{student.studentCode}</div>
-                        </td>
-                        <td className="px-3 py-3 text-gray-700">{student.className}</td>
-                        <td className="px-3 py-3 text-center font-semibold text-gray-900">{student.totalShifts}</td>
-                        <td className="px-3 py-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSearchTerm("");
-                              setDatePreset("ALL");
-                              setStatusFilter("ALL");
-                              setStudentFilter(student.studentCode);
-                              setActiveTab("logs");
-                            }}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs font-semibold text-gray-700 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            {t.dashboard.viewLog}
-                          </button>
-                        </td>
-                      </tr>
+                      <React.Fragment key={student.studentCode}>
+                        <tr className="hover:bg-gray-50/80">
+                          <td className="px-3 py-3 text-gray-600">{index + 1}</td>
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                aria-expanded={expandedStudentCode === student.studentCode}
+                                aria-label={expandedStudentCode === student.studentCode ? t.dashboard.collapseStudentDetails : t.dashboard.expandStudentDetails}
+                                onClick={() => setExpandedStudentCode(expandedStudentCode === student.studentCode ? null : student.studentCode)}
+                                className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                              >
+                                <ChevronDown className={"h-4 w-4 transition-transform " + (expandedStudentCode === student.studentCode ? "rotate-180" : "")} />
+                              </button>
+                              <div>
+                                <div className="font-semibold text-gray-900">{student.fullName || t.dashboard.unnamedStudent}</div>
+                                <div className="font-mono text-xs text-gray-600">{student.studentCode}</div>
+                                {hasIncompleteProfile(student) && (
+                                  <span className="mt-1 inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600">{t.dashboard.profileIncomplete}</span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-gray-700">{student.className}</td>
+                          <td className="px-3 py-3 text-center font-semibold text-gray-900">{student.totalShifts}</td>
+                          <td className="whitespace-nowrap px-3 py-3 text-center font-medium text-gray-800">{formatTotalHours(student.totalHours, t)}</td>
+                          <td className="whitespace-nowrap px-3 py-3 font-mono text-gray-700">
+                            {student.latestLog?.checkInTime ? `${formatLabDate(student.latestLog.checkInTime)} ${formatLabTime(student.latestLog.checkInTime)}` : "—"}
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            {student.isInLab ? (
+                              <span className="inline-flex whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{t.dashboard.currentlyInLab}</span>
+                            ) : (
+                              <span className="inline-flex whitespace-nowrap rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">{t.dashboard.checkedOut}</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-3 text-center">
+                            {student.missingCheckoutCount > 0 ? (
+                              <span className="inline-flex whitespace-nowrap rounded-full border border-amber-300 bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900">{student.missingCheckoutCount}</span>
+                            ) : <span className="text-gray-500">0</span>}
+                          </td>
+                        </tr>
+                        {expandedStudentCode === student.studentCode && (
+                          <tr className="print:hidden bg-gray-50/70">
+                            <td colSpan={8} className="px-5 py-4">
+                              <div className="mb-2 text-xs font-semibold text-gray-700">{t.dashboard.recentVisits}</div>
+                              <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                                <table className="w-full min-w-[640px] text-left text-xs text-gray-700">
+                                  <thead className="border-b border-gray-200 bg-gray-50 text-[11px] font-semibold uppercase text-gray-600">
+                                    <tr>
+                                      <th className="px-3 py-2">{t.dashboard.dateColumn}</th>
+                                      <th className="px-3 py-2">{t.dashboard.checkInTime}</th>
+                                      <th className="px-3 py-2">{t.dashboard.checkOutTime}</th>
+                                      <th className="px-3 py-2">{t.dashboard.duration}</th>
+                                      <th className="px-3 py-2">{t.dashboard.statusColumn}</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-100">
+                                    {student.logs.slice(0, 10).map((log: any) => (
+                                      <tr key={log.id}>
+                                        <td className="whitespace-nowrap px-3 py-2">{formatLabDate(log.checkInTime || log.dutyDate)}</td>
+                                        <td className="whitespace-nowrap px-3 py-2 font-mono">{log.checkInTime ? formatLabTime(log.checkInTime) : "—"}</td>
+                                        <td className="whitespace-nowrap px-3 py-2 font-mono">{getLogCheckOutLabel(log)}</td>
+                                        <td title={getLogDurationHint(log, t)} className="whitespace-nowrap px-3 py-2">{getLogDurationLabel(log)}</td>
+                                        <td className="whitespace-nowrap px-3 py-2"><LogStatusBadge log={log} /></td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <button type="button" onClick={() => {
+                                setStatusFilter("ALL");
+                                setStudentFilter(student.studentCode);
+                                setActiveTab("logs");
+                              }} className="mt-3 text-xs font-semibold text-rose-700 underline underline-offset-2 hover:text-rose-900">
+                                {t.dashboard.viewAllInLog}
+                              </button>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     )) : (
-                      <tr><td colSpan={5} className="px-3 py-10 text-center text-sm text-gray-600">{t.dashboard.noFilteredStudents}</td></tr>
+                      <tr><td colSpan={8} className="px-3 py-10 text-center text-sm text-gray-600">{t.dashboard.noFilteredStudents}</td></tr>
                     )}
                   </tbody>
                 </table>
               </div>
             )}
             <p className="mt-2 text-right text-xs text-gray-600">
-              {t.dashboard.showing} <strong>{filteredStudentStats.length}</strong> {t.dashboard.studentCountUnit}
+              {t.dashboard.showingStudents} <strong>{filteredStudentStats.length}</strong> {t.dashboard.studentCountUnit}
             </p>
           </div>
 

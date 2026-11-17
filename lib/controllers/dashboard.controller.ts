@@ -126,6 +126,8 @@ export async function handleDashboardGet(req: NextRequest) {
         fullName: sv.fullName || "Chưa có tên",
         studentCode: sv.studentCode,
         className: sv.className || "DTH-CNTT",
+        profileStatus: sv.profileStatus,
+        source: sv.source,
         morningShifts,
         afternoonShifts,
         totalShifts: sv.dutySchedules.length,
