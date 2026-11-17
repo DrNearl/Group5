@@ -99,7 +99,7 @@ function attendanceLabel(status: string) {
     case "ON_TIME": return { label: "Đúng giờ", className: "border-emerald-300 bg-emerald-50 text-emerald-900" };
     case "LATE": return { label: "Đi trễ", className: "border-amber-300 bg-amber-50 text-amber-900" };
     case "EARLY_LEAVE": return { label: "Về sớm", className: "border-blue-300 bg-blue-50 text-blue-900" };
-    case "MISSING_CHECKOUT": return { label: "Thiếu giờ ra", className: "border-rose-300 bg-rose-50 text-rose-900" };
+    case "MISSING_CHECKOUT": return { label: "Quên check-out", className: "border-amber-300 bg-amber-50 text-amber-900" };
     default: return { label: "Đã ghi nhận", className: "border-gray-300 bg-gray-100 text-gray-800" };
   }
 }

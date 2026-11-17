@@ -37,6 +37,11 @@ const ACTION_META: Record<string, { label: string; group: string; badgeClass: st
     group: "ATTENDANCE",
     badgeClass: "bg-orange-50 text-orange-700 border-orange-200",
   },
+  AUTO_CLOSE_SESSION: {
+    label: "Tự đóng lượt quên check-out",
+    group: "ATTENDANCE",
+    badgeClass: "bg-amber-50 text-amber-700 border-amber-200",
+  },
   STUDENT_CREATE: {
     label: "Thêm sinh viên",
     group: "STUDENT",

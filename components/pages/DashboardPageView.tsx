@@ -309,7 +309,21 @@ function DashboardContent() {
 
   const filteredStudentStats = useMemo(() => {
     const counts = new Map<string, { count: number; name: string }>();
-    filteredLogs.forEach((log: any) => {
+    const studentLogs = (data?.allLogs || []).filter((log: any) => {
+      if (statusFilter === "IN_LAB" && log.checkOutTime) return false;
+      if (statusFilter === "CHECKED_OUT" && !log.checkOutTime) return false;
+      if (studentFilter && log.studentCode !== studentFilter) return false;
+
+      const term = searchTerm.trim().toLowerCase();
+      if (!term) return true;
+      return (
+        (log.studentName || "").toLowerCase().includes(term) ||
+        String(log.studentCode || "").toLowerCase().includes(term) ||
+        String(log.labName || "").toLowerCase().includes(term)
+      );
+    });
+
+    studentLogs.forEach((log: any) => {
       const code = String(log.studentCode || "");
       if (!code) return;
       const current = counts.get(code);
@@ -330,7 +344,7 @@ function DashboardContent() {
         totalShifts: summary.count,
       };
     });
-  }, [data, filteredLogs]);
+  }, [data, statusFilter, searchTerm, studentFilter]);
 
   const isLabOpen = (() => {
     const now = new Date();
@@ -613,12 +627,14 @@ function DashboardContent() {
 
           <div className="print:hidden space-y-3 py-3">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-50 p-1 text-xs">
-                <button type="button" onClick={() => setDatePreset("TODAY")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "TODAY" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.today}</button>
-                <button type="button" onClick={() => setDatePreset("7DAYS")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "7DAYS" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.days7}</button>
-                <button type="button" onClick={() => setDatePreset("MONTH")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "MONTH" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.month}</button>
-                <button type="button" onClick={() => setDatePreset("ALL")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "ALL" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.all}</button>
-              </div>
+              {activeTab === "logs" && (
+                <div className="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-gray-50 p-1 text-xs">
+                  <button type="button" onClick={() => setDatePreset("TODAY")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "TODAY" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.today}</button>
+                  <button type="button" onClick={() => setDatePreset("7DAYS")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "7DAYS" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.days7}</button>
+                  <button type="button" onClick={() => setDatePreset("MONTH")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "MONTH" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.month}</button>
+                  <button type="button" onClick={() => setDatePreset("ALL")} className={"rounded-md px-2.5 py-1.5 transition " + (datePreset === "ALL" ? "bg-white font-semibold text-gray-900 shadow-2xs" : "text-gray-600 hover:text-gray-900")}>{t.dashboard.all}</button>
+                </div>
+              )}
 
               <div className="relative min-w-[180px] flex-1 sm:max-w-xs">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
@@ -743,6 +759,8 @@ function DashboardContent() {
                             type="button"
                             onClick={() => {
                               setSearchTerm("");
+                              setDatePreset("ALL");
+                              setStatusFilter("ALL");
                               setStudentFilter(student.studentCode);
                               setActiveTab("logs");
                             }}
