@@ -84,12 +84,12 @@ function StudentsManagementContent() {
       });
       const data = await res.json();
       if (data.success) {
-        setActionMessage(`Đã cập nhật thông tin sinh viên ${editFullName}!`);
+        setActionMessage(`Đã cập nhật thông tin ${editFullName}!`);
         setTimeout(() => setActionMessage(null), 4000);
         setEditingStudent(null);
         loadStudents();
       } else {
-        alert(data.message || "Không thể cập nhật sinh viên");
+        alert(data.message || "Không thể cập nhật thông tin");
       }
     } catch (e: any) {
       alert("Lỗi kết nối: " + e.message);
@@ -157,7 +157,7 @@ function StudentsManagementContent() {
   };
 
   const handleDeleteStudent = async (id: string, name: string) => {
-    if (!confirm(`Bạn có chắc muốn xóa sinh viên "${name}" khỏi danh sách phòng Lab?`)) return;
+    if (!confirm(`Bạn có chắc muốn xóa "${name}" khỏi danh sách?`)) return;
     try {
       const res = await fetch(getAssetPath("/api/students"), {
         method: "DELETE",
@@ -166,12 +166,12 @@ function StudentsManagementContent() {
       });
       const data = await res.json();
       if (data.success) {
-        setActionMessage(`Đã xóa sinh viên ${name}!`);
+        setActionMessage(`Đã xóa ${name}!`);
         setTimeout(() => setActionMessage(null), 3000);
         loadStudents();
       }
     } catch (e) {
-      alert("Lỗi khi xóa sinh viên");
+      alert("Lỗi khi xóa");
     }
   };
 
@@ -307,8 +307,8 @@ function StudentsManagementContent() {
               <thead className="bg-gray-50 text-gray-400 uppercase text-[10px] font-semibold tracking-wider border-b border-gray-100">
                 <tr>
                   <th className="py-3 px-4">STT</th>
-                  <th className="py-3 px-4">Sinh viên</th>
-                  <th className="py-3 px-4">Khóa & Lớp</th>
+                  <th className="py-3 px-4">Họ tên</th>
+                  <th className="py-3 px-4">Đối tượng</th>
                   <th className="py-3 px-4">Trạng thái QR</th>
                   <th className="py-3 px-4">Thông tin liên hệ</th>
                   <th className="py-3 px-4 text-right">Hành động</th>
@@ -343,13 +343,17 @@ function StudentsManagementContent() {
                           <div className="text-[11px] text-gray-400 font-mono">{sv.studentCode}</div>
                         </td>
                         <td className="py-3.5 px-4">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-md font-semibold text-[11px] border ${getCohortBadgeStyle(
-                              cohort
-                            )}`}
-                          >
-                            {sv.className || "DTH-CNTT"}
-                          </span>
+                          {sv.className ? (
+                            <span
+                              className={`px-2.5 py-0.5 rounded-md font-semibold text-[11px] border ${getCohortBadgeStyle(
+                                cohort
+                              )}`}
+                            >
+                              {sv.className}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 italic text-[11px]">-</span>
+                          )}
                         </td>
                         <td className="py-3.5 px-4">
                           <span
@@ -396,14 +400,14 @@ function StudentsManagementContent() {
                           <button
                             onClick={() => openEditModal(sv)}
                             className="p-1.5 bg-gray-50 hover:bg-rose-50 text-gray-600 hover:text-rose-600 rounded-lg border border-gray-200 transition"
-                            title="Chỉnh sửa thông tin sinh viên"
+                            title="Chỉnh sửa thông tin"
                           >
                             <Pencil className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteStudent(sv.id, sv.fullName)}
                             className="p-1.5 bg-gray-50 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded-lg border border-gray-200 transition"
-                            title="Xóa sinh viên"
+                            title="Xóa"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -414,7 +418,7 @@ function StudentsManagementContent() {
                 ) : (
                   <tr>
                     <td colSpan={6} className="py-12 text-center text-gray-400">
-                      Không tìm thấy sinh viên nào thuộc bộ lọc này
+                      Không tìm thấy kết quả nào thuộc bộ lọc này
                     </td>
                   </tr>
                 )}
@@ -423,7 +427,7 @@ function StudentsManagementContent() {
           </div>
         </div>
 
-        {/* MODAL THÊM SINH VIÊN MỚI */}
+        {/* MODAL THÊM MỚI */}
         {showAddModal && (
           <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 relative animate-in fade-in zoom-in-95">
@@ -435,30 +439,28 @@ function StudentsManagementContent() {
               </button>
               <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <UserPlus className="h-5 w-5 text-rose-500" />
-                Thêm Sinh Viên Phòng Lab
+                Thêm Mới
               </h3>
 
               <form onSubmit={handleAddStudent} className="space-y-3.5 text-xs">
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-1">Mã số sinh viên (MSSV) *</label>
+                  <label className="block text-gray-700 font-semibold mb-1">Mã định danh / Mã số</label>
                   <input
                     type="text"
-                    required
-                    placeholder="vd: 2373401010100"
+                    placeholder="vd: 2373401010100 (để trống sẽ tự tạo)"
                     value={studentCode}
                     onChange={(e) => setStudentCode(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 font-mono focus:outline-none focus:border-rose-400"
                   />
                   <span className="text-[10px] text-gray-400 mt-0.5 block">
-                    (Chuỗi mã vạch in sẵn trên thẻ sinh viên VLU)
+                    (Mã số thẻ hoặc mã định danh quét điểm danh)
                   </span>
                 </div>
 
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-1">Họ và tên sinh viên *</label>
+                  <label className="block text-gray-700 font-semibold mb-1">Họ và tên</label>
                   <input
                     type="text"
-                    required
                     placeholder="vd: Nguyễn Thiện Đức"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
@@ -469,29 +471,28 @@ function StudentsManagementContent() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-gray-700 font-semibold">Lớp chuyên ngành</label>
+                      <label className="text-gray-700 font-semibold">Đối tượng / Lớp</label>
                       <span className="text-[10px] text-gray-400">Chọn hoặc nhập</span>
                     </div>
                     <input
                       type="text"
                       list="suggested-classes-add"
-                      placeholder="vd: 24DTH01, 23DTH01..."
+                      placeholder="vd: K29CNTT16, K30CNTT01..."
                       value={className}
                       onChange={(e) => setClassName(e.target.value)}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
                     />
                     <datalist id="suggested-classes-add">
-                      <option value="24DTH01">Khóa K30 - 24DTH01</option>
-                      <option value="24DTH02">Khóa K30 - 24DTH02</option>
-                      <option value="23DTH01">Khóa K29 - 23DTH01</option>
-                      <option value="23DTH02">Khóa K29 - 23DTH02</option>
-                      <option value="22DTH01">Khóa K28 - 22DTH01</option>
-                      <option value="21DTH01">Khóa K27 - 21DTH01</option>
-                      <option value="DTH-CNTT">Đại học Công nghệ Thông tin</option>
-                      <option value="KHACH-VLANGLAI">Khách vãng lai / Khác</option>
+                      <option value="K30CNTT01">Khóa K30 - CNTT 01</option>
+                      <option value="K29CNTT16">Khóa K29 - CNTT 16</option>
+                      <option value="K29CNTT01">Khóa K29 - CNTT 01</option>
+                      <option value="K28CNTT01">Khóa K28 - CNTT 01</option>
+                      <option value="K27CNTT25">Khóa K27 - CNTT 25</option>
+                      <option value="K29QKD01">Khóa K29 - QTKD 01</option>
+                      <option value="KHACH">Khách vãng lai / Khác</option>
                     </datalist>
                     <div className="flex flex-wrap gap-1 mt-1.5">
-                      {["24DTH01", "23DTH01", "22DTH01", "DTH-CNTT"].map((c) => (
+                      {["K30CNTT01", "K29CNTT16", "K28CNTT01", "K27CNTT25"].map((c) => (
                         <button
                           key={c}
                           type="button"
@@ -516,10 +517,10 @@ function StudentsManagementContent() {
                 </div>
 
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-1">Email Văn Lang</label>
+                  <label className="block text-gray-700 font-semibold mb-1">Email</label>
                   <input
                     type="email"
-                    placeholder="vd: duc.2373401010100@vanlanguni.vn"
+                    placeholder="vd: example@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
@@ -533,7 +534,7 @@ function StudentsManagementContent() {
                     onChange={(e) => setSendQrOnAdd(e.target.checked)}
                     className="rounded border-gray-300 text-rose-600 focus:ring-rose-500"
                   />
-                  <span>Tự động tạo & gửi Thẻ QR cá nhân vào Email sinh viên</span>
+                  <span>Tự động tạo & gửi Thẻ QR cá nhân qua Email</span>
                 </label>
 
                 <div className="flex justify-end gap-2.5 pt-3 border-t border-gray-100">
@@ -549,7 +550,7 @@ function StudentsManagementContent() {
                     disabled={isSubmitting}
                     className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-semibold shadow-xs disabled:opacity-50"
                   >
-                    {isSubmitting ? "Đang lưu..." : "Lưu sinh viên"}
+                    {isSubmitting ? "Đang lưu..." : "Lưu thông tin"}
                   </button>
                 </div>
               </form>
@@ -569,30 +570,28 @@ function StudentsManagementContent() {
               </button>
               <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <Pencil className="h-5 w-5 text-rose-500" />
-                Chỉnh Sửa Hồ Sơ Sinh Viên
+                Chỉnh Sửa Thông Tin
               </h3>
 
               <form onSubmit={handleSaveEdit} className="space-y-3.5 text-xs">
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-1">Mã số sinh viên (MSSV) *</label>
+                  <label className="block text-gray-700 font-semibold mb-1">Mã định danh / Mã số</label>
                   <input
                     type="text"
-                    required
                     placeholder="vd: 2373401010100"
                     value={editStudentCode}
                     onChange={(e) => setEditStudentCode(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 font-mono focus:outline-none focus:border-rose-400"
                   />
                   <span className="text-[10px] text-gray-400 mt-0.5 block">
-                    (Mã vạch thẻ sinh viên dùng quét điểm danh)
+                    (Mã số thẻ hoặc mã định danh quét điểm danh)
                   </span>
                 </div>
 
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-1">Họ và tên sinh viên *</label>
+                  <label className="block text-gray-700 font-semibold mb-1">Họ và tên</label>
                   <input
                     type="text"
-                    required
                     placeholder="vd: Nguyễn Thiện Đức"
                     value={editFullName}
                     onChange={(e) => setEditFullName(e.target.value)}
@@ -603,29 +602,28 @@ function StudentsManagementContent() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-gray-700 font-semibold">Lớp chuyên ngành</label>
+                      <label className="text-gray-700 font-semibold">Đối tượng / Lớp</label>
                       <span className="text-[10px] text-gray-400">Chọn hoặc nhập</span>
                     </div>
                     <input
                       type="text"
                       list="suggested-classes-edit"
-                      placeholder="vd: 24DTH01, 23DTH01..."
+                      placeholder="vd: K29CNTT16, K30CNTT01..."
                       value={editClassName}
                       onChange={(e) => setEditClassName(e.target.value)}
                       className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
                     />
                     <datalist id="suggested-classes-edit">
-                      <option value="24DTH01">Khóa K30 - 24DTH01</option>
-                      <option value="24DTH02">Khóa K30 - 24DTH02</option>
-                      <option value="23DTH01">Khóa K29 - 23DTH01</option>
-                      <option value="23DTH02">Khóa K29 - 23DTH02</option>
-                      <option value="22DTH01">Khóa K28 - 22DTH01</option>
-                      <option value="21DTH01">Khóa K27 - 21DTH01</option>
-                      <option value="DTH-CNTT">Đại học Công nghệ Thông tin</option>
-                      <option value="KHACH-VLANGLAI">Khách vãng lai / Khác</option>
+                      <option value="K30CNTT01">Khóa K30 - CNTT 01</option>
+                      <option value="K29CNTT16">Khóa K29 - CNTT 16</option>
+                      <option value="K29CNTT01">Khóa K29 - CNTT 01</option>
+                      <option value="K28CNTT01">Khóa K28 - CNTT 01</option>
+                      <option value="K27CNTT25">Khóa K27 - CNTT 25</option>
+                      <option value="K29QKD01">Khóa K29 - QTKD 01</option>
+                      <option value="KHACH">Khách vãng lai / Khác</option>
                     </datalist>
                     <div className="flex flex-wrap gap-1 mt-1.5">
-                      {["24DTH01", "23DTH01", "22DTH01", "DTH-CNTT"].map((c) => (
+                      {["K30CNTT01", "K29CNTT16", "K28CNTT01", "K27CNTT25"].map((c) => (
                         <button
                           key={c}
                           type="button"
@@ -650,10 +648,10 @@ function StudentsManagementContent() {
                 </div>
 
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-1">Email Văn Lang</label>
+                  <label className="block text-gray-700 font-semibold mb-1">Email</label>
                   <input
                     type="email"
-                    placeholder="vd: duc.2373401010100@vanlanguni.vn"
+                    placeholder="vd: example@email.com"
                     value={editEmail}
                     onChange={(e) => setEditEmail(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"

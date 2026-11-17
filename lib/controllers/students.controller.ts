@@ -34,7 +34,7 @@ export async function handleStudentsGet(req: NextRequest) {
         fullName: sv.fullName,
         email: sv.email,
         phone: sv.phone,
-        className: sv.className || "DTH-CNTT",
+        className: sv.className || "",
         isActive: sv.isActive,
         qrVersion: sv.qrVersion,
         qrSentAt: sv.qrSentAt,
@@ -65,24 +65,20 @@ export async function handleStudentsPost(req: NextRequest) {
       ttlDays = 0,
     } = body;
 
-    if (!studentCode || !fullName) {
-      return NextResponse.json(
-        { success: false, message: "Vui lòng nhập đầy đủ MSSV và Họ và tên sinh viên!" },
-        { status: 400 }
-      );
-    }
+    const cleanCode = (studentCode && studentCode.trim()) || `TV${Date.now().toString().slice(-6)}`;
+    const cleanFullName = (fullName && fullName.trim()) || `Thành viên ${cleanCode}`;
+    const cleanEmail = email && email.trim() ? email.trim().toLowerCase() : null;
+    const cleanPhone = phone && phone.trim() ? phone.trim() : null;
+    const cleanClass = className && className.trim() ? className.trim() : null;
 
-    const cleanCode = studentCode.trim();
-    const vluParsed = parseVluStudentInfo(cleanCode, fullName);
-
-    // Kiểm tra xem MSSV đã tồn tại chưa
+    // Kiểm tra xem Mã số đã tồn tại chưa
     const existing = await prisma.student.findUnique({
       where: { studentCode: cleanCode },
     });
 
     if (existing) {
       return NextResponse.json(
-        { success: false, message: `Sinh viên với MSSV ${cleanCode} đã tồn tại trong danh sách!` },
+        { success: false, message: `Mã số ${cleanCode} đã tồn tại trong danh sách!` },
         { status: 409 }
       );
     }
@@ -90,16 +86,16 @@ export async function handleStudentsPost(req: NextRequest) {
     let student = await prisma.student.create({
       data: {
         studentCode: cleanCode,
-        fullName: fullName.trim(),
-        email: email ? email.trim().toLowerCase() : vluParsed.defaultEmail,
-        phone: phone ? phone.trim() : null,
-        className: className && className.trim() ? className.trim() : vluParsed.suggestedClass,
+        fullName: cleanFullName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        className: cleanClass,
         isActive: true,
       },
     });
 
     let emailResult = null;
-    if (sendQrEmail) {
+    if (sendQrEmail && student.email) {
       const auth = await requireStaffAuth(req);
       if (auth.authorized) {
         const { token, expiresAtSec } = generatePersonalQrToken(
@@ -111,7 +107,7 @@ export async function handleStudentsPost(req: NextRequest) {
           to: student.email,
           fullName: student.fullName,
           studentCode: student.studentCode,
-          className: student.className,
+          className: student.className || "Chưa phân loại",
           qrToken: token,
           qrVersion: student.qrVersion,
           expiresAtSec,
@@ -129,15 +125,15 @@ export async function handleStudentsPost(req: NextRequest) {
       req,
       action: "STUDENT_CREATE",
       target: `${student.fullName} (${student.studentCode})`,
-      detail: `Lớp ${student.className || "DTH-CNTT"}${emailResult?.sent ? " • Đã gửi QR qua email" : ""}`,
+      detail: `${student.className ? `Lớp/Đối tượng: ${student.className}` : "Chưa phân loại"}${emailResult?.sent ? " • Đã gửi QR qua email" : ""}`,
     });
 
     return NextResponse.json({
       success: true,
       message:
         emailResult?.sent
-          ? `Đã thêm sinh viên ${student.fullName} và gửi Thẻ QR vào ${student.email}!`
-          : `Đã thêm thành công sinh viên ${student.fullName} (${student.studentCode})!`,
+          ? `Đã thêm ${student.fullName} và gửi Thẻ QR vào ${student.email}!`
+          : `Đã thêm thành công ${student.fullName} (${student.studentCode})!`,
       student,
       emailResult,
     });
@@ -146,12 +142,12 @@ export async function handleStudentsPost(req: NextRequest) {
   }
 }
 
-// DELETE: Xóa sinh viên khỏi danh sách
+// DELETE: Xóa khỏi danh sách
 export async function handleStudentsDelete(req: NextRequest) {
   try {
     const { id } = await req.json();
     if (!id) {
-      return NextResponse.json({ success: false, message: "Thiếu ID sinh viên cần xóa!" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "Thiếu ID cần xóa!" }, { status: 400 });
     }
 
     const deletedStudent = await prisma.student.delete({
@@ -162,32 +158,40 @@ export async function handleStudentsDelete(req: NextRequest) {
       req,
       action: "STUDENT_DELETE",
       target: `${deletedStudent.fullName} (${deletedStudent.studentCode})`,
-      detail: `Xóa sinh viên khỏi danh sách phòng Lab`,
+      detail: `Xóa khỏi danh sách phòng Lab`,
     });
 
-    return NextResponse.json({ success: true, message: "Đã xóa sinh viên khỏi danh sách phòng Lab!" });
+    return NextResponse.json({ success: true, message: "Đã xóa khỏi danh sách phòng Lab!" });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
 
-// PUT: Cập nhật thông tin sinh viên trực Lab
+// PUT: Cập nhật thông tin trực Lab
 export async function handleStudentsPut(req: NextRequest) {
   try {
     const body = await req.json();
     const { id, studentCode, fullName, email, phone = "", className = "" } = body;
 
-    if (!id || !studentCode || !fullName) {
+    if (!id) {
       return NextResponse.json(
-        { success: false, message: "Thiếu ID hoặc thông tin sinh viên bắt buộc!" },
+        { success: false, message: "Thiếu ID bản ghi cần cập nhật!" },
         { status: 400 }
       );
     }
 
-    const cleanCode = studentCode.trim();
-    const vluParsed = parseVluStudentInfo(cleanCode, fullName);
+    const existingRecord = await prisma.student.findUnique({ where: { id } });
+    if (!existingRecord) {
+      return NextResponse.json({ success: false, message: "Không tìm thấy dữ liệu!" }, { status: 404 });
+    }
 
-    // Kiểm tra xem MSSV có bị trùng với sinh viên khác không
+    const cleanCode = (studentCode && studentCode.trim()) || existingRecord.studentCode;
+    const cleanFullName = (fullName && fullName.trim()) || existingRecord.fullName;
+    const cleanEmail = email && email.trim() ? email.trim().toLowerCase() : null;
+    const cleanPhone = phone && phone.trim() ? phone.trim() : null;
+    const cleanClass = className && className.trim() ? className.trim() : null;
+
+    // Kiểm tra xem Mã số có bị trùng với người khác không
     const duplicate = await prisma.student.findFirst({
       where: {
         studentCode: cleanCode,
@@ -197,7 +201,7 @@ export async function handleStudentsPut(req: NextRequest) {
 
     if (duplicate) {
       return NextResponse.json(
-        { success: false, message: `MSSV ${cleanCode} đã được dùng bởi sinh viên ${duplicate.fullName}!` },
+        { success: false, message: `Mã số ${cleanCode} đã được dùng bởi ${duplicate.fullName}!` },
         { status: 409 }
       );
     }
@@ -206,10 +210,10 @@ export async function handleStudentsPut(req: NextRequest) {
       where: { id },
       data: {
         studentCode: cleanCode,
-        fullName: fullName.trim(),
-        email: email ? email.trim().toLowerCase() : vluParsed.defaultEmail,
-        phone: phone ? phone.trim() : null,
-        className: className && className.trim() ? className.trim() : vluParsed.suggestedClass,
+        fullName: cleanFullName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        className: cleanClass,
       },
     });
 
@@ -217,12 +221,12 @@ export async function handleStudentsPut(req: NextRequest) {
       req,
       action: "STUDENT_UPDATE",
       target: `${updatedStudent.fullName} (${updatedStudent.studentCode})`,
-      detail: `Cập nhật thông tin sinh viên (${updatedStudent.className || "DTH-CNTT"})`,
+      detail: `Cập nhật thông tin (${updatedStudent.className || "Chưa phân loại"})`,
     });
 
     return NextResponse.json({
       success: true,
-      message: `Đã cập nhật thông tin sinh viên ${updatedStudent.fullName}!`,
+      message: `Đã cập nhật thông tin ${updatedStudent.fullName}!`,
       student: updatedStudent,
     });
   } catch (error: any) {
