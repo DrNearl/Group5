@@ -101,6 +101,7 @@ function attendanceLabel(status: string) {
     case "LATE": return { label: "Đi trễ", className: "border-amber-300 bg-amber-50 text-amber-900" };
     case "EARLY_LEAVE": return { label: "Về sớm", className: "border-blue-300 bg-blue-50 text-blue-900" };
     case "MISSING_CHECKOUT": return { label: "Quên check-out", className: "border-amber-300 bg-amber-50 text-amber-900" };
+    case "ADJUSTED": return { label: "Đã chỉnh sửa", className: "border-slate-300 bg-slate-50 text-slate-800" };
     default: return { label: "Đã ghi nhận", className: "border-gray-300 bg-gray-100 text-gray-800" };
   }
 }

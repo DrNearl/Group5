@@ -42,6 +42,11 @@ const ACTION_META: Record<string, { label: string; group: string; badgeClass: st
     group: "ATTENDANCE",
     badgeClass: "bg-amber-50 text-amber-700 border-amber-200",
   },
+  ATTENDANCE_ADJUST: {
+    label: "Chỉnh sửa giờ ra",
+    group: "ATTENDANCE",
+    badgeClass: "bg-slate-50 text-slate-700 border-slate-200",
+  },
   STUDENT_CREATE: {
     label: "Thêm sinh viên",
     group: "STUDENT",
