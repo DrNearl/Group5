@@ -21,10 +21,69 @@ import {
 import { useLanguage } from "@/lib/language-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { getAssetPath } from "@/lib/asset-path";
+import { LAB_TIMEZONE, getLabDateKey } from "@/lib/attendance-rules";
 
 function isCrossDayLog(log: any): boolean {
   if (!log?.checkInTime || !log?.checkOutTime) return false;
-  return new Date(log.checkInTime).toDateString() !== new Date(log.checkOutTime).toDateString();
+  return getLabDateKey(new Date(log.checkInTime)) !== getLabDateKey(new Date(log.checkOutTime));
+}
+
+function formatLabDate(value: string | Date): string {
+  const date = new Date(value);
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: LAB_TIMEZONE,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(({ type, value: partValue }) => [type, partValue]));
+  return `${values.day}/${values.month}/${values.year}`;
+}
+
+function formatLabTime(value: string | Date): string {
+  const date = new Date(value);
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: LAB_TIMEZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(({ type, value: partValue }) => [type, partValue]));
+  return `${values.hour}:${values.minute}:${values.second}`;
+}
+
+function formatLabDateTime(value: string | Date): string {
+  const date = new Date(value);
+  return `${formatLabDate(date).slice(0, 5)} ${formatLabTime(date)}`;
+}
+
+function getLogStatusLabel(log: any, t: any): string {
+  if (log?.attendanceStatus === "MISSING_CHECKOUT") return t.dashboard.missingCheckout;
+  if (!log?.checkOutTime) return t.dashboard.inLab;
+  if (!log?.isValidSession) return t.dashboard.needsReview;
+  return t.dashboard.completed;
+}
+
+function getLogDurationLabel(log: any): string {
+  if (log?.isValidSession) {
+    return log.durationText && log.durationText !== "--" ? log.durationText : "—";
+  }
+  return "—";
+}
+
+function getLogCheckOutLabel(log: any): string {
+  if (log?.attendanceStatus === "MISSING_CHECKOUT" || !log?.checkOutTime) return "—";
+  return isCrossDayLog(log) ? formatLabDateTime(log.checkOutTime) : formatLabTime(log.checkOutTime);
+}
+
+function getLogDurationHint(log: any, t: any): string | undefined {
+  if (log?.isValidSession) return undefined;
+  if (log?.attendanceStatus === "MISSING_CHECKOUT") {
+    return t.dashboard.missingCheckoutDurationHint;
+  }
+  if (!log?.checkOutTime) return t.dashboard.openSessionDurationHint;
+  return t.dashboard.invalidSessionDurationHint;
 }
 
 function getLocalDateKey(value: string | Date): string {
@@ -44,23 +103,30 @@ function getAttendanceDateKey(log: any): string {
 
 function LogStatusBadge({ log }: { log: any }) {
   const { t } = useLanguage();
+  if (log?.attendanceStatus === "MISSING_CHECKOUT") {
+    return (
+      <span className="inline-flex whitespace-nowrap rounded-full border border-amber-300 bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900">
+        {t.dashboard.missingCheckout}
+      </span>
+    );
+  }
   if (!log?.checkOutTime) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
         {t.dashboard.inLab}
       </span>
     );
   }
-  if (isCrossDayLog(log)) {
+  if (!log?.isValidSession) {
     return (
-      <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
-        {t.dashboard.acrossDay}
+      <span className="inline-flex whitespace-nowrap rounded-full border border-amber-200 bg-amber-50/70 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+        {t.dashboard.needsReview}
       </span>
     );
   }
   return (
-    <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-700">
+    <span className="inline-flex whitespace-nowrap rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-700">
       {t.dashboard.completed}
     </span>
   );
@@ -193,15 +259,11 @@ function DashboardContent() {
       STT: idx + 1,
       "Họ và tên": log.studentName,
       MSSV: log.studentCode,
-      "Ngày trực": new Date(log.dutyDate).toLocaleDateString("vi-VN"),
-      "Giờ vào": log.checkInTime
-        ? new Date(log.checkInTime).toLocaleTimeString("vi-VN")
-        : "--:--",
-      "Giờ ra": log.checkOutTime
-        ? new Date(log.checkOutTime).toLocaleTimeString("vi-VN")
-        : "--:--",
-      "Thời lượng": log.durationText && log.durationText !== "--" ? log.durationText : (log.checkOutTime ? "--" : "Đang trực"),
-      "Trạng thái": !log.checkOutTime ? "Đang trực" : isCrossDayLog(log) ? "Qua ngày" : "Hoàn thành",
+      "Ngày trực": formatLabDate(log.checkInTime || log.dutyDate),
+      "Giờ vào": log.checkInTime ? formatLabTime(log.checkInTime) : "—",
+      "Giờ ra": getLogCheckOutLabel(log),
+      "Thời lượng": getLogDurationLabel(log),
+      "Trạng thái": getLogStatusLabel(log, t),
     }));
 
     const workbook = XLSX.utils.book_new();
@@ -263,6 +325,7 @@ function DashboardContent() {
       // 3. Trạng thái
       if (statusFilter === "IN_LAB" && log.checkOutTime) return false;
       if (statusFilter === "CHECKED_OUT" && !log.checkOutTime) return false;
+      if (statusFilter === "MISSING_CHECKOUT" && log.attendanceStatus !== "MISSING_CHECKOUT") return false;
 
       if (studentFilter && log.studentCode !== studentFilter) return false;
 
@@ -299,13 +362,6 @@ function DashboardContent() {
     () => new Set(todayLogs.map((log: any) => log.studentCode).filter(Boolean)).size,
     [todayLogs]
   );
-
-  const needsAttentionCount = useMemo(() => {
-    const todayStr = getLocalDateKey(new Date());
-    return (data?.activeInLab || []).filter((student: any) =>
-      student.isStale || getLocalDateKey(student.checkInTime) !== todayStr
-    ).length;
-  }, [data]);
 
   const filteredStudentStats = useMemo(() => {
     const counts = new Map<string, { count: number; name: string }>();
@@ -438,9 +494,9 @@ function DashboardContent() {
             { label: t.dashboard.presentCount, value: data?.activeInLab?.length || 0, tone: "text-emerald-700", live: true, today: false },
             { label: t.dashboard.todayLogsCount, value: todayLogs.length, tone: "text-gray-900", live: false, today: true },
             { label: t.dashboard.todayStudentsCount, value: todayStudentCount, tone: "text-gray-900", live: false, today: true },
-            { label: t.dashboard.needsAttention, value: needsAttentionCount, tone: needsAttentionCount > 0 ? "text-amber-700" : "text-gray-700", live: false, today: false },
-          ].map((kpi) => (
-            <div key={kpi.label} className="rounded-xl border border-gray-200 bg-white p-4 shadow-xs">
+            { label: t.dashboard.needsAttention, value: data?.stats?.missingCheckoutCount || 0, tone: (data?.stats?.missingCheckoutCount || 0) > 0 ? "text-amber-700" : "text-gray-700", live: false, today: false },
+          ].map((kpi) => {
+            const content = <>
               <div className="flex items-center gap-2 text-xs font-semibold text-gray-600">
                 {kpi.live && <span className="h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-emerald-100" />}
                 <span>{kpi.label}</span>
@@ -451,8 +507,19 @@ function DashboardContent() {
               ) : (
                 <div className={"mt-1 font-mono text-2xl font-bold " + kpi.tone}>{kpi.value}</div>
               )}
-            </div>
-          ))}
+            </>;
+            const className = "rounded-xl border border-gray-200 bg-white p-4 text-left shadow-xs";
+            if (kpi.label === t.dashboard.needsAttention) {
+              return <button key={kpi.label} type="button" className={className} onClick={() => {
+                setStatusFilter("MISSING_CHECKOUT");
+                setDatePreset("ALL");
+                setStudentFilter(null);
+                setSearchTerm("");
+                setActiveTab("logs");
+              }}>{content}</button>;
+            }
+            return <div key={kpi.label} className={className}>{content}</div>;
+          })}
         </section>
 
         {loadError && (
@@ -658,6 +725,7 @@ function DashboardContent() {
                   <option value="ALL">{t.dashboard.allStatuses}</option>
                   <option value="IN_LAB">{t.dashboard.inLab}</option>
                   <option value="CHECKED_OUT">{t.dashboard.completed}</option>
+                  <option value="MISSING_CHECKOUT">{t.dashboard.missingCheckout}</option>
                 </select>
               </div>
             </div>
@@ -690,7 +758,7 @@ function DashboardContent() {
                       <th className="px-3 py-3">{t.dashboard.checkInTime}</th>
                       <th className="px-3 py-3">{t.dashboard.checkOutTime}</th>
                       <th className="px-3 py-3">{t.dashboard.duration}</th>
-                      <th className="px-3 py-3 text-right">{t.dashboard.statusColumn}</th>
+                      <th className="w-36 whitespace-nowrap px-3 py-3 text-center">{t.dashboard.statusColumn}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -708,11 +776,11 @@ function DashboardContent() {
                             </button>
                           ) : <span className="text-xs text-gray-500">—</span>}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-3 text-gray-700">{new Date(log.dutyDate).toLocaleDateString("vi-VN")}</td>
-                        <td className="whitespace-nowrap px-3 py-3 font-mono font-semibold text-emerald-700">{log.checkInTime ? new Date(log.checkInTime).toLocaleTimeString("vi-VN") : "--:--"}</td>
-                        <td className="whitespace-nowrap px-3 py-3 font-mono font-semibold text-gray-700">{log.checkOutTime ? new Date(log.checkOutTime).toLocaleTimeString("vi-VN") : "--:--"}</td>
-                        <td className="whitespace-nowrap px-3 py-3 font-medium text-gray-800">{log.durationText && log.durationText !== "--" ? log.durationText : "--"}</td>
-                        <td className="px-3 py-3 text-right"><LogStatusBadge log={log} /></td>
+                        <td className="whitespace-nowrap px-3 py-3 text-gray-700">{formatLabDate(log.checkInTime || log.dutyDate)}</td>
+                        <td className="whitespace-nowrap px-3 py-3 font-mono font-semibold text-emerald-700">{log.checkInTime ? formatLabTime(log.checkInTime) : "—"}</td>
+                        <td className="whitespace-nowrap px-3 py-3 font-mono font-semibold text-gray-700">{getLogCheckOutLabel(log)}</td>
+                        <td title={getLogDurationHint(log, t)} className="whitespace-nowrap px-3 py-3 font-medium text-gray-800">{getLogDurationLabel(log)}</td>
+                        <td className="w-36 whitespace-nowrap px-3 py-3 text-center"><LogStatusBadge log={log} /></td>
                       </tr>
                     )) : (
                       <tr><td colSpan={8} className="px-3 py-10 text-center text-sm text-gray-600">{t.dashboard.noFilteredLogs}</td></tr>
@@ -835,11 +903,11 @@ function DashboardContent() {
                         <td className="px-2 py-1.5">{index + 1}</td>
                         <td className="px-2 py-1.5">{log.studentName || t.dashboard.unnamedStudent}</td>
                         <td className="px-2 py-1.5 font-mono">{log.studentCode}</td>
-                        <td className="px-2 py-1.5">{new Date(log.dutyDate).toLocaleDateString("vi-VN")}</td>
-                        <td className="px-2 py-1.5">{log.checkInTime ? new Date(log.checkInTime).toLocaleTimeString("vi-VN") : "--:--"}</td>
-                        <td className="px-2 py-1.5">{log.checkOutTime ? new Date(log.checkOutTime).toLocaleTimeString("vi-VN") : "--:--"}</td>
-                        <td className="px-2 py-1.5">{log.durationText && log.durationText !== "--" ? log.durationText : "--"}</td>
-                        <td className="px-2 py-1.5"><LogStatusBadge log={log} /></td>
+                        <td className="px-2 py-1.5">{formatLabDate(log.checkInTime || log.dutyDate)}</td>
+                        <td className="px-2 py-1.5">{log.checkInTime ? formatLabTime(log.checkInTime) : "—"}</td>
+                        <td className="px-2 py-1.5">{getLogCheckOutLabel(log)}</td>
+                        <td title={getLogDurationHint(log, t)} className="px-2 py-1.5">{getLogDurationLabel(log)}</td>
+                        <td className="whitespace-nowrap px-2 py-1.5"><LogStatusBadge log={log} /></td>
                       </tr>
                     ))}
                   </tbody>
