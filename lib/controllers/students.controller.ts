@@ -5,6 +5,47 @@ import { requireStaffAuth } from "@/lib/auth-server";
 import { generatePersonalQrToken } from "@/lib/qr-security";
 import { sendPersonalQrEmail } from "@/lib/mailer";
 import { recordAuditLog } from "@/lib/audit";
+import { randomBytes } from "node:crypto";
+import { validateStudentInput } from "@/lib/student-validation";
+
+function isPrismaUniqueError(error: any): boolean {
+  return error?.code === "P2002";
+}
+
+async function duplicateStudentCodeResponse(studentCode: string) {
+  let existingName = "";
+  try {
+    const existing = await prisma.student.findUnique({
+      where: { studentCode },
+      select: { fullName: true },
+    });
+    existingName = existing?.fullName || "";
+  } catch {
+    // Keep the client response safe even if the follow-up lookup also fails.
+  }
+
+  const errorMessage = existingName
+    ? `Mã số ${studentCode} đã được dùng bởi ${existingName}.`
+    : `Mã số ${studentCode} đã được sử dụng.`;
+  return NextResponse.json(
+    {
+      success: false,
+      message: "Vui lòng kiểm tra lại các ô được đánh dấu",
+      errors: { studentCode: errorMessage },
+    },
+    { status: 409 }
+  );
+}
+
+async function generateStudentCode(): Promise<string> {
+  let candidate = "";
+  let exists = true;
+  while (exists) {
+    candidate = `AUTO${randomBytes(8).toString("hex").toUpperCase()}`;
+    exists = Boolean(await prisma.student.findUnique({ where: { studentCode: candidate }, select: { id: true } }));
+  }
+  return candidate;
+}
 
 // GET: Lấy danh sách toàn bộ Sinh viên trực Lab
 export async function handleStudentsGet(req: NextRequest) {
@@ -53,8 +94,24 @@ export async function handleStudentsGet(req: NextRequest) {
 
 // POST: Thêm mới Sinh viên trực Lab (dùng mã vạch thẻ SV, không cần tạo mật khẩu)
 export async function handleStudentsPost(req: NextRequest) {
+  let cleanCode = "";
   try {
-    const body = await req.json();
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, message: "Dữ liệu gửi lên không hợp lệ" },
+        { status: 400 }
+      );
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json(
+        { success: false, message: "Dữ liệu gửi lên không hợp lệ" },
+        { status: 400 }
+      );
+    }
+
     const {
       studentCode,
       fullName,
@@ -65,31 +122,39 @@ export async function handleStudentsPost(req: NextRequest) {
       ttlDays = 0,
     } = body;
 
-    const cleanCode = (studentCode && studentCode.trim()) || `TV${Date.now().toString().slice(-6)}`;
-    const cleanFullName = (fullName && fullName.trim()) || `Thành viên ${cleanCode}`;
-    const cleanEmail = email && email.trim() ? email.trim().toLowerCase() : null;
-    const cleanPhone = phone && phone.trim() ? phone.trim() : null;
-    const cleanClass = className && className.trim() ? className.trim() : null;
+    const errors = validateStudentInput({ studentCode, fullName, className, phone, email }, "create");
+    if (Object.keys(errors).length > 0) {
+      return NextResponse.json(
+        { success: false, message: "Vui lòng kiểm tra lại các ô được đánh dấu", errors },
+        { status: 400 }
+      );
+    }
 
-    // Kiểm tra xem Mã số đã tồn tại chưa
+    const cleanFullName = String(fullName).trim();
+    cleanCode = typeof studentCode === "string" && studentCode.trim()
+      ? studentCode.trim()
+      : await generateStudentCode();
+    const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    const cleanPhone = typeof phone === "string" ? phone.trim() : "";
+    const cleanClassName = typeof className === "string" ? className.trim() : "";
+    const vluParsed = parseVluStudentInfo(cleanCode, cleanFullName);
+
+    // Kiểm tra xem MSSV đã tồn tại chưa
     const existing = await prisma.student.findUnique({
       where: { studentCode: cleanCode },
     });
 
     if (existing) {
-      return NextResponse.json(
-        { success: false, message: `Mã số ${cleanCode} đã tồn tại trong danh sách!` },
-        { status: 409 }
-      );
+      return duplicateStudentCodeResponse(cleanCode);
     }
 
     let student = await prisma.student.create({
       data: {
         studentCode: cleanCode,
         fullName: cleanFullName,
-        email: cleanEmail,
-        phone: cleanPhone,
-        className: cleanClass,
+        email: cleanEmail || vluParsed.defaultEmail,
+        phone: cleanPhone || null,
+        className: cleanClassName || vluParsed.suggestedClass,
         isActive: true,
       },
     });
@@ -138,7 +203,12 @@ export async function handleStudentsPost(req: NextRequest) {
       emailResult,
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    if (isPrismaUniqueError(error)) return duplicateStudentCodeResponse(cleanCode);
+    console.error("POST /api/students error:", error);
+    return NextResponse.json(
+      { success: false, message: "Đã xảy ra lỗi máy chủ, vui lòng thử lại" },
+      { status: 500 }
+    );
   }
 }
 
@@ -169,15 +239,27 @@ export async function handleStudentsDelete(req: NextRequest) {
 
 // PUT: Cập nhật thông tin trực Lab
 export async function handleStudentsPut(req: NextRequest) {
+  let cleanCode = "";
   try {
-    const body = await req.json();
-    const { id, studentCode, fullName, email, phone = "", className = "" } = body;
-
-    if (!id) {
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
       return NextResponse.json(
-        { success: false, message: "Thiếu ID bản ghi cần cập nhật!" },
+        { success: false, message: "Dữ liệu gửi lên không hợp lệ" },
         { status: 400 }
       );
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json(
+        { success: false, message: "Dữ liệu gửi lên không hợp lệ" },
+        { status: 400 }
+      );
+    }
+
+    const { id, studentCode, fullName, email, phone = "", className = "" } = body;
+    if (typeof id !== "string" || !id.trim()) {
+      return NextResponse.json({ success: false, message: "Thiếu ID bản ghi cần cập nhật!" }, { status: 400 });
     }
 
     const existingRecord = await prisma.student.findUnique({ where: { id } });
@@ -185,11 +267,19 @@ export async function handleStudentsPut(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Không tìm thấy dữ liệu!" }, { status: 404 });
     }
 
-    const cleanCode = (studentCode && studentCode.trim()) || existingRecord.studentCode;
-    const cleanFullName = (fullName && fullName.trim()) || existingRecord.fullName;
-    const cleanEmail = email && email.trim() ? email.trim().toLowerCase() : null;
-    const cleanPhone = phone && phone.trim() ? phone.trim() : null;
-    const cleanClass = className && className.trim() ? className.trim() : null;
+    const errors = validateStudentInput({ studentCode, fullName, email, phone, className }, "edit");
+    if (Object.keys(errors).length > 0) {
+      return NextResponse.json(
+        { success: false, message: "Vui lòng kiểm tra lại các ô được đánh dấu", errors },
+        { status: 400 }
+      );
+    }
+
+    cleanCode = studentCode.trim();
+    const cleanFullName = fullName.trim();
+    const cleanEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    const cleanPhone = typeof phone === "string" ? phone.trim() : "";
+    const cleanClassName = typeof className === "string" ? className.trim() : "";
 
     // Kiểm tra xem Mã số có bị trùng với người khác không
     const duplicate = await prisma.student.findFirst({
@@ -201,7 +291,11 @@ export async function handleStudentsPut(req: NextRequest) {
 
     if (duplicate) {
       return NextResponse.json(
-        { success: false, message: `Mã số ${cleanCode} đã được dùng bởi ${duplicate.fullName}!` },
+        {
+          success: false,
+          message: "Vui lòng kiểm tra lại các ô được đánh dấu",
+          errors: { studentCode: `Mã số ${cleanCode} đã được dùng bởi ${duplicate.fullName || "Chưa có tên"}.` },
+        },
         { status: 409 }
       );
     }
@@ -211,9 +305,9 @@ export async function handleStudentsPut(req: NextRequest) {
       data: {
         studentCode: cleanCode,
         fullName: cleanFullName,
-        email: cleanEmail,
-        phone: cleanPhone,
-        className: cleanClass,
+        email: cleanEmail || null,
+        phone: cleanPhone || null,
+        className: cleanClassName || null,
       },
     });
 
@@ -230,7 +324,12 @@ export async function handleStudentsPut(req: NextRequest) {
       student: updatedStudent,
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    if (isPrismaUniqueError(error)) return duplicateStudentCodeResponse(cleanCode);
+    console.error("PUT /api/students error:", error);
+    return NextResponse.json(
+      { success: false, message: "Đã xảy ra lỗi máy chủ, vui lòng thử lại" },
+      { status: 500 }
+    );
   }
 }
 
