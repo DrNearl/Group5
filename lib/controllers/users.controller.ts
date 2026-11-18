@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
@@ -46,6 +47,79 @@ function normalizeText(value: unknown) {
 
 function isValidEmail(value: string) {
   return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+export async function handleUsersPasswordReset(req: NextRequest) {
+  const messages = getUserMessages(req).api;
+
+  try {
+    const authResponse = await requireAdmin(req);
+    if (authResponse) return authResponse;
+
+    const id = new URL(req.url).searchParams.get("id")?.trim();
+    if (!id) {
+      return NextResponse.json({ success: false, message: messages.accountNotFound }, { status: 400 });
+    }
+
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ success: false, message: messages.invalidJson }, { status: 400 });
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ success: false, message: messages.invalidJson }, { status: 400 });
+    }
+
+    const payload = body as Record<string, unknown>;
+    if (payload.generateTemporary !== undefined && typeof payload.generateTemporary !== "boolean") {
+      return NextResponse.json({ success: false, message: messages.invalidJson }, { status: 400 });
+    }
+
+    const generateTemporary = payload.generateTemporary === true;
+    let newPassword: string;
+    if (generateTemporary) {
+      if (payload.password !== undefined) {
+        return NextResponse.json({ success: false, message: messages.invalidJson }, { status: 400 });
+      }
+      newPassword = randomBytes(12).toString("base64url");
+    } else {
+      if (typeof payload.password !== "string" || payload.password.length === 0) {
+        return NextResponse.json({ success: false, message: messages.passwordRequired }, { status: 400 });
+      }
+      if (payload.password.length < 6) {
+        return NextResponse.json({ success: false, message: messages.passwordTooShort }, { status: 400 });
+      }
+      newPassword = payload.password;
+    }
+
+    const account = await prisma.user.findUnique({
+      where: { id },
+      select: { username: true },
+    });
+    if (!account) {
+      return NextResponse.json({ success: false, message: messages.accountNotFound }, { status: 404 });
+    }
+
+    await prisma.user.update({
+      where: { id },
+      data: { passwordHash: await hashPassword(newPassword) },
+      select: { id: true },
+    });
+
+    await recordAuditLog({
+      req,
+      action: "PASSWORD_RESET",
+      target: account.username,
+    });
+
+    return NextResponse.json({
+      success: true,
+      ...(generateTemporary ? { temporaryPassword: newPassword } : {}),
+    });
+  } catch {
+    return NextResponse.json({ success: false, message: messages.serverError }, { status: 500 });
+  }
 }
 
 export async function handleUsersGet(req: NextRequest) {

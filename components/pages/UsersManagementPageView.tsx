@@ -11,6 +11,7 @@ import {
   X,
   Trash2,
   Pencil,
+  KeyRound,
 } from "lucide-react";
 import type { UserRole } from "@/lib/auth-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -43,6 +44,12 @@ function UsersManagementContent() {
   const [deleteError, setDeleteError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [resettingUser, setResettingUser] = useState<ManagedUser | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [passwordResetError, setPasswordResetError] = useState("");
+  const [passwordResetComplete, setPasswordResetComplete] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   // Form states
   const [studentCode, setStudentCode] = useState("");
@@ -191,6 +198,53 @@ function UsersManagementContent() {
     }
   };
 
+  const openPasswordReset = (account: ManagedUser) => {
+    setResettingUser(account);
+    setNewPassword("");
+    setTemporaryPassword("");
+    setPasswordResetError("");
+    setPasswordResetComplete(false);
+  };
+
+  const closePasswordReset = () => {
+    setResettingUser(null);
+    setNewPassword("");
+    setTemporaryPassword("");
+    setPasswordResetError("");
+    setPasswordResetComplete(false);
+  };
+
+  const submitPasswordReset = async (generateTemporary: boolean) => {
+    if (!resettingUser) return;
+
+    setIsResettingPassword(true);
+    setPasswordResetError("");
+    try {
+      const res = await fetch(`/api/users/password?id=${encodeURIComponent(resettingUser.id)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-vlu-language": lang },
+        body: JSON.stringify(generateTemporary ? { generateTemporary: true } : { password: newPassword }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPasswordResetComplete(true);
+        setNewPassword("");
+        setTemporaryPassword(typeof data.temporaryPassword === "string" ? data.temporaryPassword : "");
+      } else {
+        setPasswordResetError(data.message || t.users.passwordResetErrorFallback);
+      }
+    } catch {
+      setPasswordResetError(t.users.passwordResetErrorFallback);
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  const handlePasswordResetSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    void submitPasswordReset(false);
+  };
+
   const filteredUsers = users.filter(
     (u) =>
       u.username !== "admin" &&
@@ -318,6 +372,15 @@ function UsersManagementContent() {
                     title={u.isActive ? t.users.deactivateButton : t.users.reactivateButton}
                   >
                     {u.isActive ? t.users.deactivateButton : t.users.reactivateButton}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openPasswordReset(u)}
+                    className="min-h-11 whitespace-nowrap rounded-md px-2 text-xs text-indigo-700 hover:text-indigo-900 flex items-center gap-1 font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+                    title={t.users.resetPasswordButton}
+                  >
+                    <KeyRound className="h-3.5 w-3.5" />
+                    {t.users.resetPasswordButton}
                   </button>
                   <button
                     onClick={() => openDeleteConfirmation(u)}
@@ -571,6 +634,107 @@ function UsersManagementContent() {
                 {t.users.deleteConfirmButton}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {resettingUser && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-gray-200 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
+              <h3 className="text-base font-bold text-gray-900">
+                {t.users.resetPasswordTitle.replace("{username}", resettingUser.username)}
+              </h3>
+              <button
+                type="button"
+                onClick={closePasswordReset}
+                disabled={isResettingPassword}
+                className="text-gray-400 hover:text-gray-700 disabled:opacity-50"
+                aria-label={t.users.cancelButton}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {passwordResetComplete ? (
+              <div role="status" className="space-y-4">
+                {temporaryPassword ? (
+                  <>
+                    <p className="text-sm font-semibold text-gray-900">{t.users.temporaryPasswordTitle}</p>
+                    <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-center font-mono text-lg font-bold tracking-wide text-indigo-900 select-all break-all">
+                      {temporaryPassword}
+                    </div>
+                    <p className="text-xs leading-relaxed text-gray-600">{t.users.temporaryPasswordNotice}</p>
+                  </>
+                ) : (
+                  <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                    {t.users.passwordResetSuccess}
+                  </p>
+                )}
+                <div className="flex justify-end border-t border-gray-100 pt-3">
+                  <button
+                    type="button"
+                    onClick={closePasswordReset}
+                    className="min-h-11 rounded-lg bg-gray-100 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-200"
+                  >
+                    {t.users.cancelButton}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handlePasswordResetSubmit} className="space-y-4 text-xs">
+                {passwordResetError && (
+                  <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700">
+                    {passwordResetError}
+                  </div>
+                )}
+
+                <div>
+                  <label htmlFor="users-reset-password" className="mb-1 block font-medium text-gray-700">
+                    {t.users.newPasswordLabel}
+                  </label>
+                  <input
+                    id="users-reset-password"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={6}
+                    maxLength={128}
+                    required
+                    placeholder={t.users.newPasswordPlaceholder}
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-red-500 focus:bg-white focus:outline-none"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">{t.users.passwordMinHint}</p>
+                </div>
+
+                <div className="flex flex-col-reverse gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:flex-wrap sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={closePasswordReset}
+                    disabled={isResettingPassword}
+                    className="min-h-11 rounded-lg bg-gray-100 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                  >
+                    {t.users.cancelButton}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void submitPasswordReset(true)}
+                    disabled={isResettingPassword}
+                    className="min-h-11 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-xs font-semibold text-indigo-800 hover:bg-indigo-100 disabled:opacity-50"
+                  >
+                    {isResettingPassword ? t.users.resettingPassword : t.users.generateTemporaryPasswordButton}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isResettingPassword}
+                    className="min-h-11 rounded-lg bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-red-500 disabled:opacity-50"
+                  >
+                    {isResettingPassword ? t.users.resettingPassword : t.users.saveNewPasswordButton}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

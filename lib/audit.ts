@@ -18,6 +18,7 @@ export type AuditAction =
   | "USER_DEACTIVATE"
   | "USER_REACTIVATE"
   | "USER_DELETE"
+  | "PASSWORD_RESET"
   | "PASSWORD_CHANGE";
 
 interface RecordAuditLogParams {
