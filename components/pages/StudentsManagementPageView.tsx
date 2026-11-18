@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Users,
   UserPlus,
@@ -43,6 +44,14 @@ const STUDENT_CLASS_OPTIONS = [
   { value: "DTH-CNTT", label: "Đại học Công nghệ Thông tin" },
   { value: "KHACH-VLANGLAI", label: "Khách vãng lai / Khác" },
 ];
+
+function ModalPortal({ children }: { children: React.ReactNode }) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => setIsMounted(true), []);
+
+  return isMounted ? createPortal(children, document.body) : null;
+}
 
 async function readJsonSafe(res: Response): Promise<{ data: any | null; status: number }> {
   try {
@@ -721,6 +730,7 @@ function StudentsManagementContent() {
 
         {/* MODAL THÊM SINH VIÊN MỚI */}
         {showAddModal && (
+          <ModalPortal>
           <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 relative animate-in fade-in zoom-in-95">
               <button
@@ -773,10 +783,12 @@ function StudentsManagementContent() {
               </form>
             </div>
           </div>
+          </ModalPortal>
         )}
 
         {/* MODAL CHỈNH SỬA SINH VIÊN */}
         {editingStudent && (
+          <ModalPortal>
           <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 relative animate-in fade-in zoom-in-95">
               <button
@@ -819,27 +831,32 @@ function StudentsManagementContent() {
               </form>
             </div>
           </div>
+          </ModalPortal>
         )}
 
         {qrStudent && (
-          <StudentQrModal
-            student={qrStudent}
-            userId={user?.id}
-            userEmail={user?.email}
-            username={user?.username}
-            onClose={() => setQrStudent(null)}
-            onUpdated={loadStudents}
-          />
+          <ModalPortal>
+            <StudentQrModal
+              student={qrStudent}
+              userId={user?.id}
+              userEmail={user?.email}
+              username={user?.username}
+              onClose={() => setQrStudent(null)}
+              onUpdated={loadStudents}
+            />
+          </ModalPortal>
         )}
 
         {showImportModal && (
-          <StudentBulkImportModal
-            userId={user?.id}
-            userEmail={user?.email}
-            username={user?.username}
-            onClose={() => setShowImportModal(false)}
-            onImported={loadStudents}
-          />
+          <ModalPortal>
+            <StudentBulkImportModal
+              userId={user?.id}
+              userEmail={user?.email}
+              username={user?.username}
+              onClose={() => setShowImportModal(false)}
+              onImported={loadStudents}
+            />
+          </ModalPortal>
         )}
       </div>
     </div>

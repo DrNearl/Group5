@@ -264,7 +264,7 @@ function UsersManagementContent() {
                 <Shield className="h-6 w-6 text-red-600" />
                 QUẢN LÝ TÀI KHOẢN
               </h1>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-600">
                 Khoa Công nghệ Thông tin - Trường Đại học Văn Lang • Quản lý danh sách tài khoản Giảng viên & Cán bộ hướng dẫn
               </p>
             </div>
@@ -291,7 +291,7 @@ function UsersManagementContent() {
               placeholder="Tìm theo Tên đăng nhập, Họ và tên hoặc Email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-500 shadow-sm"
+              className="w-full bg-white border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-xs text-gray-900 placeholder-gray-600 focus:outline-none focus:border-red-500 shadow-sm"
             />
           </div>
         </div>
@@ -307,7 +307,7 @@ function UsersManagementContent() {
           <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center shadow-sm space-y-3">
             <Shield className="h-10 w-10 text-gray-300 mx-auto" />
             <h3 className="text-sm font-bold text-gray-700">Chưa có tài khoản Giảng viên nào trong danh sách</h3>
-            <p className="text-xs text-gray-400 max-w-sm mx-auto">
+            <p className="text-xs text-gray-600 max-w-sm mx-auto">
               Bấm nút &ldquo;Thêm Tài Khoản&rdquo;
             </p>
           </div>
@@ -321,13 +321,13 @@ function UsersManagementContent() {
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span
-                      className="min-w-0 max-w-full text-[10px] leading-4 font-bold px-2.5 py-1 rounded-full flex items-center gap-1 border bg-indigo-50 text-indigo-800 border-indigo-200"
+                      className="min-w-0 max-w-full text-xs leading-4 font-bold px-2.5 py-1 rounded-full flex items-center gap-1 border bg-indigo-50 text-indigo-800 border-indigo-200"
                     >
                       <Shield className="h-3 w-3 shrink-0" />
                       {u.role === "ADMIN" ? t.users.roleAdmin : t.users.roleLecturer}
                     </span>
 
-                    <span className={`shrink-0 whitespace-nowrap text-[10px] font-mono border px-2 py-1 rounded-full font-semibold ${u.isActive
+                    <span className={`shrink-0 whitespace-nowrap text-xs font-mono border px-2 py-1 rounded-full font-semibold ${u.isActive
                       ? "text-emerald-700 bg-emerald-50 border-emerald-200"
                       : "text-amber-700 bg-amber-50 border-amber-200"
                     }`}>
@@ -530,7 +530,7 @@ function UsersManagementContent() {
                   type="text"
                   value={editingUser.username}
                   readOnly
-                  className="w-full bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 text-gray-500 font-mono"
+                  className="w-full bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 text-gray-600 font-mono"
                 />
               </div>
 
@@ -705,7 +705,7 @@ function UsersManagementContent() {
                     onChange={(event) => setNewPassword(event.target.value)}
                     className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-red-500 focus:bg-white focus:outline-none"
                   />
-                  <p className="mt-1 text-xs text-gray-500">{t.users.passwordMinHint}</p>
+                  <p className="mt-1 text-xs text-gray-600">{t.users.passwordMinHint}</p>
                 </div>
 
                 <div className="flex flex-col-reverse gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:flex-wrap sm:justify-end">
