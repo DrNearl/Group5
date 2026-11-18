@@ -37,5 +37,8 @@ Thumbs.db
 # Report
 Report.docx
 
-.agents/skills
+# AI Agent, Skills & Prompts
+.agents/
+.agents
+.github/prompts/
 .github/prompts
