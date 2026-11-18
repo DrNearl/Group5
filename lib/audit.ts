@@ -42,6 +42,10 @@ export async function recordAuditLog({
       }
     }
 
+    if (!prisma?.auditLog) {
+      return;
+    }
+
     await prisma.auditLog.create({
       data: {
         actorId: resolvedActor?.id ?? null,

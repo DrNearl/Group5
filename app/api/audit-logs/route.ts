@@ -15,6 +15,14 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    if (!prisma?.auditLog) {
+      return NextResponse.json({
+        success: true,
+        logs: [],
+        warning: "Prisma Client chưa đồng bộ bảng AuditLog. Cần chạy 'npx prisma generate && npx prisma db push'.",
+      });
+    }
+
     const logs = await prisma.auditLog.findMany({
       orderBy: { createdAt: "desc" },
       take: 300,
