@@ -851,24 +851,28 @@ function StudentsManagementContent() {
         )}
 
         {qrStudent && (
-          <StudentQrModal
-            student={qrStudent}
-            userId={user?.id}
-            userEmail={user?.email}
-            username={user?.username}
-            onClose={() => setQrStudent(null)}
-            onUpdated={loadStudents}
-          />
+          <ModalPortal>
+            <StudentQrModal
+              student={qrStudent}
+              userId={user?.id}
+              userEmail={user?.email}
+              username={user?.username}
+              onClose={() => setQrStudent(null)}
+              onUpdated={loadStudents}
+            />
+          </ModalPortal>
         )}
 
         {showImportModal && (
-          <StudentBulkImportModal
-            userId={user?.id}
-            userEmail={user?.email}
-            username={user?.username}
-            onClose={() => setShowImportModal(false)}
-            onImported={loadStudents}
-          />
+          <ModalPortal>
+            <StudentBulkImportModal
+              userId={user?.id}
+              userEmail={user?.email}
+              username={user?.username}
+              onClose={() => setShowImportModal(false)}
+              onImported={loadStudents}
+            />
+          </ModalPortal>
         )}
       </div>
     </div>
