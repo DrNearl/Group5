@@ -1,6 +1,6 @@
 // Prisma Database Seed Script (DỮ LIỆU THỰC TẾ 100%)
 // Trường Đại học Văn Lang - Khoa Công nghệ Thông tin
-// Hệ quản trị cơ sở dữ liệu: Microsoft SQL Server (MSSQL)
+// Hệ quản trị cơ sở dữ liệu: PostgreSQL (FITLAB Cloud)
 
 import { PrismaClient } from "@prisma/client";
 import { randomBytes, scrypt as scryptCallback } from "crypto";
@@ -16,7 +16,7 @@ async function hashPassword(password: string) {
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🚀 Bắt đầu nạp dữ liệu thực tế cho Khoa CNTT - Đại học Văn Lang vào SQL Server...");
+  console.log("🚀 Bắt đầu nạp dữ liệu thực tế cho Khoa CNTT - Đại học Văn Lang vào PostgreSQL...");
 
   // 1. Dọn dẹp dữ liệu cũ theo thứ tự ràng buộc khóa ngoại
   await prisma.attendanceLog.deleteMany();
@@ -28,7 +28,7 @@ async function main() {
   await prisma.student.deleteMany();
   await prisma.user.deleteMany();
 
-  console.log("🧹 Đã làm sạch cơ sở dữ liệu SQL Server.");
+  console.log("🧹 Đã làm sạch cơ sở dữ liệu PostgreSQL.");
 
   // 2. TÀI KHOẢN ĐĂNG NHẬP
   // 2.1 Tài khoản Quản trị viên hệ thống (Admin)
@@ -218,7 +218,7 @@ async function main() {
     },
   });
 
-  console.log("🎉 Hoàn tất nạp dữ liệu sạch vào SQL Server (Chỉ Admin, không data máy trạm)!");
+  console.log("🎉 Hoàn tất nạp dữ liệu sạch vào PostgreSQL (Chỉ Admin, không data máy trạm)!");
 }
 
 main()

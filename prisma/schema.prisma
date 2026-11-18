@@ -1,13 +1,13 @@
 // Prisma Schema for VLU Lab Duty & Barcode Attendance System (Phiên bản FITLAB Cloud)
 // Trường Đại học Văn Lang - Khoa Công nghệ Thông tin
-// Hệ quản trị cơ sở dữ liệu: SQLite (Tự động lưu trữ độc lập tại server FITLAB)
+// Hệ quản trị cơ sở dữ liệu: PostgreSQL (Cục bộ FITLAB hoặc Cloud)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
