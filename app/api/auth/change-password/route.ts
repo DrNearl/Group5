@@ -3,8 +3,11 @@ import prisma from "@/lib/prisma";
 import { requireStaffAuth } from "@/lib/auth-server";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { recordAuditLog } from "@/lib/audit";
+import { translations } from "@/lib/i18n";
 
 export async function POST(req: NextRequest) {
+  const locale = req.headers.get("accept-language")?.toLowerCase().startsWith("en") ? "en" : "vi";
+  const messages = translations[locale].passwordDialog;
   const auth = await requireStaffAuth(req);
   if (!("user" in auth)) {
     return NextResponse.json({ success: false, message: auth.message }, { status: auth.status });
@@ -12,35 +15,38 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const currentPassword = String(body?.currentPassword || "");
-    const newPassword = String(body?.newPassword || "");
+    const currentPassword = typeof body?.currentPassword === "string" ? body.currentPassword : "";
+    const newPassword = typeof body?.newPassword === "string" ? body.newPassword : "";
 
     if (!currentPassword || !newPassword) {
       return NextResponse.json(
-        { success: false, message: "Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới." },
+        { success: false, message: messages.requiredFields },
         { status: 400 }
       );
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       return NextResponse.json(
-        { success: false, message: "Mật khẩu mới phải có ít nhất 6 ký tự." },
+        { success: false, message: messages.tooShort },
         { status: 400 }
       );
     }
 
     const dbUser = await prisma.user.findUnique({
       where: { id: auth.user.id },
-      select: { id: true, passwordHash: true, fullName: true, username: true },
+      select: { id: true, passwordHash: true, username: true },
     });
 
     if (!dbUser) {
-      return NextResponse.json({ success: false, message: "Không tìm thấy tài khoản." }, { status: 404 });
+      return NextResponse.json({ success: false, message: messages.accountNotFound }, { status: 404 });
     }
 
     const valid = await verifyPassword(currentPassword, dbUser.passwordHash);
     if (!valid) {
-      return NextResponse.json({ success: false, message: "Mật khẩu hiện tại không đúng." }, { status: 400 });
+      return NextResponse.json({ success: false, message: messages.wrongCurrentPassword }, { status: 400 });
+    }
+    if (newPassword === currentPassword) {
+      return NextResponse.json({ success: false, message: messages.sameAsCurrent }, { status: 400 });
     }
 
     const newHash = await hashPassword(newPassword);
@@ -52,15 +58,13 @@ export async function POST(req: NextRequest) {
     await recordAuditLog({
       actor: auth.user,
       action: "PASSWORD_CHANGE",
-      target: `${dbUser.fullName} (${dbUser.username})`,
-      detail: "Tự đổi mật khẩu tài khoản trong Cài đặt",
+      target: dbUser.username,
     });
 
-    return NextResponse.json({ success: true, message: "Đổi mật khẩu thành công!" });
-  } catch (error: any) {
-    console.error("Change password error:", error);
+    return NextResponse.json({ success: true, message: messages.success });
+  } catch {
     return NextResponse.json(
-      { success: false, message: "Không thể đổi mật khẩu: " + error.message },
+      { success: false, message: messages.requestFailed },
       { status: 500 }
     );
   }
