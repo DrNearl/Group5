@@ -39,6 +39,10 @@ function UsersManagementContent() {
   const [editRole, setEditRole] = useState<UserRole>("LECTURER");
   const [editError, setEditError] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<ManagedUser | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   // Form states
   const [studentCode, setStudentCode] = useState("");
@@ -134,18 +138,56 @@ function UsersManagementContent() {
     }
   };
 
-  const handleDeleteUser = async (id: string, name: string) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản "${name}" khỏi hệ thống?`)) return;
+  const handleToggleUserStatus = async (account: ManagedUser) => {
+    setActionError("");
     try {
-      const res = await fetch(`/api/users?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/users/status?id=${encodeURIComponent(account.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-vlu-language": lang },
+        body: JSON.stringify({ isActive: !account.isActive }),
+      });
       const data = await res.json();
       if (data.success) {
-        loadUsers();
+        setUsers((currentUsers) => currentUsers.map((user) => user.id === data.user.id ? data.user : user));
       } else {
-        alert("Lỗi: " + data.message);
+        setActionError(data.message || t.users.actionErrorFallback);
       }
-    } catch (err: any) {
-      alert("Lỗi khi xóa: " + err.message);
+    } catch {
+      setActionError(t.users.actionErrorFallback);
+    }
+  };
+
+  const openDeleteConfirmation = (account: ManagedUser) => {
+    setPendingDelete(account);
+    setDeleteError("");
+  };
+
+  const closeDeleteConfirmation = () => {
+    setPendingDelete(null);
+    setDeleteError("");
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!pendingDelete) return;
+
+    setIsDeleting(true);
+    setDeleteError("");
+    try {
+      const res = await fetch(`/api/users?id=${encodeURIComponent(pendingDelete.id)}`, {
+        method: "DELETE",
+        headers: { "x-vlu-language": lang },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUsers((currentUsers) => currentUsers.filter((account) => account.id !== pendingDelete.id));
+        closeDeleteConfirmation();
+      } else {
+        setDeleteError(data.message || t.users.actionErrorFallback);
+      }
+    } catch {
+      setDeleteError(t.users.actionErrorFallback);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -158,7 +200,7 @@ function UsersManagementContent() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans p-6">
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans p-4 sm:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* HEADER */}
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-5">
@@ -200,6 +242,12 @@ function UsersManagementContent() {
           </div>
         </div>
 
+        {actionError && (
+          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            {actionError}
+          </div>
+        )}
+
         {/* USERS GRID */}
         {filteredUsers.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center shadow-sm space-y-3">
@@ -210,59 +258,70 @@ function UsersManagementContent() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-5">
             {filteredUsers.map((u) => (
               <div
                 key={u.id}
                 className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3.5 shadow-sm hover:shadow-md hover:border-gray-300 transition flex flex-col justify-between"
               >
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <span
-                      className="text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border bg-indigo-50 text-indigo-800 border-indigo-200"
+                      className="min-w-0 max-w-full text-[10px] leading-4 font-bold px-2.5 py-1 rounded-full flex items-center gap-1 border bg-indigo-50 text-indigo-800 border-indigo-200"
                     >
-                      <Shield className="h-3 w-3" />
+                      <Shield className="h-3 w-3 shrink-0" />
                       {u.role === "ADMIN" ? t.users.roleAdmin : t.users.roleLecturer}
                     </span>
 
-                    <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold">
-                      Hoạt động
+                    <span className={`shrink-0 whitespace-nowrap text-[10px] font-mono border px-2 py-1 rounded-full font-semibold ${u.isActive
+                      ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                      : "text-amber-700 bg-amber-50 border-amber-200"
+                    }`}>
+                      {u.isActive ? t.users.activeStatus : t.users.lockedStatus}
                     </span>
                   </div>
 
                   <div>
-                    <h3 className="text-base font-bold text-gray-900">{u.fullName}</h3>
-                    <div className="text-xs text-gray-500 font-mono mt-0.5">Tài khoản: {u.username}</div>
+                    <h3 className="text-base font-bold text-gray-900 [overflow-wrap:anywhere]">{u.fullName}</h3>
+                    <div className="text-xs text-gray-500 font-mono mt-0.5 [overflow-wrap:anywhere]">Tài khoản: {u.username}</div>
                   </div>
 
                   <div className="space-y-1.5 text-xs text-gray-500 pt-2 border-t border-gray-100">
-                    <div className="flex items-center gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
                       <Mail className="h-3.5 w-3.5 text-gray-400" />
-                      <span className="truncate">{u.email}</span>
+                      <span className="min-w-0 truncate" title={u.email}>{u.email}</span>
                     </div>
                     {u.phone && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
                         <Phone className="h-3.5 w-3.5 text-gray-400" />
-                        <span>{u.phone}</span>
+                        <span className="[overflow-wrap:anywhere]">{u.phone}</span>
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* ACTION FOOTER */}
-                <div className="pt-3 border-t border-gray-100 flex justify-end gap-3">
+                <div className="pt-3 border-t border-gray-100 flex flex-wrap justify-start sm:justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => openEditUser(u)}
-                    className="text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1 font-medium hover:underline"
+                    className="min-h-11 whitespace-nowrap rounded-md px-2 text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1 font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
                     title={t.users.editButton}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                     {t.users.editButton}
                   </button>
                   <button
-                    onClick={() => handleDeleteUser(u.id, u.fullName)}
-                    className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 font-medium hover:underline"
+                    type="button"
+                    onClick={() => handleToggleUserStatus(u)}
+                    className={`min-h-11 whitespace-nowrap rounded-md px-2 text-xs flex items-center gap-1 font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 ${u.isActive ? "text-amber-700 hover:text-amber-900" : "text-emerald-700 hover:text-emerald-900"}`}
+                    title={u.isActive ? t.users.deactivateButton : t.users.reactivateButton}
+                  >
+                    {u.isActive ? t.users.deactivateButton : t.users.reactivateButton}
+                  </button>
+                  <button
+                    onClick={() => openDeleteConfirmation(u)}
+                    className="min-h-11 whitespace-nowrap rounded-md px-2 text-xs text-red-600 hover:text-red-800 flex items-center gap-1 font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
                     title="Xóa tài khoản"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -478,6 +537,40 @@ function UsersManagementContent() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {pendingDelete && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-gray-200 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <h3 className="text-base font-bold text-gray-900">{t.users.deleteConfirmTitle}</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              {t.users.deleteConfirmMessage.replace("{name}", pendingDelete.fullName)}
+            </p>
+            {deleteError && (
+              <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                {deleteError}
+              </div>
+            )}
+            <div className="mt-5 flex justify-end gap-3 border-t border-gray-100 pt-3">
+              <button
+                type="button"
+                onClick={closeDeleteConfirmation}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium disabled:opacity-50"
+              >
+                {t.users.cancelButton}
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteUser}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-xs shadow-sm disabled:opacity-50"
+              >
+                {t.users.deleteConfirmButton}
+              </button>
+            </div>
           </div>
         </div>
       )}

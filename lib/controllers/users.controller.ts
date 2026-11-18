@@ -50,6 +50,9 @@ function isValidEmail(value: string) {
 
 export async function handleUsersGet(req: NextRequest) {
   try {
+    const authResponse = await requireAdmin(req);
+    if (authResponse) return authResponse;
+
     const users = await prisma.user.findMany({
       where: {
         username: { not: "admin" },
@@ -68,7 +71,10 @@ export async function handleUsersGet(req: NextRequest) {
 
     return NextResponse.json({ success: true, users });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: getUserMessages(req).api.serverError },
+      { status: 500 }
+    );
   }
 }
 
@@ -267,40 +273,139 @@ export async function handleUsersPatch(req: NextRequest) {
   }
 }
 
-export async function handleUsersDelete(req: NextRequest) {
+export async function handleUsersStatusPatch(req: NextRequest) {
+  const messages = getUserMessages(req).api;
+  let actorId = "";
+
   try {
+    const authResponse = await requireAdmin(req);
+    if (authResponse) return authResponse;
+
+    const auth = await requireStaffAuth(req);
+    if (auth.authorized === false) {
+      return NextResponse.json({ success: false, message: messages.authRequired }, { status: auth.status });
+    }
+    actorId = auth.user.id;
+
+    const id = new URL(req.url).searchParams.get("id")?.trim();
+    if (!id) {
+      return NextResponse.json({ success: false, message: messages.accountNotFound }, { status: 400 });
+    }
+
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ success: false, message: messages.invalidJson }, { status: 400 });
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ success: false, message: messages.invalidJson }, { status: 400 });
+    }
+
+    const isActive = (body as Record<string, unknown>).isActive;
+    if (typeof isActive !== "boolean") {
+      return NextResponse.json({ success: false, message: messages.invalidStatus }, { status: 400 });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const existingUser = await tx.user.findUnique({ where: { id } });
+      if (!existingUser) return { error: "notFound" as const };
+      if (!isActive && existingUser.id === actorId) return { error: "self" as const };
+
+      if (!isActive && existingUser.role === "ADMIN" && existingUser.isActive) {
+        const activeAdmins = await tx.user.count({ where: { role: "ADMIN", isActive: true } });
+        if (activeAdmins <= 1) return { error: "lastAdmin" as const };
+      }
+
+      const user = await tx.user.update({
+        where: { id },
+        data: { isActive },
+        select: { id: true, username: true, fullName: true, role: true, isActive: true },
+      });
+      return { user, previousActive: existingUser.isActive };
+    });
+
+    if ("error" in result) {
+      const errorMessages = {
+        notFound: [messages.accountNotFound, 404],
+        self: [messages.selfDeactivate, 403],
+        lastAdmin: [messages.lastActiveAdmin, 409],
+      } as const;
+      const [message, status] = errorMessages[result.error];
+      return NextResponse.json({ success: false, message }, { status });
+    }
+
+    if (result.previousActive !== isActive) {
+      await recordAuditLog({
+        req,
+        action: isActive ? "USER_REACTIVATE" : "USER_DEACTIVATE",
+        target: `${result.user.fullName} (${result.user.username})`,
+        detail: isActive ? messages.auditReactivateDetail : messages.auditDeactivateDetail,
+      });
+    }
+
+    return NextResponse.json({ success: true, user: result.user });
+  } catch {
+    return NextResponse.json({ success: false, message: messages.serverError }, { status: 500 });
+  }
+}
+
+export async function handleUsersDelete(req: NextRequest) {
+  const messages = getUserMessages(req).api;
+  try {
+    const authResponse = await requireAdmin(req);
+    if (authResponse) return authResponse;
+
+    const auth = await requireStaffAuth(req);
+    if (auth.authorized === false) {
+      return NextResponse.json({ success: false, message: messages.authRequired }, { status: auth.status });
+    }
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json({ success: false, message: "Thiếu ID người dùng!" }, { status: 400 });
+      return NextResponse.json({ success: false, message: messages.accountNotFound }, { status: 400 });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { id } });
-    if (!existingUser) {
-      return NextResponse.json({ success: false, message: "Không tìm thấy người dùng!" }, { status: 404 });
-    }
+    const result = await prisma.$transaction(async (tx) => {
+      const existingUser = await tx.user.findUnique({ where: { id } });
+      if (!existingUser) return { error: "notFound" as const };
+      if (existingUser.id === auth.user.id) return { error: "self" as const };
+      if (existingUser.username === "admin") return { error: "protected" as const };
 
-    if (existingUser.username === "admin") {
-      return NextResponse.json(
-        { success: false, message: "Không thể xóa tài khoản Quản trị viên gốc (admin)!" },
-        { status: 403 }
-      );
-    }
+      if (existingUser.role === "ADMIN" && existingUser.isActive) {
+        const activeAdmins = await tx.user.count({ where: { role: "ADMIN", isActive: true } });
+        if (activeAdmins <= 1) return { error: "lastAdmin" as const };
+      }
 
-    await prisma.user.delete({
-      where: { id },
+      await tx.user.delete({ where: { id } });
+      return { user: existingUser };
     });
+
+    if ("error" in result) {
+      const errorMessages = {
+        notFound: [messages.accountNotFound, 404],
+        self: [messages.selfDelete, 403],
+        protected: [messages.cannotDeleteRootAccount, 403],
+        lastAdmin: [messages.lastActiveAdmin, 409],
+      } as const;
+      const [message, status] = errorMessages[result.error];
+      return NextResponse.json({ success: false, message }, { status });
+    }
 
     await recordAuditLog({
       req,
       action: "USER_DELETE",
-      target: `${existingUser.fullName} (${existingUser.username})`,
-      detail: `Xóa tài khoản (${existingUser.role})`,
+      target: `${result.user.fullName} (${result.user.username})`,
+      detail: messages.auditDeleteDetail.replace(
+        "{role}",
+        result.user.role === "ADMIN" ? getUserMessages(req).roleAdmin : getUserMessages(req).roleLecturer
+      ),
     });
 
-    return NextResponse.json({ success: true, message: "Đã xóa người dùng thành công!" });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json({ success: true, message: getUserMessages(req).deleteSuccess });
+  } catch {
+    return NextResponse.json({ success: false, message: messages.serverError }, { status: 500 });
   }
 }
