@@ -126,6 +126,8 @@ export async function handleDashboardGet(req: NextRequest) {
         fullName: sv.fullName,
         studentCode: sv.studentCode,
         className: sv.className || "DTH-CNTT",
+        phone: sv.phone || "",
+        email: sv.email || "",
         profileStatus: (sv as any).profileStatus || "VERIFIED",
         source: (sv as any).source || "PRESET",
         morningShifts,
@@ -280,8 +282,11 @@ export async function handleDashboardGet(req: NextRequest) {
         }
         return {
           id: l.id,
-          studentName: l.dutySchedule.student.fullName,
-          studentCode: l.dutySchedule.student.studentCode,
+          studentName: l.dutySchedule?.student?.fullName || "Chưa có tên",
+          studentCode: l.dutySchedule?.student?.studentCode || "",
+          className: l.dutySchedule?.student?.className || "",
+          phone: l.dutySchedule?.student?.phone || "",
+          email: l.dutySchedule?.student?.email || "",
           dutyDate: l.dutySchedule.dutyDate,
           shiftName: l.dutySchedule.shift.shiftName,
           labName: l.dutySchedule.labRoom.labName,

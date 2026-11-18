@@ -389,67 +389,142 @@ function DashboardContent() {
     }
   };
 
-  // XUẤT FILE EXCEL (.xlsx) 2 SHEET: THỐNG KÊ CA TRỰC & NHẬT KÝ RA VÀO
+  // XUẤT FILE EXCEL (.xlsx) 2 SHEET: THỐNG KÊ TỔNG HỢP & NHẬT KÝ RA VÀO
   const handleExportExcel = () => {
     if (!data || !data.allLogs) return;
 
-    const studentSummaryData = (data.studentStats || []).map((sv: any, idx: number) => ({
-      STT: idx + 1,
-      "Họ và tên": sv.fullName || "Chưa có tên",
-      MSSV: sv.studentCode,
-      "Lớp": sv.className || "DTH-CNTT",
-      "Tổng lượt vào/ra": sv.totalShifts || 0,
-    }));
+    // Helper phân loại đối tượng: Giảng viên, Khách vãng lai hoặc Sinh viên
+    const getRoleCategory = (code: string = "", className: string = "") => {
+      const c = (code || "").toUpperCase();
+      const cls = (className || "").toUpperCase();
+      if (c.startsWith("GV") || cls.includes("GIANGVIEN") || cls.includes("CANBO") || cls.includes("GIẢNG VIÊN")) return "Giảng viên";
+      if (c.startsWith("KHACH") || cls.includes("KHACH") || cls.includes("LANGLAI") || cls.includes("KHÁCH")) return "Khách vãng lai";
+      return "Sinh viên";
+    };
+
+    // Helper định dạng phương thức quét
+    const formatMethod = (method?: string) => {
+      switch (method) {
+        case "DYNAMIC_QR":
+        case "WEBCAM":
+          return "Mã QR";
+        case "USB_SCANNER":
+          return "Đầu đọc Barcode USB";
+        case "MANUAL":
+          return "Điểm danh bổ sung (Thủ công)";
+        default:
+          return method || "Trạm quét";
+      }
+    };
+
+    // Helper trạng thái lượt ra/vào
+    const formatLogStatus = (log: any) => {
+      if (log.attendanceStatus === "MISSING_CHECKOUT") return "Quên check-out";
+      if (!log.checkOutTime) return "Đang có mặt tại phòng";
+      if (log.attendanceStatus === "LATE") return "Đi trễ (Đã ra)";
+      if (log.attendanceStatus === "EARLY_LEAVE") return "Về sớm";
+      if (log.attendanceStatus === "ADJUSTED") return "Đã chỉnh sửa giờ ra";
+      if (!log.isValidSession) return "Chưa hợp lệ (Cần kiểm tra)";
+      return "Hoàn thành (Đúng giờ)";
+    };
+
+    // SHEET 1: TỔNG HỢP THEO NGƯỜI
+    const studentSummaryData = (data.studentStats || []).map((sv: any, idx: number) => {
+      const roleCat = getRoleCategory(sv.studentCode, sv.className);
+      return {
+        STT: idx + 1,
+        "Họ và tên": sv.fullName || "Chưa có tên",
+        "Mã định danh / MSSV": sv.studentCode,
+        "Đối tượng": roleCat,
+        "Lớp / Đơn vị": sv.className || (roleCat === "Giảng viên" ? "Khoa CNTT" : roleCat === "Khách vãng lai" ? "Khách ngoài" : "CNTT"),
+        "Số điện thoại": sv.phone || "—",
+        "Email": sv.email || "—",
+        "Tổng số lượt": sv.totalShifts || 0,
+        "Lượt hoàn thành": sv.completedShifts || 0,
+        "Tổng thời lượng (giờ)": sv.totalHours || 0,
+        "Lần có mặt gần nhất": sv.lastDutyDate || "—",
+      };
+    });
+
+    const totalPeople = (data.studentStats || []).length;
+    const totalShiftsCount = (data.studentStats || []).reduce((acc: number, s: any) => acc + (s.totalShifts || 0), 0);
+    const totalCompletedCount = (data.studentStats || []).reduce((acc: number, s: any) => acc + (s.completedShifts || 0), 0);
+    const totalHoursCount = Math.round((data.studentStats || []).reduce((acc: number, s: any) => acc + (s.totalHours || 0), 0) * 10) / 10;
 
     studentSummaryData.push({
       STT: "" as any,
-      "Họ và tên": "TỔNG CỘNG TOÀN BỘ SINH VIÊN",
-      MSSV: "",
-      "Lớp": "",
-      "Tổng lượt vào/ra": (data.studentStats || []).reduce((acc: number, s: any) => acc + (s.totalShifts || 0), 0),
+      "Họ và tên": `TỔNG CỘNG (${totalPeople} người)`,
+      "Mã định danh / MSSV": "",
+      "Đối tượng": "",
+      "Lớp / Đơn vị": "",
+      "Số điện thoại": "",
+      "Email": "",
+      "Tổng số lượt": totalShiftsCount,
+      "Lượt hoàn thành": totalCompletedCount,
+      "Tổng thời lượng (giờ)": totalHoursCount,
+      "Lần có mặt gần nhất": "",
     });
 
-    const detailedLogsData = data.allLogs.map((log: any, idx: number) => ({
-      STT: idx + 1,
-      "Họ và tên": log.studentName,
-      MSSV: log.studentCode,
-      "Ngày trực": formatLabDate(log.checkInTime || log.dutyDate),
-      "Giờ vào": log.checkInTime ? formatLabTime(log.checkInTime) : "—",
-      "Giờ ra": getLogCheckOutLabel(log),
-      "Thời lượng": getLogDurationLabel(log),
-      "Trạng thái": getLogStatusLabel(log, t),
-    }));
+    // SHEET 2: NHẬT KÝ CHI TIẾT RA VÀO
+    const detailedLogsData = data.allLogs.map((log: any, idx: number) => {
+      const roleCat = getRoleCategory(log.studentCode, log.className);
+      const isStillInLab = !log.checkOutTime && log.attendanceStatus !== "MISSING_CHECKOUT";
+      return {
+        STT: idx + 1,
+        "Họ và tên": log.studentName || "Chưa có tên",
+        "Mã định danh / MSSV": log.studentCode,
+        "Đối tượng": roleCat,
+        "Lớp / Đơn vị": log.className || (roleCat === "Giảng viên" ? "Khoa CNTT" : roleCat === "Khách vãng lai" ? "Khách ngoài" : "CNTT"),
+        "Phòng Lab": log.labName || "Phòng Lab 5.18",
+        "Ca trực": log.shiftName || "Ca trực chuẩn",
+        "Ngày": formatLabDate(log.checkInTime || log.dutyDate),
+        "Giờ vào": log.checkInTime ? formatLabTime(log.checkInTime) : "—",
+        "Giờ ra": isStillInLab ? "Đang có mặt" : getLogCheckOutLabel(log),
+        "Thời lượng": isStillInLab ? "Đang ở Lab" : getLogDurationLabel(log),
+        "Phương thức quét": formatMethod(log.scanMethod),
+        "Trạng thái": formatLogStatus(log),
+      };
+    });
 
     const workbook = XLSX.utils.book_new();
 
     const wsSummary = XLSX.utils.json_to_sheet(studentSummaryData);
     wsSummary["!cols"] = [
-      { wch: 6 },
-      { wch: 26 },
-      { wch: 18 },
-      { wch: 14 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 14 },
+      { wch: 6 },  // STT
+      { wch: 28 }, // Họ và tên
+      { wch: 22 }, // Mã định danh / MSSV
+      { wch: 16 }, // Đối tượng
+      { wch: 20 }, // Lớp / Đơn vị
+      { wch: 16 }, // Số điện thoại
+      { wch: 30 }, // Email
+      { wch: 14 }, // Tổng số lượt
+      { wch: 16 }, // Lượt hoàn thành
+      { wch: 22 }, // Tổng thời lượng (giờ)
+      { wch: 20 }, // Lần có mặt gần nhất
     ];
-    XLSX.utils.book_append_sheet(workbook, wsSummary, "DanhSachSinhVien");
+    XLSX.utils.book_append_sheet(workbook, wsSummary, "TongHop_TheoNguoi");
 
     const wsDetails = XLSX.utils.json_to_sheet(detailedLogsData);
     wsDetails["!cols"] = [
-      { wch: 6 },
-      { wch: 26 },
-      { wch: 18 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 20 },
-      { wch: 14 },
+      { wch: 6 },  // STT
+      { wch: 28 }, // Họ và tên
+      { wch: 22 }, // Mã định danh / MSSV
+      { wch: 16 }, // Đối tượng
+      { wch: 20 }, // Lớp / Đơn vị
+      { wch: 22 }, // Phòng Lab
+      { wch: 18 }, // Ca trực
+      { wch: 14 }, // Ngày
+      { wch: 14 }, // Giờ vào
+      { wch: 14 }, // Giờ ra
+      { wch: 20 }, // Thời lượng
+      { wch: 24 }, // Phương thức quét
+      { wch: 24 }, // Trạng thái
     ];
     XLSX.utils.book_append_sheet(workbook, wsDetails, "NhatKy_RaVao");
 
     XLSX.writeFile(
       workbook,
-      `VLU_PhongLab_${new Date().toISOString().slice(0, 10)}.xlsx`
+      `VLU_DiemDanh_PhongLab_${new Date().toISOString().slice(0, 10)}.xlsx`
     );
   };
 
