@@ -264,7 +264,7 @@ function StudentOverview({ userName, userId, studentCode }: { userName: string; 
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-red-700 px-4 py-2.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-red-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2"
               >
                 <Zap aria-hidden="true" className="h-4 w-4" />
-                Quét Barcode Điểm Danh
+                Quét barcode điểm danh
                 <ArrowRight aria-hidden="true" className="h-4 w-4" />
               </Link>
               <Link
@@ -272,7 +272,7 @@ function StudentOverview({ userName, userId, studentCode }: { userName: string; 
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 transition-colors duration-150 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 focus-visible:ring-offset-2"
               >
                 <AlertTriangle aria-hidden="true" className="h-4 w-4" />
-                Báo Cáo Sự Cố Máy
+                Báo cáo sự cố máy
               </Link>
               <Link
                 href="/mobile-checkin"
@@ -529,7 +529,7 @@ function StaffOverview({ userName, isLecturer }: { userName: string; isLecturer:
                           <td className="whitespace-nowrap px-4 py-3 font-mono tabular-nums text-gray-800">{formatTime(student.checkInTime)}</td>
                           <td className="px-4 py-3">
                             <span className={`inline-flex rounded-md border px-2 py-1 text-xs font-medium ${student.attendanceStatus === "LATE" ? "border-amber-300 bg-amber-50 text-amber-900" : "border-emerald-300 bg-emerald-50 text-emerald-900"}`}>
-                              {student.attendanceStatus === "LATE" ? "Đang trực · Đi trễ" : "Đang trực"}
+                              {student.attendanceStatus === "LATE" ? "Đang có mặt · Đi trễ" : "Đang có mặt"}
                             </span>
                           </td>
                         </tr>
@@ -547,7 +547,7 @@ function StaffOverview({ userName, isLecturer }: { userName: string; isLecturer:
                           <h4 className="mt-0.5 text-sm font-semibold text-gray-900">{student.studentName}</h4>
                         </div>
                         <span className={`inline-flex rounded-md border px-2 py-1 text-xs font-medium ${student.attendanceStatus === "LATE" ? "border-amber-300 bg-amber-50 text-amber-900" : "border-emerald-300 bg-emerald-50 text-emerald-900"}`}>
-                          {student.attendanceStatus === "LATE" ? "Đang trực · Đi trễ" : "Đang trực"}
+                          {student.attendanceStatus === "LATE" ? "Đang có mặt · Đi trễ" : "Đang có mặt"}
                         </span>
                       </div>
                       <p className="mt-2 text-xs text-gray-700">Check-in: <span className="font-mono tabular-nums">{formatTime(student.checkInTime)}</span></p>

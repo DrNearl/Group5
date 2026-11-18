@@ -192,7 +192,7 @@ function MobileCheckInContent() {
         <div>
           <h1 className="text-xl font-extrabold tracking-tight text-[#0F172A] flex items-center gap-2">
             <Smartphone className="h-5 w-5 text-red-600" />
-            Điểm Danh Ca Trực Phòng LAB
+            Điểm danh ca trực phòng Lab
           </h1>
           <p className="text-xs text-slate-500 font-medium">
             Điểm danh qua mã QR • Phòng 5.18, Tòa A
@@ -292,7 +292,7 @@ function MobileCheckInContent() {
 
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1.5 uppercase tracking-wide">
-                  Mã Số Sinh Viên (MSSV) *
+                  Mã số sinh viên (MSSV) *
                 </label>
                 <input
                   type="text"

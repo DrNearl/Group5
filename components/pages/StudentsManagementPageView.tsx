@@ -35,21 +35,13 @@ import {
 
 const STUDENT_FIELD_ORDER: StudentInputField[] = ["studentCode", "fullName", "className", "phone", "email"];
 const STUDENT_CLASS_OPTIONS = [
-  { value: "24DTH01", label: "Khóa K30 - 24DTH01" },
-  { value: "24DTH02", label: "Khóa K30 - 24DTH02" },
-  { value: "23DTH01", label: "Khóa K29 - 23DTH01" },
-  { value: "23DTH02", label: "Khóa K29 - 23DTH02" },
-  { value: "22DTH01", label: "Khóa K28 - 22DTH01" },
-  { value: "21DTH01", label: "Khóa K27 - 21DTH01" },
-  { value: "DTH-CNTT", label: "Đại học Công nghệ Thông tin" },
-  { value: "KHACH-VLANGLAI", label: "Khách vãng lai / Khác" },
   { value: "K30CNTT01", label: "Khóa K30 - CNTT 01" },
   { value: "K29CNTT16", label: "Khóa K29 - CNTT 16" },
   { value: "K29CNTT01", label: "Khóa K29 - CNTT 01" },
   { value: "K28CNTT01", label: "Khóa K28 - CNTT 01" },
   { value: "K27CNTT25", label: "Khóa K27 - CNTT 25" },
   { value: "K29QKD01", label: "Khóa K29 - QTKD 01" },
-  { value: "KHACH", label: "Khách vãng lai / Khác (mã KHACH)" },
+  { value: "KHACH", label: "Khách vãng lai / Khác" },
 ];
 
 async function readJsonSafe(res: Response): Promise<{ data: any | null; status: number }> {
@@ -172,7 +164,7 @@ function StudentFormFields({
             <input
               {...fieldProps("className")}
               type="text"
-              placeholder="vd: 24DTH01, 23DTH01..."
+              placeholder="vd: K29CNTT16, K30CNTT01..."
               value={String(values.className ?? "")}
               onFocus={() => setClassOptionsOpen(true)}
               onClick={() => setClassOptionsOpen(true)}
@@ -223,7 +215,7 @@ function StudentFormFields({
           {fieldError("className")}
           {showClassQuickPicks && (
             <div className="mt-1.5 flex flex-wrap gap-1">
-              {["24DTH01", "23DTH01", "22DTH01", "DTH-CNTT"].map((value) => (
+              {["K30CNTT01", "K29CNTT16", "K28CNTT01", "K27CNTT25"].map((value) => (
                 <button key={value} type="button" onClick={() => onChange("className", value)} className="cursor-pointer rounded border border-gray-200 bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600 transition hover:bg-rose-50 hover:text-rose-600">
                   {value}
                 </button>
@@ -246,11 +238,11 @@ function StudentFormFields({
       </div>
 
       <div>
-        <label htmlFor={fieldId("email")} className="mb-1 block font-semibold text-gray-700">Email Văn Lang</label>
+        <label htmlFor={fieldId("email")} className="mb-1 block font-semibold text-gray-700">Email</label>
         <input
           {...fieldProps("email")}
           type="email"
-          placeholder="vd: duc.2373401010100@vanlanguni.vn"
+          placeholder="vd: student@vanlanguni.vn"
           value={String(values.email ?? "")}
           onChange={(event) => onChange("email", event.target.value)}
           className={inputClass("email")}
@@ -710,7 +702,7 @@ function StudentsManagementContent() {
                           <button
                             onClick={() => setQrStudent(sv)}
                             className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg border border-rose-200 transition"
-                            title="Xem / Gửi email / Cấp lại Thẻ QR cá nhân"
+                            title="Xem / gửi email / cấp lại thẻ QR cá nhân"
                           >
                             <QrCode className="h-4 w-4" />
                           </button>
@@ -757,7 +749,7 @@ function StudentsManagementContent() {
               </button>
               <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <UserPlus className="h-5 w-5 text-rose-500" />
-                Thêm Mới
+                Thêm mới
               </h3>
 
               <form noValidate onSubmit={handleAddStudent} className="space-y-3.5 text-xs">
@@ -777,7 +769,7 @@ function StudentsManagementContent() {
                     onChange={(e) => setSendQrOnAdd(e.target.checked)}
                     className="rounded border-gray-300 text-rose-600 focus:ring-rose-500"
                   />
-                  <span>Tự động tạo & gửi Thẻ QR cá nhân qua Email</span>
+                  <span>Tự động tạo & gửi thẻ QR cá nhân qua email</span>
                 </label>
 
                 <div className="flex justify-end gap-2.5 pt-3 border-t border-gray-100">
@@ -815,7 +807,7 @@ function StudentsManagementContent() {
               </button>
               <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <Pencil className="h-5 w-5 text-rose-500" />
-                Chỉnh Sửa Thông Tin
+                Chỉnh sửa thông tin
               </h3>
 
               <form noValidate onSubmit={handleSaveEdit} className="space-y-3.5 text-xs">

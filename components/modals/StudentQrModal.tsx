@@ -76,7 +76,7 @@ export default function StudentQrModal({
     if (
       action === "REISSUE" &&
       !confirm(
-        `Thu hồi Thẻ QR hiện tại và cấp mã mới cho ${student.fullName}? Mã cũ sẽ lập tức mất hiệu lực khi quét!`
+        `Thu hồi thẻ QR hiện tại và cấp mã mới cho ${student.fullName}? Mã cũ sẽ lập tức mất hiệu lực khi quét!`
       )
     ) {
       return;
@@ -128,7 +128,7 @@ export default function StudentQrModal({
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-rose-50/50">
           <div className="flex items-center gap-2 text-rose-700">
             <QrCode className="h-5 w-5" />
-            <h3 className="font-bold text-sm">Thẻ QR Điểm Danh Cá Nhân</h3>
+            <h3 className="font-bold text-sm">Thẻ QR điểm danh cá nhân</h3>
           </div>
           <button
             onClick={onClose}
@@ -222,7 +222,7 @@ export default function StudentQrModal({
               className="px-3 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 shadow-xs transition disabled:opacity-50"
             >
               <Mail className="h-3.5 w-3.5" />
-              {busyAction === "SEND_EMAIL" ? "Đang gửi..." : "Gửi vào Email"}
+              {busyAction === "SEND_EMAIL" ? "Đang gửi..." : "Gửi vào email"}
             </button>
           </div>
 
@@ -235,7 +235,7 @@ export default function StudentQrModal({
             <RefreshCw className={`h-3.5 w-3.5 ${busyAction === "REISSUE" ? "animate-spin" : ""}`} />
             {busyAction === "REISSUE"
               ? "Đang cấp lại..."
-              : "Cấp lại mã QR mới (Thu hồi mã cũ)"}
+              : "Cấp lại mã QR mới (thu hồi mã cũ)"}
           </button>
         </div>
       </div>

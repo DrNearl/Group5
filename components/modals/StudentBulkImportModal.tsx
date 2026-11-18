@@ -163,8 +163,8 @@ export default function StudentBulkImportModal({
         setProgressPct(15 + Math.round(((i + 1) / savedStudents.length) * 85));
         setProgressText(
           autoSendEmail
-            ? `Đang tạo & gửi Thẻ QR (${i + 1}/${savedStudents.length}): ${sv.fullName}...`
-            : `Đang tạo Thẻ QR (${i + 1}/${savedStudents.length}): ${sv.fullName}...`
+            ? `Đang tạo & gửi thẻ QR (${i + 1}/${savedStudents.length}): ${sv.fullName}...`
+            : `Đang tạo thẻ QR (${i + 1}/${savedStudents.length}): ${sv.fullName}...`
         );
 
         if (autoSendEmail) {
@@ -288,7 +288,7 @@ export default function StudentBulkImportModal({
           <div className="flex items-center gap-2 text-rose-700">
             <FileSpreadsheet className="h-5 w-5" />
             <h3 className="font-bold text-sm">
-              Nhập Danh Sách PDF / Excel & Cấp Phát Thẻ QR Cá Nhân
+              Nhập danh sách PDF / Excel & cấp phát thẻ QR
             </h3>
           </div>
           <button
@@ -313,10 +313,10 @@ export default function StudentBulkImportModal({
               <div className="bg-gray-50 border-2 border-dashed border-gray-300 hover:border-rose-400 rounded-2xl p-8 text-center transition">
                 <Upload className="h-10 w-10 text-rose-500 mx-auto mb-3" />
                 <div className="font-bold text-gray-800 text-sm mb-1">
-                  Chọn tệp Danh sách sinh viên (.pdf, .xlsx, .xls, .csv)
+                  Chọn tệp danh sách sinh viên (.pdf, .xlsx, .xls, .csv)
                 </div>
                 <p className="text-gray-500 mb-4 max-w-md mx-auto leading-relaxed">
-                  Hệ thống tự động nhận diện cột MSSV, Họ tên, Lớp và Email Văn Lang. Bạn sẽ được xem trước và chỉnh sửa lại trước khi lưu & gửi mã QR.
+                  Hệ thống tự động nhận diện cột MSSV, Họ tên, Lớp và Email. Bạn sẽ được xem trước và chỉnh sửa lại trước khi lưu & gửi mã QR.
                 </p>
                 <div className="flex items-center justify-center gap-3 flex-wrap">
                   <label className="px-4 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-semibold cursor-pointer shadow-xs transition">
@@ -442,7 +442,7 @@ export default function StudentBulkImportModal({
                       className="rounded border-gray-300 text-rose-600 focus:ring-rose-500"
                     />
                     <Mail className="h-3.5 w-3.5 text-rose-500" />
-                    Tự động gửi Thẻ QR cá nhân vào Email của từng sinh viên
+                    Tự động gửi thẻ QR cá nhân vào email của từng sinh viên
                   </label>
 
                   <div className="flex items-center gap-2">
@@ -483,7 +483,7 @@ export default function StudentBulkImportModal({
                 <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <div className="font-bold text-sm">
-                    Hoàn tất nhập {summary.savedCount} sinh viên & tạo {summary.cards.length} Thẻ QR!
+                    Hoàn tất nhập {summary.savedCount} sinh viên & tạo {summary.cards.length} thẻ QR!
                   </div>
                   {autoSendEmail && (
                     <div>
@@ -495,7 +495,7 @@ export default function StudentBulkImportModal({
                       {summary.emailedCount === 0 && summary.emailNotice && (
                         <div className="text-amber-700 mt-1">
                           Lưu ý cấu hình gửi mail: {summary.emailNotice} Bạn vẫn có thể bấm{" "}
-                          <strong>In A4 Thẻ QR</strong> ngay bên dưới!
+                          <strong>In A4 thẻ QR</strong> ngay bên dưới!
                         </div>
                       )}
                     </div>
@@ -510,7 +510,7 @@ export default function StudentBulkImportModal({
                   className="px-4 py-2.5 bg-gray-900 hover:bg-black text-white rounded-xl font-semibold flex items-center gap-2 shadow-xs"
                 >
                   <Printer className="h-4 w-4" />
-                  In A4 toàn bộ {summary.cards.length} Thẻ QR
+                  In A4 toàn bộ {summary.cards.length} thẻ QR
                 </button>
               </div>
             </div>
@@ -537,8 +537,8 @@ export default function StudentBulkImportModal({
                 {processing
                   ? "Đang xử lý..."
                   : autoSendEmail
-                  ? `Lưu & Gửi Mail (${previewList.length} SV)`
-                  : `Lưu & Tạo QR (${previewList.length} SV)`}
+                  ? `Lưu & gửi mail (${previewList.length} SV)`
+                  : `Lưu & tạo QR (${previewList.length} SV)`}
               </button>
             </>
           )}

@@ -20,7 +20,7 @@ export default function UnauthorizedPageView() {
             Lỗi 403 • Phân quyền truy cập
           </span>
           <h1 className="text-xl font-extrabold text-[#0F172A] tracking-tight">
-            Khu Vực Bị Giới Hạn Quyền
+            Khu vực bị giới hạn quyền
           </h1>
           <p className="text-xs text-[#475569] leading-relaxed">
             Bạn không có thẩm quyền truy cập phân hệ này.

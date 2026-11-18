@@ -102,7 +102,7 @@ function EquipmentsContent() {
             className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-gray-300 shadow-sm transition"
           >
             <Plus className="h-4 w-4 text-emerald-600" />
-            Tạo Tem Barcode Hàng Loạt
+            Tạo tem barcode hàng loạt
           </button>
 
           <button
@@ -110,7 +110,7 @@ function EquipmentsContent() {
             className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition transform hover:-translate-y-0.5 active:translate-y-0"
           >
             <Printer className="h-4 w-4" />
-            In Bảng Tem Barcode (Print PDF / A4)
+            In bảng tem barcode (PDF / A4)
           </button>
         </div>
       </header>
@@ -122,7 +122,7 @@ function EquipmentsContent() {
             <Search className="h-4 w-4 text-gray-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Tìm theo mã Barcode (VD: EQ-LAB801...) hoặc tên máy..."
+              placeholder="Tìm theo mã barcode (vd: EQ-LAB801...) hoặc tên máy..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-white border border-gray-300 rounded-lg pl-9 pr-4 py-2 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-500 shadow-sm"

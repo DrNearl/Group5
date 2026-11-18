@@ -51,7 +51,7 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
               Mã lỗi 403 • Từ chối truy cập
             </span>
             <h1 className="text-xl font-extrabold text-[#0F172A] tracking-tight">
-              Bạn Không Có Quyền Truy Cập
+              Bạn không có quyền truy cập
             </h1>
             <p className="text-xs text-[#475569] leading-relaxed">
               Trang này chỉ dành cho vai trò:{" "}

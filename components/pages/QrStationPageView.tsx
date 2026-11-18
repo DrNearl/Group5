@@ -238,7 +238,7 @@ function QrStationContent() {
               <div className="flex items-center gap-2">
                 <Smartphone className="h-5 w-5 text-red-600" />
                 <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                  Quét Bằng Điện Thoại
+                  Quét bằng điện thoại
                 </h2>
               </div>
 
@@ -326,7 +326,7 @@ function QrStationContent() {
               <div className="flex items-center gap-2">
                 <History className="h-5 w-5 text-emerald-600" />
                 <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                  Sinh Viên Vừa Điểm Danh Hôm Nay
+                  Sinh viên vừa điểm danh hôm nay
                 </h3>
               </div>
               <span className="text-xs text-gray-500 font-medium">
@@ -340,8 +340,8 @@ function QrStationContent() {
                 <thead className="bg-gray-50/90 text-gray-600 uppercase text-[10px] font-bold tracking-wider sticky top-0 border-b border-gray-200 z-10">
                   <tr>
                     <th className="py-3 px-4">Sinh viên</th>
-                    <th className="py-3 px-4">Giờ Check-in</th>
-                    <th className="py-3 px-4">Giờ Check-out</th>
+                    <th className="py-3 px-4">Giờ check-in</th>
+                    <th className="py-3 px-4">Giờ check-out</th>
                     <th className="py-3 px-4">Thời gian</th>
                     <th className="py-3 px-4 text-right">Trạng thái</th>
                   </tr>

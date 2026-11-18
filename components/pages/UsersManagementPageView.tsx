@@ -120,7 +120,7 @@ function UsersManagementContent() {
             className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition"
           >
             <UserPlus className="h-4 w-4" />
-            Thêm Tài Khoản
+            Thêm tài khoản
           </button>
         </header>
 
@@ -130,7 +130,7 @@ function UsersManagementContent() {
             <Search className="h-4 w-4 text-gray-400 absolute left-3 top-3" />
             <input
               type="text"
-              placeholder="Tìm theo Tên đăng nhập, Họ và tên hoặc Email..."
+              placeholder="Tìm theo tên đăng nhập, họ và tên hoặc email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-white border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-500 shadow-sm"
@@ -142,9 +142,9 @@ function UsersManagementContent() {
         {filteredUsers.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center shadow-sm space-y-3">
             <Shield className="h-10 w-10 text-gray-300 mx-auto" />
-            <h3 className="text-sm font-bold text-gray-700">Chưa có tài khoản Giảng viên nào trong danh sách</h3>
+            <h3 className="text-sm font-bold text-gray-700">Chưa có tài khoản nào trong danh sách</h3>
             <p className="text-xs text-gray-400 max-w-sm mx-auto">
-              Bấm nút &ldquo;Thêm Tài Khoản&rdquo;
+              Bấm nút &ldquo;Thêm tài khoản&rdquo;
             </p>
           </div>
         ) : (
@@ -209,7 +209,7 @@ function UsersManagementContent() {
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white border border-gray-200 rounded-2xl max-w-md w-full p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
-              <h3 className="text-base font-bold text-gray-900">THÊM TÀI KHOẢN </h3>
+              <h3 className="text-base font-bold text-gray-900">Thêm tài khoản</h3>
               <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-700">
                 <X className="h-5 w-5" />
               </button>
@@ -217,11 +217,11 @@ function UsersManagementContent() {
 
             <form onSubmit={handleAddUser} className="space-y-3.5 text-xs">
               <div>
-                <label className="text-gray-700 font-medium block mb-1">Tên đăng nhập / Mã GV / Mã Cán bộ :</label>
+                <label className="text-gray-700 font-medium block mb-1">Tên đăng nhập / Mã tài khoản:</label>
                 <input
                   type="text"
                   required
-                  placeholder="VD: gv.khoacntt hoặc canbo01"
+                  placeholder="vd: gv01 hoặc canbo01"
                   value={studentCode}
                   onChange={(e) => setStudentCode(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 font-mono focus:outline-none focus:border-red-500 focus:bg-white"
@@ -229,11 +229,11 @@ function UsersManagementContent() {
               </div>
 
               <div>
-                <label className="text-gray-700 font-medium block mb-1">Họ và tên đầy đủ :</label>
+                <label className="text-gray-700 font-medium block mb-1">Họ và tên:</label>
                 <input
                   type="text"
                   required
-                  placeholder="VD: ThS. Nguyễn Văn A"
+                  placeholder="vd: Nguyễn Văn A"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-red-500 focus:bg-white"
@@ -241,11 +241,11 @@ function UsersManagementContent() {
               </div>
 
               <div>
-                <label className="text-gray-700 font-medium block mb-1">Email trường Văn Lang :</label>
+                <label className="text-gray-700 font-medium block mb-1">Email:</label>
                 <input
                   type="email"
                   required
-                  placeholder="VD: nguyenvana@vanlanguni.vn"
+                  placeholder="vd: nguyenvana@vanlanguni.vn"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-red-500 focus:bg-white"
@@ -257,7 +257,7 @@ function UsersManagementContent() {
                   <label className="text-gray-700 font-medium block mb-1">Số điện thoại:</label>
                   <input
                     type="text"
-                    placeholder="VD: 0981234567"
+                    placeholder="vd: 0981234567"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-red-500 focus:bg-white"
@@ -265,7 +265,7 @@ function UsersManagementContent() {
                 </div>
 
                 <div>
-                  <label className="text-gray-700 font-medium block mb-1">Vai trò (Role):</label>
+                  <label className="text-gray-700 font-medium block mb-1">Vai trò:</label>
                   <select
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
@@ -277,10 +277,10 @@ function UsersManagementContent() {
               </div>
 
               <div>
-                <label className="text-gray-700 font-medium block mb-1">Mật khẩu đăng nhập ban đầu:</label>
+                <label className="text-gray-700 font-medium block mb-1">Mật khẩu ban đầu:</label>
                 <input
                   type="text"
-                  placeholder="Mặc định: 123456"
+                  placeholder="123456"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 font-mono focus:outline-none focus:border-red-500 focus:bg-white"
@@ -300,7 +300,7 @@ function UsersManagementContent() {
                   disabled={isSubmitting}
                   className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-xs shadow-sm"
                 >
-                  {isSubmitting ? "Đang lưu..." : "Lưu vào hệ thống"}
+                  {isSubmitting ? "Đang lưu..." : "Lưu tài khoản"}
                 </button>
               </div>
             </form>

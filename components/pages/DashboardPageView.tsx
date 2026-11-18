@@ -1216,7 +1216,7 @@ function DashboardContent() {
                 <PlusCircle className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-gray-900">Điểm Danh Bổ Sung Thủ Công</h3>
+                <h3 className="text-base font-bold text-gray-900">Điểm danh bổ sung thủ công</h3>
                 <p className="text-xs text-gray-400">Dành cho sinh viên quên mang thẻ hoặc thẻ bị lỗi</p>
               </div>
             </div>
@@ -1227,7 +1227,7 @@ function DashboardContent() {
                 <input
                   type="text"
                   required
-                  placeholder="VD: 2373401010100"
+                  placeholder="vd: 2373401010100"
                   value={manualStudentCode}
                   onChange={(e) => setManualStudentCode(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-rose-400 font-mono"
@@ -1254,14 +1254,14 @@ function DashboardContent() {
                     onClick={() => { setManualInTime("08:00"); setManualOutTime("12:00"); }}
                     className="px-2.5 py-1 rounded bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 border border-gray-200 text-[11px] font-medium text-gray-700 transition"
                   >
-                    Buổi Sáng (08:00 - 12:00)
+                    Buổi sáng (08:00 - 12:00)
                   </button>
                   <button
                     type="button"
                     onClick={() => { setManualInTime("13:00"); setManualOutTime("17:00"); }}
                     className="px-2.5 py-1 rounded bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 border border-gray-200 text-[11px] font-medium text-gray-700 transition"
                   >
-                    Buổi Chiều (13:00 - 17:00)
+                    Buổi chiều (13:00 - 17:00)
                   </button>
                 </div>
               </div>
@@ -1294,7 +1294,7 @@ function DashboardContent() {
                   type="text"
                   value={manualNote}
                   onChange={(e) => setManualNote(e.target.value)}
-                  placeholder="VD: Quên mang thẻ SV, có xác nhận của GVHD"
+                  placeholder="vd: Quên mang thẻ SV, có xác nhận của GVHD"
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-rose-400"
                 />
               </div>

@@ -263,7 +263,7 @@ function SchedulesContent() {
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition"
             >
               <Plus className="h-4 w-4" />
-              Đăng ký / Phân công Ca trực
+              Đăng ký / phân công ca trực
             </button>
         </header>
 
