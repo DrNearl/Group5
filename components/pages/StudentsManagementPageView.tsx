@@ -17,6 +17,7 @@ import {
   Sparkles,
   QrCode,
   FileSpreadsheet,
+  ChevronDown,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -25,6 +26,240 @@ import { getAssetPath } from "@/lib/asset-path";
 import { useLanguage } from "@/lib/language-context";
 import StudentQrModal from "@/components/modals/StudentQrModal";
 import StudentBulkImportModal from "@/components/modals/StudentBulkImportModal";
+import {
+  StudentInputErrors,
+  StudentInputField,
+  StudentInputValues,
+  validateStudentInput,
+} from "@/lib/student-validation";
+
+const STUDENT_FIELD_ORDER: StudentInputField[] = ["studentCode", "fullName", "className", "phone", "email"];
+const STUDENT_CLASS_OPTIONS = [
+  { value: "24DTH01", label: "Khóa K30 - 24DTH01" },
+  { value: "24DTH02", label: "Khóa K30 - 24DTH02" },
+  { value: "23DTH01", label: "Khóa K29 - 23DTH01" },
+  { value: "23DTH02", label: "Khóa K29 - 23DTH02" },
+  { value: "22DTH01", label: "Khóa K28 - 22DTH01" },
+  { value: "21DTH01", label: "Khóa K27 - 21DTH01" },
+  { value: "DTH-CNTT", label: "Đại học Công nghệ Thông tin" },
+  { value: "KHACH-VLANGLAI", label: "Khách vãng lai / Khác" },
+  { value: "K30CNTT01", label: "Khóa K30 - CNTT 01" },
+  { value: "K29CNTT16", label: "Khóa K29 - CNTT 16" },
+  { value: "K29CNTT01", label: "Khóa K29 - CNTT 01" },
+  { value: "K28CNTT01", label: "Khóa K28 - CNTT 01" },
+  { value: "K27CNTT25", label: "Khóa K27 - CNTT 25" },
+  { value: "K29QKD01", label: "Khóa K29 - QTKD 01" },
+  { value: "KHACH", label: "Khách vãng lai / Khác (mã KHACH)" },
+];
+
+async function readJsonSafe(res: Response): Promise<{ data: any | null; status: number }> {
+  try {
+    const text = await res.text();
+    if (!text.trim()) return { data: null, status: res.status };
+    try {
+      return { data: JSON.parse(text), status: res.status };
+    } catch {
+      return { data: null, status: res.status };
+    }
+  } catch {
+    return { data: null, status: res.status };
+  }
+}
+
+function getStudentRequestError(status: number, data: any | null): string {
+  if (status === 401 || status === 403) return "Bạn không có quyền thực hiện thao tác này";
+  if (status === 404) return "Không tìm thấy bản ghi, hãy tải lại trang";
+  if (status === 405) return "Máy chủ chưa hỗ trợ thao tác này, hãy tải lại trang rồi thử lại";
+  if (status >= 500) return "Máy chủ đang gặp lỗi, vui lòng thử lại";
+  if (!data) return "Máy chủ trả phản hồi không hợp lệ, vui lòng thử lại";
+  return data.message || "Không thể lưu thông tin sinh viên, vui lòng thử lại";
+}
+
+function focusFirstStudentField(prefix: string, errors: StudentInputErrors) {
+  const field = STUDENT_FIELD_ORDER.find((name) => errors[name]);
+  if (field) setTimeout(() => document.getElementById(`${prefix}-${field}`)?.focus(), 0);
+}
+
+function applyStudentResponseError(
+  data: any | null,
+  status: number,
+  prefix: string,
+  setFieldErrors: (errors: StudentInputErrors) => void,
+  setFormError: (error: string) => void
+) {
+  const errors: StudentInputErrors = {};
+  if (data?.errors && typeof data.errors === "object") {
+    for (const field of STUDENT_FIELD_ORDER) {
+      if (typeof data.errors[field] === "string") errors[field] = data.errors[field];
+    }
+  }
+  if (Object.keys(errors).length > 0) {
+    setFieldErrors(errors);
+    focusFirstStudentField(prefix, errors);
+    return;
+  }
+  setFormError(getStudentRequestError(status, data));
+}
+
+function StudentFormFields({
+  prefix,
+  values,
+  errors,
+  onChange,
+  studentCodeHint,
+  showClassQuickPicks = false,
+}: {
+  prefix: string;
+  values: StudentInputValues;
+  errors: StudentInputErrors;
+  onChange: (field: StudentInputField, value: string) => void;
+  studentCodeHint: string;
+  showClassQuickPicks?: boolean;
+}) {
+  const [classOptionsOpen, setClassOptionsOpen] = useState(false);
+  const fieldId = (field: StudentInputField) => `${prefix}-${field}`;
+  const fieldProps = (field: StudentInputField) => ({
+    id: fieldId(field),
+    "aria-invalid": Boolean(errors[field]) || undefined,
+    "aria-describedby": errors[field] ? `${fieldId(field)}-error` : undefined,
+  });
+  const inputClass = (field: StudentInputField) =>
+    "w-full rounded-xl border px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 " +
+    (field === "studentCode" ? "font-mono " : "") +
+    (errors[field]
+      ? "border-rose-400 bg-rose-50/40 focus:ring-rose-200"
+      : "border-gray-200 bg-gray-50 focus:border-rose-400 focus:ring-rose-100");
+  const fieldError = (field: StudentInputField) => errors[field] ? (
+    <p id={`${fieldId(field)}-error`} className="mt-1 text-xs text-rose-600">{errors[field]}</p>
+  ) : null;
+
+  return (
+    <>
+      <div>
+        <label htmlFor={fieldId("studentCode")} className="mb-1 block font-semibold text-gray-700">Mã số sinh viên (MSSV) *</label>
+        <input
+          {...fieldProps("studentCode")}
+          type="text"
+          placeholder="vd: 2373401010100"
+          value={String(values.studentCode ?? "")}
+          onChange={(event) => onChange("studentCode", event.target.value)}
+          className={inputClass("studentCode")}
+        />
+        {fieldError("studentCode")}
+        <span className="mt-0.5 block text-[10px] text-gray-400">{studentCodeHint}</span>
+      </div>
+
+      <div>
+        <label htmlFor={fieldId("fullName")} className="mb-1 block font-semibold text-gray-700">Họ và tên sinh viên *</label>
+        <input
+          {...fieldProps("fullName")}
+          type="text"
+          placeholder="vd: Nguyễn Thiện Đức"
+          value={String(values.fullName ?? "")}
+          onChange={(event) => onChange("fullName", event.target.value)}
+          className={inputClass("fullName")}
+        />
+        {fieldError("fullName")}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <div className="mb-1 flex items-center justify-between">
+            <label htmlFor={fieldId("className")} className="font-semibold text-gray-700">Lớp chuyên ngành</label>
+            <span className="text-[10px] text-gray-400">Chọn hoặc nhập</span>
+          </div>
+          <div className="relative">
+            <input
+              {...fieldProps("className")}
+              type="text"
+              placeholder="vd: 24DTH01, 23DTH01..."
+              value={String(values.className ?? "")}
+              onFocus={() => setClassOptionsOpen(true)}
+              onClick={() => setClassOptionsOpen(true)}
+              onBlur={() => setTimeout(() => setClassOptionsOpen(false), 120)}
+              onChange={(event) => {
+                onChange("className", event.target.value);
+                setClassOptionsOpen(true);
+              }}
+              className={`${inputClass("className")} pr-9`}
+              aria-expanded={classOptionsOpen}
+              aria-controls={`${prefix}-class-options`}
+              autoComplete="off"
+            />
+            <button
+              type="button"
+              aria-label="Hiện danh sách lớp"
+              aria-expanded={classOptionsOpen}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => setClassOptionsOpen((open) => !open)}
+              className="absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
+            {classOptionsOpen && (
+              <ul
+                id={`${prefix}-class-options`}
+                role="listbox"
+                className="absolute left-0 right-0 top-full z-30 mt-1 max-h-52 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+              >
+                {STUDENT_CLASS_OPTIONS.map((option) => (
+                  <li key={option.value} role="option" aria-selected={values.className === option.value}>
+                    <button
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        onChange("className", option.value);
+                        setClassOptionsOpen(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-xs text-gray-700 hover:bg-rose-50 hover:text-rose-700"
+                    >
+                      {option.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {fieldError("className")}
+          {showClassQuickPicks && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {["24DTH01", "23DTH01", "22DTH01", "DTH-CNTT"].map((value) => (
+                <button key={value} type="button" onClick={() => onChange("className", value)} className="cursor-pointer rounded border border-gray-200 bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600 transition hover:bg-rose-50 hover:text-rose-600">
+                  {value}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div>
+          <label htmlFor={fieldId("phone")} className="mb-1 block font-semibold text-gray-700">Số điện thoại</label>
+          <input
+            {...fieldProps("phone")}
+            type="tel"
+            placeholder="vd: 0912345678"
+            value={String(values.phone ?? "")}
+            onChange={(event) => onChange("phone", event.target.value)}
+            className={inputClass("phone")}
+          />
+          {fieldError("phone")}
+        </div>
+      </div>
+
+      <div>
+        <label htmlFor={fieldId("email")} className="mb-1 block font-semibold text-gray-700">Email Văn Lang</label>
+        <input
+          {...fieldProps("email")}
+          type="email"
+          placeholder="vd: duc.2373401010100@vanlanguni.vn"
+          value={String(values.email ?? "")}
+          onChange={(event) => onChange("email", event.target.value)}
+          className={inputClass("email")}
+        />
+        {fieldError("email")}
+      </div>
+    </>
+  );
+}
 
 function ModalPortal({ children }: { children: React.ReactNode }) {
   const [isMounted, setIsMounted] = useState(false);
@@ -54,6 +289,8 @@ function StudentsManagementContent() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [addFieldErrors, setAddFieldErrors] = useState<StudentInputErrors>({});
+  const [addFormError, setAddFormError] = useState("");
 
   // Edit states
   const [editingStudent, setEditingStudent] = useState<any | null>(null);
@@ -63,8 +300,58 @@ function StudentsManagementContent() {
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editFieldErrors, setEditFieldErrors] = useState<StudentInputErrors>({});
+  const [editFormError, setEditFormError] = useState("");
+
+  const openAddModal = () => {
+    setAddFieldErrors({});
+    setAddFormError("");
+    setShowAddModal(true);
+  };
+
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    setAddFieldErrors({});
+    setAddFormError("");
+  };
+
+  const closeEditModal = () => {
+    setEditingStudent(null);
+    setEditFieldErrors({});
+    setEditFormError("");
+  };
+
+  const updateAddField = (field: StudentInputField, value: string) => {
+    if (field === "studentCode") setStudentCode(value);
+    if (field === "fullName") setFullName(value);
+    if (field === "className") setClassName(value);
+    if (field === "phone") setPhone(value);
+    if (field === "email") setEmail(value);
+    setAddFieldErrors((previous) => {
+      if (!previous[field]) return previous;
+      const next = { ...previous };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const updateEditField = (field: StudentInputField, value: string) => {
+    if (field === "studentCode") setEditStudentCode(value);
+    if (field === "fullName") setEditFullName(value);
+    if (field === "className") setEditClassName(value);
+    if (field === "phone") setEditPhone(value);
+    if (field === "email") setEditEmail(value);
+    setEditFieldErrors((previous) => {
+      if (!previous[field]) return previous;
+      const next = { ...previous };
+      delete next[field];
+      return next;
+    });
+  };
 
   const openEditModal = (sv: any) => {
+    setEditFieldErrors({});
+    setEditFormError("");
     setEditingStudent(sv);
     setEditFullName(sv.fullName || "");
     setEditStudentCode(sv.studentCode);
@@ -76,6 +363,23 @@ function StudentsManagementContent() {
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStudent) return;
+    const values = {
+      studentCode: editStudentCode,
+      fullName: editFullName,
+      className: editClassName,
+      email: editEmail,
+      phone: editPhone,
+    };
+    const validationErrors = validateStudentInput(values, "edit");
+    if (Object.keys(validationErrors).length > 0) {
+      setEditFieldErrors(validationErrors);
+      setEditFormError("");
+      focusFirstStudentField("edit", validationErrors);
+      return;
+    }
+
+    setEditFieldErrors({});
+    setEditFormError("");
     setIsSavingEdit(true);
     try {
       const res = await fetch(getAssetPath("/api/students"), {
@@ -83,24 +387,20 @@ function StudentsManagementContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: editingStudent.id,
-          studentCode: editStudentCode,
-          fullName: editFullName,
-          className: editClassName,
-          email: editEmail,
-          phone: editPhone,
+          ...values,
         }),
       });
-      const data = await res.json();
-      if (data.success) {
-        setActionMessage(`Đã cập nhật thông tin ${editFullName}!`);
+      const { data, status } = await readJsonSafe(res);
+      if (res.ok && data?.success) {
+        setActionMessage(`Đã cập nhật thông tin sinh viên ${editFullName}!`);
         setTimeout(() => setActionMessage(null), 4000);
-        setEditingStudent(null);
+        closeEditModal();
         loadStudents();
       } else {
-        alert(data.message || "Không thể cập nhật thông tin");
+        applyStudentResponseError(data, status, "edit", setEditFieldErrors, setEditFormError);
       }
-    } catch (e: any) {
-      alert("Lỗi kết nối: " + e.message);
+    } catch {
+      setEditFormError("Không kết nối được máy chủ, kiểm tra mạng rồi thử lại");
     } finally {
       setIsSavingEdit(false);
     }
@@ -128,6 +428,17 @@ function StudentsManagementContent() {
 
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
+    const values = { studentCode, fullName, className, email, phone };
+    const validationErrors = validateStudentInput(values, "create");
+    if (Object.keys(validationErrors).length > 0) {
+      setAddFieldErrors(validationErrors);
+      setAddFormError("");
+      focusFirstStudentField("add", validationErrors);
+      return;
+    }
+
+    setAddFieldErrors({});
+    setAddFormError("");
     setIsSubmitting(true);
     try {
       const res = await fetch(getAssetPath("/api/students"), {
@@ -148,21 +459,22 @@ function StudentsManagementContent() {
           ttlDays: 90,
         }),
       });
-      const data = await res.json();
-      if (data.success) {
+      const { data, status } = await readJsonSafe(res);
+      if (res.ok && data?.success) {
         setActionMessage(data.message || `Đã thêm thành công sinh viên ${fullName}!`);
         setTimeout(() => setActionMessage(null), 5000);
-        setShowAddModal(false);
+        closeAddModal();
         setStudentCode("");
         setFullName("");
+        setClassName("");
         setEmail("");
         setPhone("");
         loadStudents();
       } else {
-        alert(data.message || "Không thể thêm sinh viên");
+        applyStudentResponseError(data, status, "add", setAddFieldErrors, setAddFormError);
       }
-    } catch (e: any) {
-      alert("Lỗi kết nối: " + e.message);
+    } catch {
+      setAddFormError("Không kết nối được máy chủ, kiểm tra mạng rồi thử lại");
     } finally {
       setIsSubmitting(false);
     }
@@ -256,7 +568,7 @@ function StudentsManagementContent() {
               {t.students.importBtn}
             </button>
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={openAddModal}
               className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition"
             >
               <UserPlus className="h-4 w-4" />
@@ -438,7 +750,7 @@ function StudentsManagementContent() {
             <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 relative animate-in fade-in zoom-in-95">
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={closeAddModal}
                 className="absolute top-4 right-4 text-gray-400 hover:text-gray-700"
               >
                 <X className="h-5 w-5" />
@@ -448,91 +760,16 @@ function StudentsManagementContent() {
                 Thêm Mới
               </h3>
 
-              <form onSubmit={handleAddStudent} className="space-y-3.5 text-xs">
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-1">Mã định danh / Mã số</label>
-                  <input
-                    type="text"
-                    placeholder="vd: 2373401010100 (để trống sẽ tự tạo)"
-                    value={studentCode}
-                    onChange={(e) => setStudentCode(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 font-mono focus:outline-none focus:border-rose-400"
-                  />
-                  <span className="text-[10px] text-gray-400 mt-0.5 block">
-                    (Mã số thẻ hoặc mã định danh quét điểm danh)
-                  </span>
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-1">Họ và tên</label>
-                  <input
-                    type="text"
-                    placeholder="vd: Nguyễn Thiện Đức"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-gray-700 font-semibold">Đối tượng / Lớp</label>
-                      <span className="text-[10px] text-gray-400">Chọn hoặc nhập</span>
-                    </div>
-                    <input
-                      type="text"
-                      list="suggested-classes-add"
-                      placeholder="vd: K29CNTT16, K30CNTT01..."
-                      value={className}
-                      onChange={(e) => setClassName(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
-                    />
-                    <datalist id="suggested-classes-add">
-                      <option value="K30CNTT01">Khóa K30 - CNTT 01</option>
-                      <option value="K29CNTT16">Khóa K29 - CNTT 16</option>
-                      <option value="K29CNTT01">Khóa K29 - CNTT 01</option>
-                      <option value="K28CNTT01">Khóa K28 - CNTT 01</option>
-                      <option value="K27CNTT25">Khóa K27 - CNTT 25</option>
-                      <option value="K29QKD01">Khóa K29 - QTKD 01</option>
-                      <option value="KHACH">Khách vãng lai / Khác</option>
-                    </datalist>
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {["K30CNTT01", "K29CNTT16", "K28CNTT01", "K27CNTT25"].map((c) => (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => setClassName(c)}
-                          className="px-1.5 py-0.5 rounded bg-gray-100 hover:bg-rose-50 hover:text-rose-600 text-[10px] text-gray-600 border border-gray-200 transition cursor-pointer"
-                        >
-                          {c}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-semibold mb-1">Số điện thoại</label>
-                    <input
-                      type="tel"
-                      placeholder="vd: 0912345678"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-1">Email</label>
-                  <input
-                    type="email"
-                    placeholder="vd: example@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
-                  />
-                </div>
-
+              <form noValidate onSubmit={handleAddStudent} className="space-y-3.5 text-xs">
+                {addFormError && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{addFormError}</div>}
+                <StudentFormFields
+                  prefix="add"
+                  values={{ studentCode, fullName, className, phone, email }}
+                  errors={addFieldErrors}
+                  onChange={updateAddField}
+                  studentCodeHint="(Chuỗi mã vạch in sẵn trên thẻ sinh viên VLU)"
+                  showClassQuickPicks
+                />
                 <label className="flex items-center gap-2 pt-1 text-gray-700 font-medium cursor-pointer">
                   <input
                     type="checkbox"
@@ -546,7 +783,7 @@ function StudentsManagementContent() {
                 <div className="flex justify-end gap-2.5 pt-3 border-t border-gray-100">
                   <button
                     type="button"
-                    onClick={() => setShowAddModal(false)}
+                    onClick={closeAddModal}
                     className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium"
                   >
                     Hủy
@@ -571,7 +808,7 @@ function StudentsManagementContent() {
             <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 relative animate-in fade-in zoom-in-95">
               <button
-                onClick={() => setEditingStudent(null)}
+                onClick={closeEditModal}
                 className="absolute top-4 right-4 text-gray-400 hover:text-gray-700"
               >
                 <X className="h-5 w-5" />
@@ -581,95 +818,20 @@ function StudentsManagementContent() {
                 Chỉnh Sửa Thông Tin
               </h3>
 
-              <form onSubmit={handleSaveEdit} className="space-y-3.5 text-xs">
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-1">Mã định danh / Mã số</label>
-                  <input
-                    type="text"
-                    placeholder="vd: 2373401010100"
-                    value={editStudentCode}
-                    onChange={(e) => setEditStudentCode(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 font-mono focus:outline-none focus:border-rose-400"
-                  />
-                  <span className="text-[10px] text-gray-400 mt-0.5 block">
-                    (Mã số thẻ hoặc mã định danh quét điểm danh)
-                  </span>
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-1">Họ và tên</label>
-                  <input
-                    type="text"
-                    placeholder="vd: Nguyễn Thiện Đức"
-                    value={editFullName}
-                    onChange={(e) => setEditFullName(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-gray-700 font-semibold">Đối tượng / Lớp</label>
-                      <span className="text-[10px] text-gray-400">Chọn hoặc nhập</span>
-                    </div>
-                    <input
-                      type="text"
-                      list="suggested-classes-edit"
-                      placeholder="vd: K29CNTT16, K30CNTT01..."
-                      value={editClassName}
-                      onChange={(e) => setEditClassName(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
-                    />
-                    <datalist id="suggested-classes-edit">
-                      <option value="K30CNTT01">Khóa K30 - CNTT 01</option>
-                      <option value="K29CNTT16">Khóa K29 - CNTT 16</option>
-                      <option value="K29CNTT01">Khóa K29 - CNTT 01</option>
-                      <option value="K28CNTT01">Khóa K28 - CNTT 01</option>
-                      <option value="K27CNTT25">Khóa K27 - CNTT 25</option>
-                      <option value="K29QKD01">Khóa K29 - QTKD 01</option>
-                      <option value="KHACH">Khách vãng lai / Khác</option>
-                    </datalist>
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {["K30CNTT01", "K29CNTT16", "K28CNTT01", "K27CNTT25"].map((c) => (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => setEditClassName(c)}
-                          className="px-1.5 py-0.5 rounded bg-gray-100 hover:bg-rose-50 hover:text-rose-600 text-[10px] text-gray-600 border border-gray-200 transition cursor-pointer"
-                        >
-                          {c}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-semibold mb-1">Số điện thoại</label>
-                    <input
-                      type="tel"
-                      placeholder="vd: 0912345678"
-                      value={editPhone}
-                      onChange={(e) => setEditPhone(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-1">Email</label>
-                  <input
-                    type="email"
-                    placeholder="vd: example@email.com"
-                    value={editEmail}
-                    onChange={(e) => setEditEmail(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-gray-900 focus:outline-none focus:border-rose-400"
-                  />
-                </div>
-
+              <form noValidate onSubmit={handleSaveEdit} className="space-y-3.5 text-xs">
+                {editFormError && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{editFormError}</div>}
+                <StudentFormFields
+                  prefix="edit"
+                  values={{ studentCode: editStudentCode, fullName: editFullName, className: editClassName, phone: editPhone, email: editEmail }}
+                  errors={editFieldErrors}
+                  onChange={updateEditField}
+                  studentCodeHint="(Mã vạch thẻ sinh viên dùng quét điểm danh)"
+                  showClassQuickPicks
+                />
                 <div className="flex justify-end gap-2.5 pt-3 border-t border-gray-100">
                   <button
                     type="button"
-                    onClick={() => setEditingStudent(null)}
+                    onClick={closeEditModal}
                     className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium"
                   >
                     Hủy
@@ -689,24 +851,28 @@ function StudentsManagementContent() {
         )}
 
         {qrStudent && (
-          <StudentQrModal
-            student={qrStudent}
-            userId={user?.id}
-            userEmail={user?.email}
-            username={user?.username}
-            onClose={() => setQrStudent(null)}
-            onUpdated={loadStudents}
-          />
+          <ModalPortal>
+            <StudentQrModal
+              student={qrStudent}
+              userId={user?.id}
+              userEmail={user?.email}
+              username={user?.username}
+              onClose={() => setQrStudent(null)}
+              onUpdated={loadStudents}
+            />
+          </ModalPortal>
         )}
 
         {showImportModal && (
-          <StudentBulkImportModal
-            userId={user?.id}
-            userEmail={user?.email}
-            username={user?.username}
-            onClose={() => setShowImportModal(false)}
-            onImported={loadStudents}
-          />
+          <ModalPortal>
+            <StudentBulkImportModal
+              userId={user?.id}
+              userEmail={user?.email}
+              username={user?.username}
+              onClose={() => setShowImportModal(false)}
+              onImported={loadStudents}
+            />
+          </ModalPortal>
         )}
       </div>
     </div>

@@ -115,3 +115,19 @@ export async function requireStaffAuth(req: NextRequest): Promise<
     };
   }
 }
+
+export async function requireAdminAuth(req: NextRequest): Promise<
+  | { authorized: true; user: AuthorizedUser }
+  | { authorized: false; status: number; message: string }
+> {
+  const auth = await requireStaffAuth(req);
+  if (!auth.authorized) return auth;
+  if (auth.user.role !== "ADMIN") {
+    return {
+      authorized: false,
+      status: 403,
+      message: "Chỉ Quản trị viên (Admin) mới được phép sửa giờ ra.",
+    };
+  }
+  return auth;
+}
