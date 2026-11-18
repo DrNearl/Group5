@@ -7,7 +7,7 @@ export const translations = {
       mobileMenu: "Menu chức năng",
       scanStation: "Trạm Quét QR",
       dashboard: "Giám Sát Phòng Lab",
-      students: "Danh Sách",
+      students: "Danh Sách Sinh Viên",
       users: "Tài Khoản & Phân Quyền",
       auditLogs: "Nhật Ký Thao Tác",
       settings: "Cài Đặt",
