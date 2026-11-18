@@ -78,18 +78,18 @@ export async function handleAttendanceScan(req: NextRequest) {
     const clientIp = forwardedFor ? forwardedFor.split(",")[0].trim() : "127.0.0.1";
 
     // =========================================================================
-    // 1. NẾU QUÉT TRÚNG MÃ EQ- (ĐÃ BỎ DATA MÁY TRẠM)
+    // 1. Chặn mã vạch thiết bị phòng Lab (EQ-*) không thuộc phạm vi điểm danh
     // =========================================================================
     if (cleanBarcode.toUpperCase().startsWith("EQ-")) {
       return NextResponse.json({
         success: false,
-        message: "Trạm quét chỉ phục vụ điểm danh thẻ sinh viên!",
+        message: "Trạm quét chỉ phục vụ điểm danh thẻ người dùng ra vào Lab!",
       });
     }
 
     // =========================================================================
-    // 2. ĐIỂM DANH SINH VIÊN (CHECK-IN / CHECK-OUT PHÒNG LAB)
-    // Hỗ trợ Thẻ Sinh Viên (Barcode/MSSV) VÀ Thẻ QR Cá Nhân có chữ ký HMAC (VLUQR:...)
+    // 2. ĐIỂM DANH NGƯỜI VÀO - RA PHÒNG LAB (CHECK-IN / CHECK-OUT)
+    // Hỗ trợ Thẻ SV/GV/Khách (Barcode/MSSV) VÀ Thẻ QR Cá Nhân có chữ ký HMAC (VLUQR:...)
     // =========================================================================
     const isPersonalQr = cleanBarcode.startsWith("VLUQR:");
     let resolvedBarcode = cleanBarcode;

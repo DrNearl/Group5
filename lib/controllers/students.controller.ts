@@ -47,7 +47,7 @@ async function generateStudentCode(): Promise<string> {
   return candidate;
 }
 
-// GET: Lấy danh sách toàn bộ Sinh viên trực Lab
+// GET: Lấy danh sách toàn bộ đối tượng trong danh bạ phòng Lab (Sinh viên, Giảng viên, Khách)
 export async function handleStudentsGet(req: NextRequest) {
   try {
     const students = await prisma.student.findMany({
