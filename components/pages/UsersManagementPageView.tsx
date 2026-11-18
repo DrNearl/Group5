@@ -16,6 +16,7 @@ import {
   Unlock,
   X,
   Trash2,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -25,6 +26,22 @@ function UsersManagementContent() {
   const [users, setUsers] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+
+  // Toast feedback notification
+  const [toast, setToast] = useState<{
+    type: "success" | "error" | "info";
+    message: string;
+  } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
+    setToast({ message, type });
+  };
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   // Form states
   const [studentCode, setStudentCode] = useState("");
@@ -63,34 +80,45 @@ function UsersManagementContent() {
       const data = await res.json();
       if (data.success) {
         setShowAddModal(false);
+        const addedName = fullName;
         setStudentCode("");
         setFullName("");
         setEmail("");
         setPhone("");
         setPassword("123456");
         loadUsers();
+        showToast(`Đã tạo mới tài khoản "${addedName}" thành công!`, "success");
       } else {
-        alert("Lỗi: " + data.message);
+        showToast("Lỗi: " + data.message, "error");
       }
     } catch (err: any) {
-      alert("Lỗi kết nối: " + err.message);
+      showToast("Lỗi kết nối: " + err.message, "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDeleteUser = async (id: string, name: string) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản "${name}" khỏi hệ thống?`)) return;
+  const handleDeleteUser = async (id: string, name: string, isPendingReject = false) => {
+    const confirmText = isPendingReject
+      ? `Bạn có chắc chắn muốn từ chối và hủy yêu cầu đăng ký của "${name}"?`
+      : `Bạn có chắc chắn muốn xóa tài khoản "${name}" khỏi hệ thống?`;
+    if (!confirm(confirmText)) return;
     try {
       const res = await fetch(`/api/users?id=${id}`, { method: "DELETE" });
       const data = await res.json();
       if (data.success) {
         loadUsers();
+        showToast(
+          isPendingReject
+            ? `Đã từ chối yêu cầu đăng ký của "${name}".`
+            : `Đã xóa tài khoản "${name}" khỏi hệ thống!`,
+          "info"
+        );
       } else {
-        alert("Lỗi: " + data.message);
+        showToast("Lỗi: " + data.message, "error");
       }
     } catch (err: any) {
-      alert("Lỗi khi xóa: " + err.message);
+      showToast("Lỗi khi xóa: " + err.message, "error");
     }
   };
 
@@ -110,11 +138,17 @@ function UsersManagementContent() {
       const data = await res.json();
       if (data.success) {
         loadUsers();
+        showToast(
+          nextActive
+            ? `Đã duyệt và kích hoạt tài khoản "${name}" thành công!`
+            : `Đã tạm khóa tài khoản "${name}"!`,
+          nextActive ? "success" : "info"
+        );
       } else {
-        alert("Lỗi: " + data.message);
+        showToast("Lỗi: " + data.message, "error");
       }
     } catch (err: any) {
-      alert("Lỗi kết nối: " + err.message);
+      showToast("Lỗi kết nối: " + err.message, "error");
     } finally {
       setActionLoadingId(null);
     }
@@ -135,7 +169,37 @@ function UsersManagementContent() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans p-6">
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans p-6 relative">
+      {/* TOAST NOTIFICATION */}
+      {toast && (
+        <div
+          role="alert"
+          className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl border text-xs font-semibold transition-all duration-200 animate-in fade-in slide-in-from-top-4 ${
+            toast.type === "error"
+              ? "bg-rose-50 border-rose-200 text-rose-800"
+              : toast.type === "info"
+              ? "bg-amber-50 border-amber-200 text-amber-900"
+              : "bg-emerald-50 border-emerald-200 text-emerald-900"
+          }`}
+        >
+          {toast.type === "error" ? (
+            <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+          ) : toast.type === "info" ? (
+            <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+          ) : (
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+          )}
+          <span className="max-w-xs">{toast.message}</span>
+          <button
+            onClick={() => setToast(null)}
+            className="p-1 hover:bg-black/5 rounded-lg transition text-gray-500 hover:text-gray-800 ml-1 cursor-pointer"
+            title="Đóng thông báo"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto space-y-6">
         {/* HEADER */}
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-5">
@@ -153,7 +217,7 @@ function UsersManagementContent() {
 
           <button
             onClick={() => setShowAddModal(true)}
-            className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition"
+            className="px-4 py-2.5 bg-red-600 hover:bg-red-500 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition cursor-pointer"
           >
             <UserPlus className="h-4 w-4" />
             Thêm tài khoản
@@ -176,9 +240,9 @@ function UsersManagementContent() {
           <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl text-xs font-semibold">
             <button
               onClick={() => setStatusFilter("ALL")}
-              className={`px-3 py-1.5 rounded-lg transition ${
+              className={`px-3 py-1.5 rounded-lg transition active:scale-95 cursor-pointer ${
                 statusFilter === "ALL"
-                  ? "bg-white text-gray-900 shadow-xs"
+                  ? "bg-white text-gray-900 shadow-xs font-bold"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
@@ -186,9 +250,9 @@ function UsersManagementContent() {
             </button>
             <button
               onClick={() => setStatusFilter("PENDING")}
-              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg transition active:scale-95 cursor-pointer flex items-center gap-1.5 ${
                 statusFilter === "PENDING"
-                  ? "bg-white text-amber-700 shadow-xs"
+                  ? "bg-white text-amber-700 shadow-xs font-bold"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
@@ -201,9 +265,9 @@ function UsersManagementContent() {
             </button>
             <button
               onClick={() => setStatusFilter("ACTIVE")}
-              className={`px-3 py-1.5 rounded-lg transition ${
+              className={`px-3 py-1.5 rounded-lg transition active:scale-95 cursor-pointer ${
                 statusFilter === "ACTIVE"
-                  ? "bg-white text-emerald-700 shadow-xs"
+                  ? "bg-white text-emerald-700 shadow-xs font-bold"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
@@ -238,12 +302,12 @@ function UsersManagementContent() {
                     </span>
 
                     {u.isActive ? (
-                      <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+                      <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1">
                         <CheckCircle className="h-3 w-3" />
                         Hoạt động
                       </span>
                     ) : (
-                      <span className="text-[10px] font-mono text-amber-800 bg-amber-50 border border-amber-300 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                      <span className="text-[10px] font-mono text-amber-800 bg-amber-50 border border-amber-300 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
                         <Clock className="h-3 w-3 text-amber-600" />
                         Chờ duyệt
                       </span>
@@ -276,39 +340,39 @@ function UsersManagementContent() {
                       <button
                         onClick={() => handleToggleActive(u.id, true, u.fullName)}
                         disabled={actionLoadingId === u.id}
-                        className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition disabled:opacity-50"
+                        className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition cursor-pointer disabled:opacity-50"
                       >
                         <CheckCircle className="h-3.5 w-3.5" />
                         {actionLoadingId === u.id ? "Đang xử lý..." : "Duyệt tài khoản"}
                       </button>
                       <button
-                        onClick={() => handleDeleteUser(u.id, u.fullName)}
+                        onClick={() => handleDeleteUser(u.id, u.fullName, true)}
                         disabled={actionLoadingId === u.id}
-                        className="py-1.5 px-2.5 bg-gray-100 hover:bg-rose-50 text-gray-600 hover:text-rose-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition disabled:opacity-50"
-                        title="Từ chối yêu cầu"
+                        className="py-1.5 px-3 bg-gray-100 hover:bg-rose-50 active:scale-95 text-gray-700 hover:text-rose-700 border border-gray-200 hover:border-rose-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50 shadow-2xs"
+                        title="Từ chối yêu cầu đăng ký"
                       >
                         <X className="h-3.5 w-3.5" />
                         Từ chối
                       </button>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center justify-end w-full gap-2">
                       <button
                         onClick={() => handleToggleActive(u.id, false, u.fullName)}
                         disabled={actionLoadingId === u.id}
-                        className="text-xs text-amber-600 hover:text-amber-800 flex items-center gap-1 font-medium hover:underline disabled:opacity-50"
+                        className="py-1.5 px-3 bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-800 border border-amber-200 hover:border-amber-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50 shadow-2xs"
                         title="Tạm khóa tài khoản"
                       >
-                        <Lock className="h-3.5 w-3.5" />
-                        Khóa
+                        <Lock className="h-3.5 w-3.5 text-amber-600" />
+                        {actionLoadingId === u.id ? "Đang khóa..." : "Khóa"}
                       </button>
                       <button
-                        onClick={() => handleDeleteUser(u.id, u.fullName)}
+                        onClick={() => handleDeleteUser(u.id, u.fullName, false)}
                         disabled={actionLoadingId === u.id}
-                        className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 font-medium hover:underline disabled:opacity-50"
+                        className="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-rose-200 hover:border-rose-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50 shadow-2xs"
                         title="Xóa tài khoản"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3.5 w-3.5 text-rose-600" />
                         Xóa
                       </button>
                     </div>
@@ -407,14 +471,14 @@ function UsersManagementContent() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium"
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition active:scale-95 cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-xs shadow-sm"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold rounded-xl text-xs shadow-xs transition cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? "Đang lưu..." : "Lưu tài khoản"}
                 </button>
