@@ -33,8 +33,8 @@ export async function handleAuthSignup(req: NextRequest) {
         email,
         phone,
         passwordHash: await hashPassword(password),
-        role: "LECTURER",
-        isActive: false, // Chờ Quản trị viên (Admin) xét duyệt
+        role: "PENDING", // Đánh dấu tài khoản đăng ký đang chờ xét duyệt
+        isActive: false, // Chưa kích hoạt
       },
       select: {
         id: true,

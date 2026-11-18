@@ -39,10 +39,13 @@ export async function handleAuthLogin(req: NextRequest) {
     }
 
     if (!user.isActive) {
+      const isPending = user.role === "PENDING";
       return NextResponse.json(
         {
           success: false,
-          message: "Tài khoản của bạn đang chờ Quản trị viên (Admin) xét duyệt trước khi sử dụng. Vui lòng liên hệ Admin phòng Lab!",
+          message: isPending
+            ? "Tài khoản của bạn đang chờ Quản trị viên (Admin) xét duyệt trước khi sử dụng. Vui lòng liên hệ Admin phòng Lab!"
+            : "Tài khoản của bạn đã bị tạm khóa bởi Quản trị viên. Vui lòng liên hệ Ban quản lý phòng Lab!",
         },
         { status: 403 }
       );

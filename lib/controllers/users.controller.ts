@@ -147,9 +147,15 @@ export async function handleUsersPatch(req: NextRequest) {
       );
     }
 
+    const isApproveFromPending = isActive && existingUser.role === "PENDING";
+    const updateData: { isActive: boolean; role?: string } = { isActive };
+    if (isApproveFromPending) {
+      updateData.role = "LECTURER";
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: { isActive },
+      data: updateData,
       select: {
         id: true,
         username: true,
@@ -161,16 +167,29 @@ export async function handleUsersPatch(req: NextRequest) {
       },
     });
 
+    const isUnlock = isActive && !isApproveFromPending;
+    const auditDetail = isApproveFromPending
+      ? "Duyệt kích hoạt tài khoản đăng ký mới"
+      : isUnlock
+      ? "Mở khóa tài khoản"
+      : "Tạm khóa tài khoản";
+
     await recordAuditLog({
       req,
       action: isActive ? "USER_APPROVE" : "USER_DEACTIVATE",
       target: `${updatedUser.fullName} (${updatedUser.username})`,
-      detail: isActive ? "Duyệt kích hoạt tài khoản" : "Tạm khóa tài khoản",
+      detail: auditDetail,
     });
+
+    const successMessage = isApproveFromPending
+      ? "Đã duyệt và kích hoạt tài khoản thành công!"
+      : isUnlock
+      ? "Đã mở khóa tài khoản thành công!"
+      : "Đã tạm khóa tài khoản!";
 
     return NextResponse.json({
       success: true,
-      message: isActive ? "Đã duyệt và kích hoạt tài khoản thành công!" : "Đã tạm khóa tài khoản!",
+      message: successMessage,
       user: updatedUser,
     });
   } catch (error: any) {
