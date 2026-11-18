@@ -6,21 +6,39 @@ import {
   UserPlus,
   Search,
   Shield,
-  GraduationCap,
   Phone,
   Mail,
-  CheckCircle2,
   X,
   Trash2,
+  Pencil,
 } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import type { UserRole } from "@/lib/auth-context";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { useLanguage } from "@/lib/language-context";
+
+type ManagedUser = {
+  id: string;
+  username: string;
+  fullName: string;
+  email: string;
+  phone: string | null;
+  role: UserRole;
+  isActive: boolean;
+};
 
 function UsersManagementContent() {
-  const { user, role: userRole } = useAuth();
-  const [users, setUsers] = useState<any[]>([]);
+  const { lang, t } = useLanguage();
+  const [users, setUsers] = useState<ManagedUser[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [editingUser, setEditingUser] = useState<ManagedUser | null>(null);
+  const [editFullName, setEditFullName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editRole, setEditRole] = useState<UserRole>("LECTURER");
+  const [editError, setEditError] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Form states
   const [studentCode, setStudentCode] = useState("");
@@ -50,10 +68,11 @@ function UsersManagementContent() {
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setCreateError("");
     try {
       const res = await fetch("/api/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-vlu-language": lang },
         body: JSON.stringify({ studentCode, fullName, email, phone, role, password }),
       });
       const data = await res.json();
@@ -64,14 +83,54 @@ function UsersManagementContent() {
         setEmail("");
         setPhone("");
         setPassword("123456");
-        loadUsers();
+        await loadUsers();
       } else {
-        alert("Lỗi: " + data.message);
+        setCreateError(data.message || t.users.createErrorFallback);
       }
-    } catch (err: any) {
-      alert("Lỗi kết nối: " + err.message);
+    } catch {
+      setCreateError(t.users.createErrorFallback);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const openEditUser = (account: ManagedUser) => {
+    setEditingUser(account);
+    setEditFullName(account.fullName);
+    setEditEmail(account.email);
+    setEditPhone(account.phone || "");
+    setEditRole(account.role);
+    setEditError("");
+  };
+
+  const closeEditUser = () => {
+    setEditingUser(null);
+    setEditError("");
+  };
+
+  const handleEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    setIsSavingEdit(true);
+    setEditError("");
+    try {
+      const res = await fetch(`/api/users?id=${encodeURIComponent(editingUser.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-vlu-language": lang },
+        body: JSON.stringify({ fullName: editFullName, email: editEmail, phone: editPhone, role: editRole }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUsers((currentUsers) => currentUsers.map((account) => account.id === data.user.id ? data.user : account));
+        closeEditUser();
+      } else {
+        setEditError(data.message || t.users.editErrorFallback);
+      }
+    } catch {
+      setEditError(t.users.editErrorFallback);
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -116,7 +175,10 @@ function UsersManagementContent() {
           </div>
 
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setCreateError("");
+              setShowAddModal(true);
+            }}
             className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition"
           >
             <UserPlus className="h-4 w-4" />
@@ -160,7 +222,7 @@ function UsersManagementContent() {
                       className="text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border bg-indigo-50 text-indigo-800 border-indigo-200"
                     >
                       <Shield className="h-3 w-3" />
-                      Giảng viên / Quản lý ca trực
+                      {u.role === "ADMIN" ? t.users.roleAdmin : t.users.roleLecturer}
                     </span>
 
                     <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold">
@@ -188,7 +250,16 @@ function UsersManagementContent() {
                 </div>
 
                 {/* ACTION FOOTER */}
-                <div className="pt-3 border-t border-gray-100 flex justify-end">
+                <div className="pt-3 border-t border-gray-100 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => openEditUser(u)}
+                    className="text-xs text-gray-600 hover:text-gray-900 flex items-center gap-1 font-medium hover:underline"
+                    title={t.users.editButton}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    {t.users.editButton}
+                  </button>
                   <button
                     onClick={() => handleDeleteUser(u.id, u.fullName)}
                     className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 font-medium hover:underline"
@@ -216,6 +287,11 @@ function UsersManagementContent() {
             </div>
 
             <form onSubmit={handleAddUser} className="space-y-3.5 text-xs">
+              {createError && (
+                <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700">
+                  {createError}
+                </div>
+              )}
               <div>
                 <label className="text-gray-700 font-medium block mb-1">Tên đăng nhập / Mã GV / Mã Cán bộ :</label>
                 <input
@@ -265,13 +341,14 @@ function UsersManagementContent() {
                 </div>
 
                 <div>
-                  <label className="text-gray-700 font-medium block mb-1">Vai trò (Role):</label>
+                  <label className="text-gray-700 font-medium block mb-1">{t.users.roleFieldLabel}:</label>
                   <select
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-red-500 focus:bg-white font-semibold"
                   >
-                    <option value="LECTURER">Giảng viên / Quản lý ca trực</option>
+                    <option value="LECTURER">{t.users.roleLecturer}</option>
+                    <option value="ADMIN">{t.users.roleAdmin}</option>
                   </select>
                 </div>
               </div>
@@ -301,6 +378,103 @@ function UsersManagementContent() {
                   className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-xs shadow-sm"
                 >
                   {isSubmitting ? "Đang lưu..." : "Lưu vào hệ thống"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingUser && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-gray-200 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
+              <h3 className="text-base font-bold text-gray-900">{t.users.editTitle}</h3>
+              <button type="button" onClick={closeEditUser} className="text-gray-400 hover:text-gray-700" aria-label={t.users.cancelButton}>
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditUser} className="space-y-3.5 text-xs">
+              {editError && (
+                <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700">
+                  {editError}
+                </div>
+              )}
+
+              <div>
+                <label className="text-gray-700 font-medium block mb-1">{t.users.usernameLabel}</label>
+                <input
+                  type="text"
+                  value={editingUser.username}
+                  readOnly
+                  className="w-full bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 text-gray-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-gray-700 font-medium block mb-1">{t.users.fullNameLabel}</label>
+                <input
+                  type="text"
+                  required
+                  maxLength={120}
+                  value={editFullName}
+                  onChange={(event) => setEditFullName(event.target.value)}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-red-500 focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="text-gray-700 font-medium block mb-1">{t.users.emailLabel}</label>
+                <input
+                  type="email"
+                  required
+                  maxLength={254}
+                  value={editEmail}
+                  onChange={(event) => setEditEmail(event.target.value)}
+                  className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-red-500 focus:bg-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-gray-700 font-medium block mb-1">{t.users.phoneLabel}</label>
+                  <input
+                    type="tel"
+                    maxLength={30}
+                    value={editPhone}
+                    onChange={(event) => setEditPhone(event.target.value)}
+                    className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-red-500 focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-gray-700 font-medium block mb-1">{t.users.roleFieldLabel}</label>
+                  <select
+                    value={editRole}
+                    onChange={(event) => setEditRole(event.target.value as UserRole)}
+                    className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-red-500 focus:bg-white font-semibold"
+                  >
+                    <option value="LECTURER">{t.users.roleLecturer}</option>
+                    <option value="ADMIN">{t.users.roleAdmin}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={closeEditUser}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium"
+                >
+                  {t.users.cancelButton}
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-xs shadow-sm disabled:opacity-50"
+                >
+                  {isSavingEdit ? t.users.savingButton : t.users.saveButton}
                 </button>
               </div>
             </form>

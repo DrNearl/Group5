@@ -14,6 +14,7 @@ export type AuditAction =
   | "STUDENT_DELETE"
   | "STUDENT_IMPORT"
   | "USER_CREATE"
+  | "USER_UPDATE"
   | "USER_DELETE"
   | "PASSWORD_CHANGE";
 
