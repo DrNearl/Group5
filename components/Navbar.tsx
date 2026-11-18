@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/language-context";
 import VluLogo from "@/components/VluLogo";
 import ChangePasswordModal from "@/components/modals/ChangePasswordModal";
+import ProfileModal from "@/components/modals/ProfileModal";
 import {
   ChevronDown,
   CircleUserRound,
@@ -20,9 +21,15 @@ export default function Navbar() {
   const { t } = useLanguage();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [displayName, setDisplayName] = useState(user?.fullName ?? "");
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const accountButtonRef = useRef<HTMLButtonElement>(null);
   const menuItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  useEffect(() => {
+    setDisplayName(user?.fullName ?? "");
+  }, [user?.id, user?.fullName]);
 
   useEffect(() => {
     if (!accountMenuOpen) return;
@@ -49,7 +56,7 @@ export default function Navbar() {
   }, [accountMenuOpen]);
 
   const onOpenProfile = () => {
-    // TODO: Open the profile dialog in a later step.
+    setProfileOpen(true);
   };
 
   const onOpenChangePassword = () => {
@@ -59,6 +66,15 @@ export default function Navbar() {
   const closeChangePassword = useCallback(() => {
     setChangePasswordOpen(false);
     window.requestAnimationFrame(() => accountButtonRef.current?.focus());
+  }, []);
+
+  const closeProfile = useCallback(() => {
+    setProfileOpen(false);
+    window.requestAnimationFrame(() => accountButtonRef.current?.focus());
+  }, []);
+
+  const handleProfileSaved = useCallback((profile: { fullName: string }) => {
+    setDisplayName(profile.fullName);
   }, []);
 
   const handleMenuItemKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -107,13 +123,13 @@ export default function Navbar() {
                 aria-haspopup="menu"
                 aria-expanded={accountMenuOpen}
                 aria-controls="navbar-account-menu"
-                aria-label={user.fullName}
+                aria-label={displayName}
                 className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 text-gray-800 transition-colors hover:border-red-200 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-700 sm:px-3"
               >
                 <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-800 sm:hidden">
                   <CircleUserRound aria-hidden="true" className="h-5 w-5" />
                 </span>
-                <span className="hidden max-w-56 truncate text-sm font-semibold sm:inline">{user.fullName}</span>
+                <span className="hidden max-w-56 truncate text-sm font-semibold sm:inline">{displayName}</span>
                 <ChevronDown aria-hidden="true" className={`h-4 w-4 shrink-0 text-gray-500 transition-transform ${accountMenuOpen ? "rotate-180" : ""}`} />
               </button>
 
@@ -174,6 +190,7 @@ export default function Navbar() {
       </div>
     </nav>
     {changePasswordOpen && <ChangePasswordModal onClose={closeChangePassword} />}
+    {profileOpen && <ProfileModal onClose={closeProfile} onSaved={handleProfileSaved} />}
     </>
   );
 }
