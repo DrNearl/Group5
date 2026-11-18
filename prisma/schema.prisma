@@ -18,23 +18,23 @@ model User {
   id           String   @id @default(uuid())
   username     String   @unique // Mã GV hoặc tên tài khoản quản trị (vd: "GV001", "admin")
   fullName     String   // Họ tên Giảng viên / Quản trị viên
-  email        String   @unique // Email liên hệ VLU (chau.lth@vlu.edu.vn)
+  email        String   @unique // Email liên hệ Văn Lang (vd: "admin@vlu.edu.vn", "gv@vanlanguni.vn")
   passwordHash String
   phone        String?
-  role         String   @default("LECTURER") // ADMIN, LECTURER
-  isActive     Boolean  @default(true)
+  role         String   @default("LECTURER") // ADMIN (Quản trị viên), LECTURER (Giảng viên / Quản lý ca), PENDING (Chờ duyệt)
+  isActive     Boolean  @default(true) // true: Đang hoạt động, false: Đã khóa (hoặc Chờ duyệt nếu role là PENDING)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
 
-// 2. Student: Danh mục Sinh viên trực Lab (Dùng mã Barcode trên thẻ SV để quẹt, KHÔNG cần tài khoản đăng nhập)
+// 2. Student: Danh mục người tham gia phòng Lab (Sinh viên, Giảng viên, Khách ngoài - Quẹt mã vạch/QR cá nhân, không cần tài khoản đăng nhập)
 model Student {
   id          String   @id @default(uuid())
-  studentCode String   @unique // MSSV - Mã vạch Code 128 trên thẻ sinh viên (vd: "2373401010100")
+  studentCode String   @unique // MSSV / Mã định danh - Mã vạch Code 128 trên thẻ sinh viên / thẻ khách
   fullName    String
-  email       String?  // Email sinh viên Văn Lang (để gửi thông báo ca trực)
+  email       String?  // Email liên hệ Văn Lang (để nhận thông báo / thẻ QR cá nhân)
   phone       String?
-  className   String?  // Lớp chuyên ngành (vd: "23DTH01", "21CNTT02")
+  className   String?  // Lớp / Đơn vị công tác (vd: "K29CNTT16", "Khoa CNTT", "Khách ngoài")
   qrVersion   Int      @default(1) // Phiên bản QR cá nhân (tăng để thu hồi QR cũ nếu bị lộ)
   qrSentAt    DateTime? // Thời điểm gửi QR qua Email gần nhất
   isActive    Boolean  @default(true)
@@ -66,9 +66,9 @@ model LabRoom {
 // 4. Shift: Khung ca trực chính thức theo quy định VLU
 model Shift {
   id                 String   @id @default(uuid())
-  shiftName          String   // "Ca Sáng (08:00 - 11:30)", "Ca Chiều (13:00 - 17:00)"
+  shiftName          String   // "Ca Sáng (08:00 - 12:00)", "Ca Chiều (13:00 - 17:00)"
   startTime          String   // "08:00"
-  endTime            String   // "11:30"
+  endTime            String   // "12:00" hoặc "17:00"
   gracePeriodMinutes Int      @default(15) // Cho phép trễ tối đa 15 phút
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
