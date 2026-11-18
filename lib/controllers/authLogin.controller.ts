@@ -40,7 +40,10 @@ export async function handleAuthLogin(req: NextRequest) {
 
     if (!user.isActive) {
       return NextResponse.json(
-        { success: false, message: "Tài khoản này hiện đang bị khóa. Vui lòng liên hệ Quản trị viên phòng Lab!" },
+        {
+          success: false,
+          message: "Tài khoản của bạn đang chờ Quản trị viên (Admin) xét duyệt trước khi sử dụng. Vui lòng liên hệ Admin phòng Lab!",
+        },
         { status: 403 }
       );
     }

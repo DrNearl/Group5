@@ -72,6 +72,21 @@ const ACTION_META: Record<string, { label: string; group: string; badgeClass: st
     group: "USER",
     badgeClass: "bg-purple-50 text-purple-700 border-purple-200",
   },
+  USER_APPROVE: {
+    label: "Duyệt tài khoản",
+    group: "USER",
+    badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+  USER_DEACTIVATE: {
+    label: "Khóa tài khoản",
+    group: "USER",
+    badgeClass: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  USER_REGISTER_REQUEST: {
+    label: "Yêu cầu đăng ký",
+    group: "USER",
+    badgeClass: "bg-blue-50 text-blue-700 border-blue-200",
+  },
   USER_DELETE: {
     label: "Xóa tài khoản",
     group: "USER",

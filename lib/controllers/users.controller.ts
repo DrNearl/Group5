@@ -119,3 +119,61 @@ export async function handleUsersDelete(req: NextRequest) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
 }
+
+export async function handleUsersPatch(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id, isActive } = body;
+
+    if (!id || typeof isActive !== "boolean") {
+      return NextResponse.json(
+        { success: false, message: "Thiếu ID hoặc trạng thái hợp lệ!" },
+        { status: 400 }
+      );
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { id } });
+    if (!existingUser) {
+      return NextResponse.json(
+        { success: false, message: "Không tìm thấy người dùng!" },
+        { status: 404 }
+      );
+    }
+
+    if (existingUser.username === "admin") {
+      return NextResponse.json(
+        { success: false, message: "Không thể thay đổi trạng thái Quản trị viên gốc!" },
+        { status: 403 }
+      );
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { isActive },
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        role: true,
+        isActive: true,
+      },
+    });
+
+    await recordAuditLog({
+      req,
+      action: isActive ? "USER_APPROVE" : "USER_DEACTIVATE",
+      target: `${updatedUser.fullName} (${updatedUser.username})`,
+      detail: isActive ? "Duyệt kích hoạt tài khoản" : "Tạm khóa tài khoản",
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: isActive ? "Đã duyệt và kích hoạt tài khoản thành công!" : "Đã tạm khóa tài khoản!",
+      user: updatedUser,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+  }
+}

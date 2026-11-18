@@ -15,6 +15,9 @@ export type AuditAction =
   | "STUDENT_IMPORT"
   | "USER_CREATE"
   | "USER_DELETE"
+  | "USER_APPROVE"
+  | "USER_DEACTIVATE"
+  | "USER_REGISTER_REQUEST"
   | "PASSWORD_CHANGE";
 
 interface RecordAuditLogParams {

@@ -127,14 +127,26 @@ function LoginFormContent() {
               {isSubmitting ? t.login.submitting : t.login.submit}
             </button>
 
-            <div className="pt-2 text-center">
-              <Link
-                href="/"
-                className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-gray-500 hover:text-red-700 transition"
-              >
-                <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
-                {t.home.backHome}
-              </Link>
+            <div className="pt-2 text-center space-y-2.5">
+              <div className="text-xs text-gray-600">
+                Chưa có tài khoản?{" "}
+                <Link
+                  href="/register"
+                  className="font-semibold text-red-700 hover:text-red-800 hover:underline transition"
+                >
+                  Đăng ký tài khoản
+                </Link>
+              </div>
+
+              <div>
+                <Link
+                  href="/"
+                  className="inline-flex items-center justify-center gap-1.5 text-xs font-medium text-gray-500 hover:text-red-700 transition"
+                >
+                  <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
+                  {t.home.backHome}
+                </Link>
+              </div>
             </div>
           </form>
         </section>
