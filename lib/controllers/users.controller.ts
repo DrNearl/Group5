@@ -42,11 +42,15 @@ export async function handleUsersPost(req: NextRequest) {
     const safeRole = "LECTURER";
     const userPassword = (password && password.trim().length > 0) ? password.trim() : "123456";
 
+    const cleanCode = studentCode.trim();
+    const cleanMail = email.trim();
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
-          { username: { equals: studentCode.trim(), mode: "insensitive" } },
-          { email: { equals: email.trim(), mode: "insensitive" } },
+          { username: cleanCode },
+          { username: cleanCode.toLowerCase() },
+          { email: cleanMail.toLowerCase() },
+          { email: cleanMail },
         ],
       },
     });

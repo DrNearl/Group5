@@ -22,17 +22,26 @@ export async function handleAuthLogin(req: NextRequest) {
     const cleanId = identifier.trim();
 
     // Tìm kiếm giảng viên / quản trị viên theo email hoặc username (hỗ trợ cả chữ hoa và chữ thường)
-    const user = await prisma.user.findFirst({
+    let user = await prisma.user.findFirst({
       where: {
         OR: [
-          { username: { equals: cleanId, mode: "insensitive" } },
-          { email: { equals: cleanId, mode: "insensitive" } },
           { username: cleanId },
           { username: cleanId.toLowerCase() },
           { email: cleanId.toLowerCase() },
+          { email: cleanId },
         ],
       },
     });
+
+    if (!user) {
+      const allUsers = await prisma.user.findMany();
+      user =
+        allUsers.find(
+          (u) =>
+            u.username.toLowerCase() === cleanId.toLowerCase() ||
+            u.email.toLowerCase() === cleanId.toLowerCase()
+        ) || null;
+    }
 
     if (!user) {
       return NextResponse.json(

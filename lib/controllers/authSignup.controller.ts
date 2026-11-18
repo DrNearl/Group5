@@ -29,8 +29,10 @@ export async function handleAuthSignup(req: NextRequest) {
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
-          { username: { equals: studentCode, mode: "insensitive" } },
-          { email: { equals: email, mode: "insensitive" } },
+          { username: studentCode },
+          { username: studentCode.toLowerCase() },
+          { email: email.toLowerCase() },
+          { email: email },
         ],
       },
     });
