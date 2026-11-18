@@ -3,13 +3,11 @@
 // Hệ quản trị cơ sở dữ liệu: PostgreSQL (FITLAB Cloud)
 
 import { PrismaClient } from "@prisma/client";
-import { randomBytes, scrypt as scryptCallback } from "crypto";
-import { promisify } from "util";
+import { randomBytes, scryptSync } from "crypto";
 
-const scrypt = promisify(scryptCallback);
-async function hashPassword(password: string) {
+function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
-  const derivedKey = (await scrypt(password, salt, 64)) as Buffer;
+  const derivedKey = scryptSync(password, salt, 64);
   return `scrypt$${salt}$${derivedKey.toString("hex")}`;
 }
 
@@ -37,7 +35,7 @@ async function main() {
       username: "admin",
       fullName: "Quản trị viên Hệ thống (Admin)",
       email: "admin@vlu.edu.vn",
-      passwordHash: await hashPassword("admin"),
+      passwordHash: hashPassword("admin"),
       phone: "0909999999",
       role: "ADMIN",
       isActive: true,
@@ -50,7 +48,7 @@ async function main() {
       username: "gv.khoacntt",
       fullName: "ThS. Nguyễn Văn A",
       email: "nguyenvana@vanlanguni.vn",
-      passwordHash: await hashPassword("123456"),
+      passwordHash: hashPassword("123456"),
       phone: "0981234567",
       role: "LECTURER",
       isActive: true,
