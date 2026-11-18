@@ -26,6 +26,22 @@ export async function handleAuthSignup(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Mật khẩu cần có từ 6 đến 128 ký tự." }, { status: 400 });
     }
 
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { username: { equals: studentCode, mode: "insensitive" } },
+          { email: { equals: email, mode: "insensitive" } },
+        ],
+      },
+    });
+
+    if (existingUser) {
+      return NextResponse.json(
+        { success: false, message: "Mã tài khoản hoặc email này đã được đăng ký trong hệ thống." },
+        { status: 409 }
+      );
+    }
+
     const user = await prisma.user.create({
       data: {
         fullName,

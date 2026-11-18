@@ -21,12 +21,15 @@ export async function handleAuthLogin(req: NextRequest) {
 
     const cleanId = identifier.trim();
 
-    // Tìm kiếm giảng viên / quản trị viên theo email hoặc username
+    // Tìm kiếm giảng viên / quản trị viên theo email hoặc username (hỗ trợ cả chữ hoa và chữ thường)
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: cleanId.toLowerCase() },
+          { username: { equals: cleanId, mode: "insensitive" } },
+          { email: { equals: cleanId, mode: "insensitive" } },
+          { username: cleanId },
           { username: cleanId.toLowerCase() },
+          { email: cleanId.toLowerCase() },
         ],
       },
     });

@@ -42,6 +42,22 @@ export async function handleUsersPost(req: NextRequest) {
     const safeRole = "LECTURER";
     const userPassword = (password && password.trim().length > 0) ? password.trim() : "123456";
 
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { username: { equals: studentCode.trim(), mode: "insensitive" } },
+          { email: { equals: email.trim(), mode: "insensitive" } },
+        ],
+      },
+    });
+
+    if (existingUser) {
+      return NextResponse.json(
+        { success: false, message: "Tên đăng nhập hoặc Email này đã tồn tại trong hệ thống!" },
+        { status: 400 }
+      );
+    }
+
     const user = await prisma.user.create({
       data: {
         username: studentCode.trim(),
