@@ -106,7 +106,7 @@ There are two ways for a student to be marked present.
 
 **Barcode scan station.** A staff member signs in and opens the scan station. Student cards are read by a USB barcode scanner (the home page, `/`) or by a webcam (`/scan-station`). The app plays a sound to confirm each scan.
 
-**Mobile QR check-in.** A staff member opens `/qr-station` on a screen in the lab. It shows a QR code that rotates and is signed with `QR_JWT_SECRET`. Students scan it with their phones, which opens `/mobile-checkin`. Students do not need to sign in to the management area. Because the code rotates, a photo of an old code cannot be reused later.
+**Mobile QR check-in.** A staff member opens `/qr-station` on a screen in the lab. It shows a QR code that rotates and is signed with `QR_JWT_SECRET`. Students scan it with their phones, which opens `/mobile-checkin`. Students do not need to sign in to the management area. Because the code rotates and expires after 30 seconds, a photo of an old code cannot be reused later. The server does not yet verify that the phone is in the lab.
 
 Staff can also issue an individual QR code to a single student from `/students`, and revoke it at any time.
 
@@ -127,7 +127,7 @@ Staff can also issue an individual QR code to a single student from `/students`,
 | `/audit-logs` | Administrative activity history |
 | `/settings` | Account settings |
 
-Staff pages require a signed-in administrator or lecturer. Every path above is relative to `BASE_PATH`.
+Staff pages are guarded in the browser for signed-in administrators and lecturers. See Known limitations for the current state of server-side API protection. Every path above is relative to `BASE_PATH`.
 
 ## Commands
 
@@ -187,3 +187,37 @@ docs/            QR attendance plan and database/CRUD reference
 
 - [Database ERD and CRUD matrix](docs/DATABASE_ERD_CRUD.md)
 - [Dynamic QR attendance plan](docs/KE_HOACH_DIEM_DANH_QR_CODE.md)
+
+## Known limitations
+
+This project is a coursework prototype. The items below describe what the current code does **not** yet do, so that nobody relies on behavior that is not implemented. Read this section before any shared or production deployment.
+
+### Security
+
+- **Server-side authorization is incomplete.** Staff pages are protected in the browser by a route guard, but only some API routes verify the caller on the server (student management, staff accounts, audit logs, profile, and attendance adjustment). The dashboard, schedules, equipment, incident, and attendance scan endpoints do not check who is calling them.
+- **The login session is not signed.** The `vlu_user_session` cookie is plain JSON, is readable by browser scripts (`httpOnly` is off), and the server identifies the user from its `username` or `id` fields. `JWT_SECRET` currently protects individual student QR codes only, not staff sessions. Do not expose this build to untrusted networks.
+- **Default secrets and account.** `.env.example` contains example values for `JWT_SECRET` and `QR_JWT_SECRET`, and the seed creates `admin` / `admin`. Replace all of them before sharing the app. The server does not refuse to start when the example values are still in use.
+
+### Attendance integrity
+
+- **No location or network check.** The phone sends its GPS coordinates during mobile check-in, but the server does not enforce them. The `allowedIp` field on lab rooms is not used either. As a result, the "stay inside the lab network" protection described in `docs/KE_HOACH_DIEM_DANH_QR_CODE.md` is a plan, not a feature.
+- **The rotating QR endpoint is public.** `GET /api/qr/session` can be called without signing in, so a valid token can be obtained from anywhere. Token expiry limits how long a photographed code stays usable, but it does not prove that the student is in the lab.
+- **Students are identified by a typed student ID.** Mobile check-in does not verify that the person holds that ID. The one-device-per-student rule relies on an ID stored in the browser (`localStorage`) and can be bypassed by clearing it or using another browser.
+- **QR check-ins are not matched to duty schedules.** Each QR check-in creates a new schedule entry on the first shift in the database and is always recorded as `ON_TIME`. The shift's grace period and the `LATE` status are therefore not applied to QR check-ins. The lab is chosen from the QR's lab code and falls back to a default lab if it is not found, so a check-in can be recorded against the wrong lab.
+
+### Documentation and testing
+
+- **Timing values differ between code and plan.** The code issues QR tokens valid for 30 seconds and refreshes the on-screen code every 20 seconds. The plan document still refers to 15 seconds.
+- **No automated tests.** Behavior has been checked manually only. There are no unit or integration tests for token signing, attendance rules, or API authorization.
+
+### Deployment
+
+- **SQLite is a single local file.** It suits a lab-sized, single-server deployment but is not intended for many concurrent writers or for running several app instances against one database.
+- **Default base path.** The app is served under `/absproxy/3000` unless `BASE_PATH` is changed, because it was built for deployment behind FITLAB's proxy.
+
+### Planned improvements
+
+1. Sign staff sessions with `JWT_SECRET`, set the cookie to `httpOnly`, and require authentication on every staff API route.
+2. Restrict `GET /api/qr/session` to the signed-in lab station and enforce the GPS radius or lab network range in `POST /api/qr/verify`.
+3. Match QR check-ins to the assigned duty schedule so that `LATE` and `EARLY_LEAVE` are calculated.
+4. Align the documented timing values with the code and add tests for `lib/qr-security.ts` and `lib/attendance-rules.ts`.
