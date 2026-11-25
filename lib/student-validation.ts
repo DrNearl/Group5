@@ -25,10 +25,11 @@ export function validateStudentInput(
   const phone = trimmedString(input.phone);
   const email = trimmedString(input.email);
 
-  if ((!studentCode && mode === "edit") || (studentCode && !/^[a-z\d]{4,20}$/i.test(studentCode))) {
+  const studentCodeRequired = mode === "create" || mode === "edit";
+  if ((studentCodeRequired && !studentCode) || (studentCode && !/^[a-z\d]{4,20}$/i.test(studentCode))) {
     errors.studentCode = studentCode
       ? "Mã số chỉ gồm chữ và số, dài 4–20 ký tự."
-      : "Vui lòng nhập mã số sinh viên.";
+      : "Vui lòng nhập MSSV.";
   }
 
   if (!fullName) {
