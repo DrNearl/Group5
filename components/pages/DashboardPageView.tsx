@@ -398,7 +398,7 @@ function DashboardContent() {
       const c = (code || "").toUpperCase();
       const cls = (className || "").toUpperCase();
       if (c.startsWith("GV") || cls.includes("GIANGVIEN") || cls.includes("CANBO") || cls.includes("GIẢNG VIÊN")) return "Giảng viên";
-      if (c.startsWith("KHACH") || cls.includes("KHACH") || cls.includes("LANGLAI") || cls.includes("KHÁCH")) return "Khách vãng lai";
+      if (c.startsWith("KHACH") || cls.includes("KHACH") || cls.includes("VANGLAI") || cls.includes("KHÁCH")) return "Khách vãng lai";
       return "Sinh viên";
     };
 

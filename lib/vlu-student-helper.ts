@@ -77,7 +77,7 @@ export function parseVluStudentInfo(rawBarcode: string, fullName?: string | null
     isVluStudent: false,
     cohort: "OTHER",
     cohortLabel: "Khách / Ngoài khoa",
-    suggestedClass: "KHACH-VLANGLAI",
+    suggestedClass: "KHACH-VANGLAI",
     defaultFullName: `Khách vãng lai (${code})`,
     defaultEmail: `${code}@guest.vlu.edu.vn`,
   };
